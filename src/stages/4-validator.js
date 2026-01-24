@@ -1,6 +1,8 @@
 import { validateBlueprint, getValidationErrors } from '../config/schemas.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { GeminiClient } from '../llm/gemini-client.js';
+import { WorldEditValidator } from '../validation/worldedit-validator.js';
+import { QualityValidator } from '../validation/quality-validator.js';
 
 /**
  * Stage 4: Validate and repair blueprint
@@ -13,53 +15,86 @@ import { GeminiClient } from '../llm/gemini-client.js';
 export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey) {
   let currentBlueprint = blueprint;
   let retries = 0;
-  
+  let qualityScore = null;
+
   while (retries < SAFETY_LIMITS.maxRetries) {
     const errors = [];
-    
+
     // 1. JSON Schema Validation
     const isValidSchema = validateBlueprint(currentBlueprint);
     if (!isValidSchema) {
       errors.push(...getValidationErrors(validateBlueprint).map(e => `Schema: ${e}`));
     }
-    
+
     // 2. Block Allowlist Validation
     const invalidBlocks = validateBlockAllowlist(currentBlueprint, allowlist);
     if (invalidBlocks.length > 0) {
       errors.push(`Invalid blocks used: ${invalidBlocks.join(', ')}`);
     }
-    
+
     // 3. Coordinate Bounds Checking
     const boundsErrors = validateCoordinateBounds(currentBlueprint, designPlan);
     errors.push(...boundsErrors);
-    
-    // 4. Feature Completeness Check
+
+    // 4. Feature Completeness Check (basic)
     const featureErrors = validateFeatures(currentBlueprint, designPlan);
     errors.push(...featureErrors);
-    
+
     // 5. Volume and Step Limits
     const limitErrors = validateLimits(currentBlueprint);
     errors.push(...limitErrors);
-    
+
+    // 6. WorldEdit Validation
+    const weValidation = WorldEditValidator.validateWorldEditOps(currentBlueprint);
+    if (!weValidation.valid) {
+      errors.push(...weValidation.errors);
+    }
+
+    // 7. Quality Validation (always run for scoring, even if other errors exist)
+    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, designPlan);
+    if (SAFETY_LIMITS.requireFeatureCompletion && !qualityScore.passed) {
+      errors.push(
+        `Blueprint quality too low: ${(qualityScore.score * 100).toFixed(1)}% ` +
+        `(minimum: ${SAFETY_LIMITS.minQualityScore * 100}%)`
+      );
+      errors.push(...qualityScore.penalties);
+    }
+
     // If no errors, validation successful
     if (errors.length === 0) {
       console.log('✓ Blueprint validation passed');
-      return { valid: true, blueprint: currentBlueprint, errors: [] };
+      console.log(`  Quality score: ${(qualityScore.score * 100).toFixed(1)}%`);
+      if (weValidation.stats.worldEditCommands > 0) {
+        console.log(`  WorldEdit commands: ${weValidation.stats.worldEditCommands}`);
+        console.log(`  WorldEdit blocks: ${weValidation.stats.worldEditBlocks}`);
+      }
+      console.log(`  Total operations: ${currentBlueprint.steps.length}`);
+      return {
+        valid: true,
+        blueprint: currentBlueprint,
+        errors: [],
+        quality: qualityScore,
+        worldedit: weValidation.stats
+      };
     }
     
     // If errors and retries available, attempt repair
     if (retries < SAFETY_LIMITS.maxRetries - 1) {
       console.log(`⚠ Validation failed (attempt ${retries + 1}/${SAFETY_LIMITS.maxRetries})`);
-      console.log(`  Errors: ${errors.join(', ')}`);
+      console.log(`  Errors: ${errors.length} issues found`);
+      if (qualityScore) {
+        console.log(`  Quality score: ${(qualityScore.score * 100).toFixed(1)}%`);
+      }
       console.log('  Attempting repair...');
-      
+
       try {
         const client = new GeminiClient(apiKey);
         currentBlueprint = await client.repairBlueprint(
           currentBlueprint,
           errors,
           designPlan,
-          allowlist
+          allowlist,
+          qualityScore
         );
         retries++;
       } catch (repairError) {

@@ -6,17 +6,18 @@ import { validateBlueprint, getValidationErrors } from '../config/schemas.js';
  * @param {Object} designPlan - High-level design plan
  * @param {string[]} allowlist - Validated block allowlist
  * @param {string} apiKey - Gemini API key
+ * @param {boolean} worldEditAvailable - Whether WorldEdit is available
  * @returns {Promise<Object>} - Blueprint object
  */
-export async function generateBlueprint(designPlan, allowlist, apiKey) {
+export async function generateBlueprint(designPlan, allowlist, apiKey, worldEditAvailable = false) {
   if (!designPlan || !allowlist || allowlist.length === 0) {
     throw new Error('Invalid design plan or allowlist');
   }
 
   const client = new GeminiClient(apiKey);
-  
+
   try {
-    const blueprint = await client.generateBlueprint(designPlan, allowlist);
+    const blueprint = await client.generateBlueprint(designPlan, allowlist, worldEditAvailable);
     
     // Basic schema validation
     const isValid = validateBlueprint(blueprint);

@@ -49,6 +49,9 @@ async function main() {
   // Create builder
   const builder = new Builder(bot);
 
+  // Initialize builder (detect WorldEdit)
+  await builder.initialize();
+
   // Register commands
   registerCommands(bot, builder, process.env.GEMINI_API_KEY);
 

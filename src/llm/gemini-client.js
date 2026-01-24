@@ -58,10 +58,11 @@ export class GeminiClient {
    * Generate executable blueprint from design plan
    * @param {Object} designPlan - High-level design plan
    * @param {string[]} allowlist - Allowed block types
+   * @param {boolean} worldEditAvailable - Whether WorldEdit is available
    * @returns {Promise<Object>} - Blueprint object
    */
-  async generateBlueprint(designPlan, allowlist) {
-    const prompt = blueprintPrompt(designPlan, allowlist);
+  async generateBlueprint(designPlan, allowlist, worldEditAvailable = false) {
+    const prompt = blueprintPrompt(designPlan, allowlist, worldEditAvailable);
     
     try {
       const result = await this.requestWithRetry('blueprint', () =>
@@ -95,10 +96,11 @@ export class GeminiClient {
    * @param {string[]} errors - Validation errors
    * @param {Object} designPlan - Original design plan
    * @param {string[]} allowlist - Allowed blocks
+   * @param {Object} qualityScore - Optional quality score for feedback
    * @returns {Promise<Object>} - Repaired blueprint
    */
-  async repairBlueprint(blueprint, errors, designPlan, allowlist) {
-    const prompt = repairPrompt(blueprint, errors, designPlan, allowlist);
+  async repairBlueprint(blueprint, errors, designPlan, allowlist, qualityScore = null) {
+    const prompt = repairPrompt(blueprint, errors, designPlan, allowlist, qualityScore);
     
     try {
       const result = await this.requestWithRetry('repair', () =>

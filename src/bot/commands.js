@@ -105,7 +105,7 @@ async function handleBuildCommand(prompt, bot, builder, apiKey) {
     
     // Stage 3: Blueprint
     bot.chat('Stage 3/5: Generating blueprint...');
-    const blueprint = await generateBlueprint(designPlan, allowlist, apiKey);
+    const blueprint = await generateBlueprint(designPlan, allowlist, apiKey, builder.worldEditEnabled);
     
     // Stage 4: Validation
     bot.chat('Stage 4/5: Validating blueprint...');

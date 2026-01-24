@@ -57,6 +57,20 @@ export const blueprintSchema = {
       type: "array",
       items: { type: "string" }
     },
+    execution_plan: {
+      type: "object",
+      properties: {
+        worldedit_available: { type: "boolean" },
+        estimated_blocks: { type: "integer" },
+        operations_count: {
+          type: "object",
+          properties: {
+            worldedit: { type: "integer" },
+            vanilla: { type: "integer" }
+          }
+        }
+      }
+    },
     steps: {
       type: "array",
       items: {
@@ -64,7 +78,16 @@ export const blueprintSchema = {
         properties: {
           op: {
             type: "string",
-            enum: ["fill", "hollow_box", "set", "line", "window_strip", "roof_gable", "roof_flat"]
+            enum: [
+              // Vanilla operations (existing)
+              "fill", "hollow_box", "set", "line", "window_strip", "roof_gable", "roof_flat",
+              // WorldEdit operations (new)
+              "we_fill", "we_walls", "we_pyramid", "we_cylinder", "we_sphere", "we_replace",
+              // Detail operations (new)
+              "stairs", "slab", "fence_connect", "door",
+              // Complex operations (new)
+              "spiral_staircase", "balcony", "roof_hip"
+            ]
           },
           block: { type: "string" },
           from: {
@@ -94,9 +117,33 @@ export const blueprintSchema = {
             },
             required: ["x", "y", "z"]
           },
+          base: {
+            type: "object",
+            properties: {
+              x: { type: "integer" },
+              y: { type: "integer" },
+              z: { type: "integer" }
+            },
+            required: ["x", "y", "z"]
+          },
           width: { type: "integer" },
           spacing: { type: "integer" },
-          peakHeight: { type: "integer" }
+          peakHeight: { type: "integer" },
+          radius: { type: "integer" },
+          height: { type: "integer" },
+          facing: { type: "string", enum: ["north", "south", "east", "west"] },
+          half: { type: "string", enum: ["top", "bottom", "upper", "lower"] },
+          hollow: { type: "boolean" },
+          fallback: {
+            type: "object",
+            properties: {
+              op: { type: "string" },
+              from: { type: "object" },
+              to: { type: "object" },
+              pos: { type: "object" },
+              block: { type: "string" }
+            }
+          }
         },
         required: ["op", "block"]
       }
