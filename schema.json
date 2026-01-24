@@ -1,17 +1,35 @@
 {
   "name": "string",
-  "bounding_box": { "x": "int", "y": "int", "z": "int" },
-  "palette": {
-    "wall": "minecraft:block_id",
-    "roof": "minecraft:block_id",
-    "floor": "minecraft:block_id"
+
+  "bounding_box": {
+    "x": "int",
+    "y": "int",
+    "z": "int"
   },
+
+  "palette": {
+    "wall": "minecraft:oak_planks | minecraft:cobblestone",
+    "roof": "minecraft:oak_planks",
+    "floor": "minecraft:cobblestone"
+  },
+
   "parts": [
     {
-      "type": "box|cylinder",
-      "origin": { "x": "int", "y": "int", "z": "int" },
-      "size": { "x": "int", "y": "int", "z": "int" },
-      "radius": "int?"
+      "type": "box",
+
+      "block": "minecraft:oak_log | minecraft:oak_planks | minecraft:cobblestone",
+
+      "origin": {
+        "x": "int",
+        "y": "int",
+        "z": "int"
+      },
+
+      "size": {
+        "x": "int",
+        "y": "int",
+        "z": "int"
+      }
     }
   ]
 }
