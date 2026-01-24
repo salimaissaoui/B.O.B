@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { designPlanPrompt } from './prompts/design-plan.js';
 import { blueprintPrompt, repairPrompt } from './prompts/blueprint.js';
 import { designPlanSchema, blueprintSchema } from '../config/schemas.js';
+import { SAFETY_LIMITS } from '../config/limits.js';
 
 export class GeminiClient {
   constructor(apiKey) {
@@ -28,14 +29,16 @@ export class GeminiClient {
     const prompt = designPlanPrompt(userPrompt);
     
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          responseMimeType: 'application/json',
-          responseSchema: designPlanSchema
-        }
-      });
+      const result = await this.requestWithRetry('design plan', () =>
+        this.model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: 'application/json',
+            responseSchema: designPlanSchema
+          }
+        })
+      );
 
       // Track token usage
       if (result.response.usageMetadata) {
@@ -60,14 +63,16 @@ export class GeminiClient {
     const prompt = blueprintPrompt(designPlan, allowlist);
     
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.4,  // Lower temperature for more structured output
-          responseMimeType: 'application/json',
-          responseSchema: blueprintSchema
-        }
-      });
+      const result = await this.requestWithRetry('blueprint', () =>
+        this.model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.4,  // Lower temperature for more structured output
+            responseMimeType: 'application/json',
+            responseSchema: blueprintSchema
+          }
+        })
+      );
 
       // Track token usage
       if (result.response.usageMetadata) {
@@ -94,14 +99,16 @@ export class GeminiClient {
     const prompt = repairPrompt(blueprint, errors, designPlan, allowlist);
     
     try {
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,  // Even lower for repairs
-          responseMimeType: 'application/json',
-          responseSchema: blueprintSchema
-        }
-      });
+      const result = await this.requestWithRetry('repair', () =>
+        this.model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,  // Even lower for repairs
+            responseMimeType: 'application/json',
+            responseSchema: blueprintSchema
+          }
+        })
+      );
 
       // Track token usage
       if (result.response.usageMetadata) {
@@ -135,5 +142,58 @@ export class GeminiClient {
       totalPromptTokens: 0,
       totalResponseTokens: 0
     };
+  }
+
+  async requestWithRetry(label, requestFn) {
+    let lastError;
+
+    for (let attempt = 0; attempt < SAFETY_LIMITS.llmMaxRetries; attempt++) {
+      try {
+        return await this.withTimeout(
+          requestFn(),
+          SAFETY_LIMITS.llmTimeoutMs
+        );
+      } catch (error) {
+        lastError = error;
+        const shouldRetry = this.isRetryable(error);
+        if (!shouldRetry || attempt === SAFETY_LIMITS.llmMaxRetries - 1) {
+          break;
+        }
+        console.warn(`⚠ ${label} request failed, retrying (${attempt + 1}/${SAFETY_LIMITS.llmMaxRetries})`);
+        await this.sleep(SAFETY_LIMITS.llmRetryDelayMs);
+      }
+    }
+
+    throw lastError;
+  }
+
+  isRetryable(error) {
+    const message = error?.message?.toLowerCase() || '';
+    return error?.name === 'TimeoutError' ||
+      message.includes('timeout') ||
+      message.includes('rate') ||
+      message.includes('429') ||
+      message.includes('503') ||
+      message.includes('network') ||
+      message.includes('fetch');
+  }
+
+  withTimeout(promise, timeoutMs) {
+    if (!timeoutMs || timeoutMs <= 0) {
+      return promise;
+    }
+
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        const error = new Error('LLM request timed out');
+        error.name = 'TimeoutError';
+        setTimeout(() => reject(error), timeoutMs);
+      })
+    ]);
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

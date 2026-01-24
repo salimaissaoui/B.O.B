@@ -26,20 +26,20 @@ export function windowStrip(step) {
   
   if (absX >= absY && absX >= absZ) {
     // Windows along X axis
-    const step = dx >= 0 ? 1 : -1;
-    for (let x = from.x; dx >= 0 ? x <= to.x : x >= to.x; x += step * spacing) {
+    const axisStep = dx >= 0 ? 1 : -1;
+    for (let x = from.x; dx >= 0 ? x <= to.x : x >= to.x; x += axisStep * spacing) {
       blocks.push({ x, y: from.y, z: from.z, block });
     }
   } else if (absY >= absX && absY >= absZ) {
     // Windows along Y axis
-    const step = dy >= 0 ? 1 : -1;
-    for (let y = from.y; dy >= 0 ? y <= to.y : y >= to.y; y += step * spacing) {
+    const axisStep = dy >= 0 ? 1 : -1;
+    for (let y = from.y; dy >= 0 ? y <= to.y : y >= to.y; y += axisStep * spacing) {
       blocks.push({ x: from.x, y, z: from.z, block });
     }
   } else {
     // Windows along Z axis
-    const step = dz >= 0 ? 1 : -1;
-    for (let z = from.z; dz >= 0 ? z <= to.z : z >= to.z; z += step * spacing) {
+    const axisStep = dz >= 0 ? 1 : -1;
+    for (let z = from.z; dz >= 0 ? z <= to.z : z >= to.z; z += axisStep * spacing) {
       blocks.push({ x: from.x, y: from.y, z, block });
     }
   }

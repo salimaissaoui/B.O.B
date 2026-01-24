@@ -26,6 +26,16 @@ export class Builder {
     this.history = [];  // For undo functionality
     this.building = false;
     this.currentBuild = null;
+    this.maxHistory = 10;
+
+    if (this.bot && typeof this.bot.on === 'function') {
+      this.bot.on('end', () => {
+        if (this.building) {
+          console.warn('Build interrupted: bot disconnected');
+          this.building = false;
+        }
+      });
+    }
   }
 
   /**
@@ -79,6 +89,10 @@ export class Builder {
         }
 
         // Execute block placements with rate limiting
+        if (this.currentBuild.blocksPlaced + blocks.length > SAFETY_LIMITS.maxBlocks) {
+          throw new Error(`Build exceeds max block limit (${SAFETY_LIMITS.maxBlocks})`);
+        }
+
         for (const blockPlacement of blocks) {
           if (!this.building) break;
 
@@ -112,6 +126,9 @@ export class Builder {
       // Store history for undo
       if (buildHistory.length > 0) {
         this.history.push(buildHistory);
+        if (this.history.length > this.maxHistory) {
+          this.history.shift();
+        }
       }
 
       const duration = ((Date.now() - this.currentBuild.startTime) / 1000).toFixed(1);
@@ -130,15 +147,26 @@ export class Builder {
    * Place a single block in the world
    */
   async placeBlock(pos, blockType) {
-    // In a real implementation, this would use Mineflayer's API
-    // For now, this is a placeholder that shows the structure
-    
-    // Example (would need proper Mineflayer integration):
-    // const block = this.bot.blockAt(this.bot.vec3(pos.x, pos.y - 1, pos.z));
-    // await this.bot.placeBlock(block, this.bot.vec3(0, 1, 0));
-    
-    // For demonstration, we'll just log
-    // console.log(`  Placing ${blockType} at ${pos.x}, ${pos.y}, ${pos.z}`);
+    const target = this.bot.vec3(pos.x, pos.y, pos.z);
+    const existing = this.bot.blockAt(target);
+
+    if (existing && existing.name === blockType) {
+      return;
+    }
+
+    if (typeof this.bot.setBlock === 'function') {
+      await this.bot.setBlock(target, blockType);
+      return;
+    }
+
+    if (typeof this.bot.chat === 'function') {
+      // Requires server permissions for /setblock.
+      this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${blockType}`);
+      await this.sleep(50);
+      return;
+    }
+
+    throw new Error('No supported block placement method available');
   }
 
   /**

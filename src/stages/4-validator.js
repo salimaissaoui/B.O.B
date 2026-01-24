@@ -76,8 +76,13 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
   if (!validateBlueprint(currentBlueprint)) {
     finalErrors.push(...getValidationErrors(validateBlueprint));
   }
-  finalErrors.push(...validateBlockAllowlist(currentBlueprint, allowlist));
+  const finalInvalidBlocks = validateBlockAllowlist(currentBlueprint, allowlist);
+  if (finalInvalidBlocks.length > 0) {
+    finalErrors.push(`Invalid blocks used: ${finalInvalidBlocks.join(', ')}`);
+  }
   finalErrors.push(...validateCoordinateBounds(currentBlueprint, designPlan));
+  finalErrors.push(...validateFeatures(currentBlueprint, designPlan));
+  finalErrors.push(...validateLimits(currentBlueprint));
   
   console.error('✗ Blueprint validation failed after all retries');
   console.error(`  Final errors: ${finalErrors.join(', ')}`);
@@ -119,7 +124,12 @@ function validateBlockAllowlist(blueprint, allowlist) {
  */
 function validateCoordinateBounds(blueprint, designPlan) {
   const errors = [];
-  const { width, depth, height } = designPlan.dimensions;
+  const dimensions = blueprint.size || designPlan?.dimensions;
+  if (!dimensions) {
+    errors.push('Missing blueprint size for bounds validation');
+    return errors;
+  }
+  const { width, depth, height } = dimensions;
   
   for (let i = 0; i < (blueprint.steps || []).length; i++) {
     const step = blueprint.steps[i];
@@ -202,8 +212,8 @@ function validateLimits(blueprint) {
   const errors = [];
   
   // Check step count (rough proxy for complexity)
-  if ((blueprint.steps || []).length > 1000) {
-    errors.push('Too many steps (>1000)');
+  if ((blueprint.steps || []).length > SAFETY_LIMITS.maxSteps) {
+    errors.push(`Too many steps (>${SAFETY_LIMITS.maxSteps})`);
   }
   
   // Check total volume

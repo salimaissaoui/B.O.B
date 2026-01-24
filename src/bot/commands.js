@@ -81,6 +81,16 @@ export function registerCommands(bot, builder, apiKey) {
  * Handle the /build command
  */
 async function handleBuildCommand(prompt, bot, builder, apiKey) {
+  if (builder.building) {
+    bot.chat('✗ Build already in progress');
+    return;
+  }
+
+  if (!bot.entity || !bot.entity.position) {
+    bot.chat('✗ Bot not spawned yet');
+    return;
+  }
+
   bot.chat(`Building: "${prompt}"...`);
   
   try {

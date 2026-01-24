@@ -24,11 +24,17 @@ async function main() {
     process.exit(1);
   }
 
+  const port = Number.parseInt(process.env.MINECRAFT_PORT, 10);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    console.error(`✗ Invalid MINECRAFT_PORT: ${process.env.MINECRAFT_PORT}`);
+    process.exit(1);
+  }
+
   // Initialize bot
   console.log('Initializing Minecraft bot...');
   const bot = createBot({
     host: process.env.MINECRAFT_HOST,
-    port: parseInt(process.env.MINECRAFT_PORT, 10),
+    port,
     username: process.env.MINECRAFT_USERNAME,
     version: process.env.MINECRAFT_VERSION || '1.20.1'
   });
@@ -54,6 +60,13 @@ async function main() {
   // Handle graceful shutdown
   process.on('SIGINT', () => {
     console.log('\nShutting down B.O.B...');
+    if (builder.building) {
+      try {
+        builder.cancel();
+      } catch (error) {
+        console.warn(`Cancel failed: ${error.message}`);
+      }
+    }
     bot.quit();
     process.exit(0);
   });
