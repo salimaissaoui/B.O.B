@@ -1,7 +1,9 @@
 import { createBot } from './bot/connection.js';
 import { registerCommands } from './bot/commands.js';
 import { Builder } from './stages/5-builder.js';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+
+dotenv.config({ override: true });
 
 /**
  * Main entry point for B.O.B
