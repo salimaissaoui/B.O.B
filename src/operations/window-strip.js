@@ -8,11 +8,14 @@
  * @returns {Array} - List of block placements {x, y, z, block}
  */
 export function windowStrip(step) {
-  const { from, to, block, spacing = 2 } = step;
-  
+  const { from, to, block, spacing: rawSpacing = 2 } = step;
+
   if (!from || !to || !block) {
     throw new Error('Window strip operation requires from, to, and block');
   }
+
+  // Ensure spacing is at least 1 to prevent infinite loops
+  const spacing = Math.max(1, rawSpacing || 1);
   
   const blocks = [];
   const dx = to.x - from.x;

@@ -15,20 +15,9 @@ export function registerCommands(bot, builder, apiKey) {
     if (username === bot.username) return;
 
     try {
-      // Build command
-      if (message.startsWith('/build ')) {
-        const prompt = message.slice(7).trim();
-        
-        if (!prompt) {
-          bot.chat('Usage: /build <description>');
-          return;
-        }
-
-        await handleBuildCommand(prompt, bot, builder, apiKey);
-      }
-      
+      // Check exact matches FIRST before startsWith
       // Cancel command
-      else if (message === '/build cancel') {
+      if (message === '/build cancel') {
         try {
           builder.cancel();
           bot.chat('✓ Build cancelled');
@@ -36,7 +25,7 @@ export function registerCommands(bot, builder, apiKey) {
           bot.chat(`✗ ${error.message}`);
         }
       }
-      
+
       // Undo command
       else if (message === '/build undo') {
         try {
@@ -47,7 +36,7 @@ export function registerCommands(bot, builder, apiKey) {
           bot.chat(`✗ ${error.message}`);
         }
       }
-      
+
       // Status command
       else if (message === '/build status') {
         const progress = builder.getProgress();
@@ -58,7 +47,7 @@ export function registerCommands(bot, builder, apiKey) {
           bot.chat('No build in progress');
         }
       }
-      
+
       // Help command
       else if (message === '/build help') {
         bot.chat('B.O.B Commands:');
@@ -66,6 +55,18 @@ export function registerCommands(bot, builder, apiKey) {
         bot.chat('  /build cancel - Cancel current build');
         bot.chat('  /build undo - Undo last build');
         bot.chat('  /build status - Check build progress');
+      }
+
+      // Build command (check LAST since it uses startsWith)
+      else if (message.startsWith('/build ')) {
+        const prompt = message.slice(7).trim();
+
+        if (!prompt) {
+          bot.chat('Usage: /build <description>');
+          return;
+        }
+
+        await handleBuildCommand(prompt, bot, builder, apiKey);
       }
     } catch (error) {
       console.error('Command error:', error);

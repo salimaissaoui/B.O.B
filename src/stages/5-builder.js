@@ -1,3 +1,4 @@
+import { Vec3 } from 'vec3';
 import { fill } from '../operations/fill.js';
 import { hollowBox } from '../operations/hollow-box.js';
 import { set } from '../operations/set.js';
@@ -104,7 +105,7 @@ export class Builder {
 
           try {
             // Get current block at position for undo
-            const currentBlock = this.bot.blockAt(this.bot.vec3(worldPos.x, worldPos.y, worldPos.z));
+            const currentBlock = this.bot.blockAt(new Vec3(worldPos.x, worldPos.y, worldPos.z));
             
             buildHistory.push({
               pos: worldPos,
@@ -147,7 +148,7 @@ export class Builder {
    * Place a single block in the world
    */
   async placeBlock(pos, blockType) {
-    const target = this.bot.vec3(pos.x, pos.y, pos.z);
+    const target = new Vec3(pos.x, pos.y, pos.z);
     const existing = this.bot.blockAt(target);
 
     if (existing && existing.name === blockType) {

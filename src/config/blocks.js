@@ -54,6 +54,11 @@ export const BLOCK_CATEGORIES = {
     'dirt', 'grass_block', 'sand', 'gravel', 'clay',
     'oak_leaves', 'spruce_leaves', 'birch_leaves',
     'water', 'lava', 'snow', 'ice'
+  ],
+
+  // Special blocks (used internally for operations like undo)
+  special: [
+    'air'
   ]
 };
 
@@ -62,7 +67,8 @@ export const ALL_BLOCKS = [
   ...BLOCK_CATEGORIES.building,
   ...BLOCK_CATEGORIES.decorative,
   ...BLOCK_CATEGORIES.functional,
-  ...BLOCK_CATEGORIES.natural
+  ...BLOCK_CATEGORIES.natural,
+  ...BLOCK_CATEGORIES.special
 ];
 
 // Version compatibility map

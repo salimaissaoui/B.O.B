@@ -183,14 +183,16 @@ export class GeminiClient {
       return promise;
     }
 
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        const error = new Error('LLM request timed out');
-        error.name = 'TimeoutError';
-        setTimeout(() => reject(error), timeoutMs);
-      })
-    ]);
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      const error = new Error('LLM request timed out');
+      error.name = 'TimeoutError';
+      timeoutId = setTimeout(() => reject(error), timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      clearTimeout(timeoutId);
+    });
   }
 
   sleep(ms) {

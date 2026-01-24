@@ -25,15 +25,20 @@ export function roofGable(step) {
   const depth = maxZ - minZ + 1;
   
   // Determine gable direction (along longer dimension)
+  // Calculate max offset at base level (half the width, rounded down)
+  const halfWidth = Math.floor(width / 2);
+  const halfDepth = Math.floor(depth / 2);
+
   if (width >= depth) {
     // Gable runs along Z axis (peak along Z)
     const centerX = Math.floor((minX + maxX) / 2);
-    
+
     for (let z = minZ; z <= maxZ; z++) {
       for (let h = 0; h < peakHeight; h++) {
         const y = baseY + h;
-        const offset = Math.floor(h / 2);
-        
+        // Offset DECREASES with height to form a peak (narrowing upward)
+        const offset = Math.max(0, halfWidth - h);
+
         // Place blocks on both sides of center
         for (let x = centerX - offset; x <= centerX + offset; x++) {
           if (x >= minX && x <= maxX) {
@@ -45,12 +50,13 @@ export function roofGable(step) {
   } else {
     // Gable runs along X axis (peak along X)
     const centerZ = Math.floor((minZ + maxZ) / 2);
-    
+
     for (let x = minX; x <= maxX; x++) {
       for (let h = 0; h < peakHeight; h++) {
         const y = baseY + h;
-        const offset = Math.floor(h / 2);
-        
+        // Offset DECREASES with height to form a peak (narrowing upward)
+        const offset = Math.max(0, halfDepth - h);
+
         // Place blocks on both sides of center
         for (let z = centerZ - offset; z <= centerZ + offset; z++) {
           if (z >= minZ && z <= maxZ) {
