@@ -10,3 +10,15 @@ coverage/
 *.swp
 *.swo
 *~
+
+# Minecraft server files (local development)
+minecraft-server/
+*.jar
+
+# Temporary/documentation files
+schema.json
+LOCAL_SERVER_SETUP.md
+
+# OS files
+Thumbs.db
+desktop.ini

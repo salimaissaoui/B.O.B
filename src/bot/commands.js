@@ -17,28 +17,28 @@ export function registerCommands(bot, builder, apiKey) {
     try {
       // Check exact matches FIRST before startsWith
       // Cancel command
-      if (message === '/build cancel') {
+      if (message === '!build cancel') {
         try {
           builder.cancel();
-          bot.chat('✓ Build cancelled');
+          bot.chat('Build cancelled');
         } catch (error) {
-          bot.chat(`✗ ${error.message}`);
+          bot.chat(`Error: ${error.message}`);
         }
       }
 
       // Undo command
-      else if (message === '/build undo') {
+      else if (message === '!build undo') {
         try {
           bot.chat('Undoing last build...');
           await builder.undo();
-          bot.chat('✓ Last build undone');
+          bot.chat('Last build undone');
         } catch (error) {
-          bot.chat(`✗ ${error.message}`);
+          bot.chat(`Error: ${error.message}`);
         }
       }
 
       // Status command
-      else if (message === '/build status') {
+      else if (message === '!build status') {
         const progress = builder.getProgress();
         if (progress) {
           const elapsed = (progress.elapsedTime / 1000).toFixed(1);
@@ -49,20 +49,20 @@ export function registerCommands(bot, builder, apiKey) {
       }
 
       // Help command
-      else if (message === '/build help') {
+      else if (message === '!build help') {
         bot.chat('B.O.B Commands:');
-        bot.chat('  /build <description> - Start a new build');
-        bot.chat('  /build cancel - Cancel current build');
-        bot.chat('  /build undo - Undo last build');
-        bot.chat('  /build status - Check build progress');
+        bot.chat('  !build <description> - Start a new build');
+        bot.chat('  !build cancel - Cancel current build');
+        bot.chat('  !build undo - Undo last build');
+        bot.chat('  !build status - Check build progress');
       }
 
       // Build command (check LAST since it uses startsWith)
-      else if (message.startsWith('/build ')) {
+      else if (message.startsWith('!build ')) {
         const prompt = message.slice(7).trim();
 
         if (!prompt) {
-          bot.chat('Usage: /build <description>');
+          bot.chat('Usage: !build <description>');
           return;
         }
 
@@ -75,7 +75,7 @@ export function registerCommands(bot, builder, apiKey) {
   });
 
   console.log('✓ Chat commands registered');
-  console.log('  Available commands: /build, /build cancel, /build undo, /build status, /build help');
+  console.log('  Available commands: !build, !build cancel, !build undo, !build status, !build help');
 }
 
 /**

@@ -8,11 +8,16 @@
  * @returns {Array} - List of block placements {x, y, z, block}
  */
 export function roofGable(step) {
-  const { from, to, block, peakHeight } = step;
-  
-  if (!from || !to || !block || !peakHeight) {
-    throw new Error('Roof gable operation requires from, to, block, and peakHeight');
+  const { from, to, block } = step;
+
+  if (!from || !to || !block) {
+    throw new Error('Roof gable operation requires from, to, and block');
   }
+
+  // Calculate default peakHeight based on roof dimensions if not provided
+  const width = Math.abs(to.x - from.x) + 1;
+  const depth = Math.abs(to.z - from.z) + 1;
+  const peakHeight = step.peakHeight || Math.ceil(Math.min(width, depth) / 2) + 1;
   
   const blocks = [];
   const minX = Math.min(from.x, to.x);
@@ -20,11 +25,7 @@ export function roofGable(step) {
   const minZ = Math.min(from.z, to.z);
   const maxZ = Math.max(from.z, to.z);
   const baseY = Math.min(from.y, to.y);
-  
-  const width = maxX - minX + 1;
-  const depth = maxZ - minZ + 1;
-  
-  // Determine gable direction (along longer dimension)
+
   // Calculate max offset at base level (half the width, rounded down)
   const halfWidth = Math.floor(width / 2);
   const halfDepth = Math.floor(depth / 2);

@@ -53,7 +53,7 @@ async function main() {
   console.log();
   console.log('╔════════════════════════════════════════╗');
   console.log('║  B.O.B is ready!                       ║');
-  console.log('║  Type /build help for commands         ║');
+  console.log('║  Type !build help for commands         ║');
   console.log('╚════════════════════════════════════════╝');
   console.log();
 

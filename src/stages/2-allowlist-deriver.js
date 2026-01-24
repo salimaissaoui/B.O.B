@@ -12,11 +12,9 @@ export function deriveBlockAllowlist(designPlan, minecraftVersion = '1.20.1') {
   
   // Extract blocks from materials section
   if (designPlan.materials) {
-    for (const [category, blocks] of Object.entries(designPlan.materials)) {
-      if (typeof blocks === 'string') {
-        blockSet.add(blocks);
-      } else if (Array.isArray(blocks)) {
-        blocks.forEach(block => blockSet.add(block));
+    for (const [category, block] of Object.entries(designPlan.materials)) {
+      if (typeof block === 'string' && block.length > 0) {
+        blockSet.add(block);
       }
     }
   }

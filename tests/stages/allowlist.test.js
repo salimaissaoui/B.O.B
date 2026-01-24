@@ -7,7 +7,7 @@ describe('Block Allowlist Derivation', () => {
       dimensions: { width: 10, depth: 10, height: 5 },
       style: 'modern',
       materials: {
-        walls: 'oak_planks',
+        primary: 'oak_planks',
         roof: 'oak_stairs',
         floor: 'stone'
       },
@@ -15,48 +15,46 @@ describe('Block Allowlist Derivation', () => {
     };
 
     const allowlist = deriveBlockAllowlist(designPlan);
-    
+
     expect(allowlist).toContain('oak_planks');
     expect(allowlist).toContain('oak_stairs');
     expect(allowlist).toContain('stone');
     expect(allowlist.length).toBeLessThanOrEqual(15);
   });
 
-  test('should handle array of blocks', () => {
+  test('should handle multiple material properties', () => {
     const designPlan = {
       dimensions: { width: 10, depth: 10, height: 5 },
       style: 'modern',
       materials: {
-        walls: ['oak_planks', 'spruce_planks'],
+        primary: 'oak_planks',
+        secondary: 'spruce_planks',
         roof: 'oak_stairs'
       },
       features: ['door']
     };
 
     const allowlist = deriveBlockAllowlist(designPlan);
-    
+
     expect(allowlist).toContain('oak_planks');
     expect(allowlist).toContain('spruce_planks');
     expect(allowlist).toContain('oak_stairs');
   });
 
   test('should enforce unique block limit', () => {
-    const materials = {};
-    for (let i = 0; i < 20; i++) {
-      materials[`material${i}`] = 'oak_planks';
-    }
-    materials['material20'] = 'stone';
-    materials['material21'] = 'glass';
-    
     const designPlan = {
       dimensions: { width: 10, depth: 10, height: 5 },
       style: 'test',
-      materials,
+      materials: {
+        primary: 'oak_planks',
+        secondary: 'stone',
+        accent: 'glass'
+      },
       features: ['door']
     };
 
     const allowlist = deriveBlockAllowlist(designPlan);
-    
+
     expect(allowlist.length).toBeLessThanOrEqual(15);
   });
 
@@ -65,15 +63,15 @@ describe('Block Allowlist Derivation', () => {
       dimensions: { width: 10, depth: 10, height: 5 },
       style: 'modern',
       materials: {
-        walls: 'oak_planks',
-        invalid: 'not_a_real_block',
+        primary: 'oak_planks',
+        secondary: 'not_a_real_block',
         roof: 'stone'
       },
       features: ['door']
     };
 
     const allowlist = deriveBlockAllowlist(designPlan);
-    
+
     expect(allowlist).toContain('oak_planks');
     expect(allowlist).toContain('stone');
     expect(allowlist).not.toContain('not_a_real_block');
@@ -86,6 +84,13 @@ describe('Block Validation', () => {
     expect(isValidBlock('stone')).toBe(true);
     expect(isValidBlock('glass')).toBe(true);
     expect(isValidBlock('glass_pane')).toBe(true);
+  });
+
+  test('should validate newly added blocks', () => {
+    expect(isValidBlock('stripped_oak_log')).toBe(true);
+    expect(isValidBlock('copper_block')).toBe(true);
+    expect(isValidBlock('smooth_stone')).toBe(true);
+    expect(isValidBlock('deepslate_bricks')).toBe(true);
   });
 
   test('should reject invalid blocks', () => {

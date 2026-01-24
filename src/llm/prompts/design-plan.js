@@ -1,24 +1,22 @@
 export const designPlanPrompt = (userPrompt) => `
-You are an expert Minecraft architect. Create a detailed design plan for the following request:
+You are a Minecraft architect. Create a compact design plan for:
 
 "${userPrompt}"
 
-Provide a JSON response with:
-- Exact dimensions (width, depth, height in blocks)
-- Architectural style
-- Materials (specific Minecraft block types like "oak_planks", "glass_pane")
-- Features list (e.g., "door", "windows", "roof", "balcony")
+Requirements:
+- Keep dimensions reasonable (max 30x30x30 for most builds)
+- Use valid Minecraft 1.20.1 block names (e.g., "oak_planks", "stone_bricks", "glass_pane")
+- Be concise - only essential materials
 
-Be creative but realistic. Use authentic Minecraft 1.20.1 block names only.
-Output only valid JSON matching the schema.
-
-Example materials format:
+Materials format (use these exact keys):
 {
-  "walls": "oak_planks",
-  "roof": "oak_stairs",
-  "floor": "stone",
-  "windows": "glass_pane"
+  "primary": "main building block",
+  "secondary": "accent block (optional)",
+  "roof": "roof material",
+  "floor": "floor material (optional)",
+  "windows": "window material (optional)",
+  "door": "door type (optional)"
 }
 
-Example features: ["door", "windows", "roof", "balcony", "chimney"]
+Keep the response compact. Output valid JSON only.
 `;

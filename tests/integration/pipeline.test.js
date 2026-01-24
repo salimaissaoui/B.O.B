@@ -10,7 +10,7 @@ describe('Integration Tests', () => {
         dimensions: { width: 5, depth: 5, height: 3 },
         style: 'simple cottage',
         materials: {
-          walls: 'oak_planks',
+          primary: 'oak_planks',
           roof: 'oak_stairs',
           floor: 'stone',
           windows: 'glass_pane'

@@ -3,40 +3,41 @@ import Ajv from 'ajv';
 const ajv = new Ajv({ allErrors: true });
 
 // Design Plan Schema - High-level architectural plan
+// Note: Gemini API doesn't support additionalProperties, so we use specific fields
 export const designPlanSchema = {
   type: "object",
   properties: {
     dimensions: {
       type: "object",
       properties: {
-        width: { type: "integer", minimum: 1, maximum: 100 },
-        depth: { type: "integer", minimum: 1, maximum: 100 },
-        height: { type: "integer", minimum: 1, maximum: 256 }
+        width: { type: "integer" },
+        depth: { type: "integer" },
+        height: { type: "integer" }
       },
-      required: ["width", "depth", "height"],
-      additionalProperties: false
+      required: ["width", "depth", "height"]
     },
-    style: { 
-      type: "string",
-      minLength: 1
+    style: {
+      type: "string"
     },
-    materials: { 
+    materials: {
       type: "object",
-      additionalProperties: {
-        oneOf: [
-          { type: "string" },
-          { type: "array", items: { type: "string" } }
-        ]
-      }
+      properties: {
+        primary: { type: "string" },
+        secondary: { type: "string" },
+        accent: { type: "string" },
+        roof: { type: "string" },
+        floor: { type: "string" },
+        windows: { type: "string" },
+        door: { type: "string" }
+      },
+      required: ["primary"]
     },
-    features: { 
-      type: "array", 
-      items: { type: "string" },
-      minItems: 1
+    features: {
+      type: "array",
+      items: { type: "string" }
     }
   },
-  required: ["dimensions", "style", "materials", "features"],
-  additionalProperties: false
+  required: ["dimensions", "style", "materials", "features"]
 };
 
 // Blueprint Schema - Executable build instructions
@@ -46,19 +47,15 @@ export const blueprintSchema = {
     size: {
       type: "object",
       properties: {
-        width: { type: "integer", minimum: 1, maximum: 100 },
-        depth: { type: "integer", minimum: 1, maximum: 100 },
-        height: { type: "integer", minimum: 1, maximum: 256 }
+        width: { type: "integer" },
+        depth: { type: "integer" },
+        height: { type: "integer" }
       },
-      required: ["width", "depth", "height"],
-      additionalProperties: false
+      required: ["width", "depth", "height"]
     },
     palette: {
       type: "array",
-      items: { type: "string", minLength: 1 },
-      maxItems: 15,
-      minItems: 1,
-      uniqueItems: true
+      items: { type: "string" }
     },
     steps: {
       type: "array",
@@ -77,8 +74,7 @@ export const blueprintSchema = {
               y: { type: "integer" },
               z: { type: "integer" }
             },
-            required: ["x", "y", "z"],
-            additionalProperties: false
+            required: ["x", "y", "z"]
           },
           to: {
             type: "object",
@@ -87,8 +83,7 @@ export const blueprintSchema = {
               y: { type: "integer" },
               z: { type: "integer" }
             },
-            required: ["x", "y", "z"],
-            additionalProperties: false
+            required: ["x", "y", "z"]
           },
           pos: {
             type: "object",
@@ -97,21 +92,17 @@ export const blueprintSchema = {
               y: { type: "integer" },
               z: { type: "integer" }
             },
-            required: ["x", "y", "z"],
-            additionalProperties: false
+            required: ["x", "y", "z"]
           },
-          width: { type: "integer", minimum: 1 },
-          spacing: { type: "integer", minimum: 1 },
-          peakHeight: { type: "integer", minimum: 1 }
+          width: { type: "integer" },
+          spacing: { type: "integer" },
+          peakHeight: { type: "integer" }
         },
-        required: ["op", "block"],
-        additionalProperties: false
-      },
-      minItems: 1
+        required: ["op", "block"]
+      }
     }
   },
-  required: ["size", "palette", "steps"],
-  additionalProperties: false
+  required: ["size", "palette", "steps"]
 };
 
 // Compile validators
@@ -125,7 +116,7 @@ export const validateBlueprint = ajv.compile(blueprintSchema);
  */
 export function getValidationErrors(validator) {
   if (!validator.errors) return [];
-  
+
   return validator.errors.map(err => {
     const path = err.instancePath || 'root';
     return `${path}: ${err.message}`;

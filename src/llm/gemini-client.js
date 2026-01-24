@@ -11,8 +11,8 @@ export class GeminiClient {
     }
     
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp'
+    this.model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash'
     });
     this.tokenUsage = {
       totalPromptTokens: 0,
@@ -34,6 +34,7 @@ export class GeminiClient {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.7,
+            maxOutputTokens: 1024,
             responseMimeType: 'application/json',
             responseSchema: designPlanSchema
           }
@@ -67,7 +68,8 @@ export class GeminiClient {
         this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.4,  // Lower temperature for more structured output
+            temperature: 0.4,
+            maxOutputTokens: 4096,
             responseMimeType: 'application/json',
             responseSchema: blueprintSchema
           }
@@ -103,7 +105,8 @@ export class GeminiClient {
         this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.3,  // Even lower for repairs
+            temperature: 0.3,
+            maxOutputTokens: 4096,
             responseMimeType: 'application/json',
             responseSchema: blueprintSchema
           }
@@ -175,7 +178,11 @@ export class GeminiClient {
       message.includes('429') ||
       message.includes('503') ||
       message.includes('network') ||
-      message.includes('fetch');
+      message.includes('fetch') ||
+      message.includes('json') ||
+      message.includes('unterminated') ||
+      message.includes('unexpected end') ||
+      message.includes('parse');
   }
 
   withTimeout(promise, timeoutMs) {

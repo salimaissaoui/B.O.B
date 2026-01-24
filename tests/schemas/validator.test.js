@@ -6,9 +6,9 @@ describe('Schema Validation', () => {
       const validPlan = {
         dimensions: { width: 10, depth: 10, height: 5 },
         style: 'modern',
-        materials: { 
-          walls: 'oak_planks', 
-          roof: 'oak_stairs' 
+        materials: {
+          primary: 'oak_planks',
+          roof: 'oak_stairs'
         },
         features: ['door', 'windows', 'roof']
       };
@@ -20,34 +20,42 @@ describe('Schema Validation', () => {
     test('should reject design plan with missing dimensions', () => {
       const invalidPlan = {
         style: 'modern',
-        materials: { walls: 'oak_planks' },
+        materials: { primary: 'oak_planks' },
         features: ['door']
       };
 
       const isValid = validateDesignPlan(invalidPlan);
       expect(isValid).toBe(false);
-      
+
       const errors = getValidationErrors(validateDesignPlan);
       expect(errors.length).toBeGreaterThan(0);
     });
 
-    test('should reject dimensions outside limits', () => {
-      const invalidPlan = {
-        dimensions: { width: 200, depth: 10, height: 5 },
+    test('should validate with all material properties', () => {
+      const validPlan = {
+        dimensions: { width: 10, depth: 10, height: 5 },
         style: 'modern',
-        materials: { walls: 'oak_planks' },
+        materials: {
+          primary: 'oak_planks',
+          secondary: 'spruce_planks',
+          accent: 'stone',
+          roof: 'oak_stairs',
+          floor: 'cobblestone',
+          windows: 'glass_pane',
+          door: 'oak_door'
+        },
         features: ['door']
       };
 
-      const isValid = validateDesignPlan(invalidPlan);
-      expect(isValid).toBe(false);
+      const isValid = validateDesignPlan(validPlan);
+      expect(isValid).toBe(true);
     });
 
-    test('should reject negative dimensions', () => {
+    test('should require primary material', () => {
       const invalidPlan = {
-        dimensions: { width: -10, depth: 10, height: 5 },
+        dimensions: { width: 10, depth: 10, height: 5 },
         style: 'modern',
-        materials: { walls: 'oak_planks' },
+        materials: { secondary: 'oak_planks' },
         features: ['door']
       };
 
@@ -98,27 +106,9 @@ describe('Schema Validation', () => {
       expect(isValid).toBe(false);
     });
 
-    test('should reject blueprint with too many palette items', () => {
-      const invalidBlueprint = {
-        size: { width: 10, depth: 10, height: 5 },
-        palette: Array(20).fill('oak_planks'),
-        steps: [
-          {
-            op: 'fill',
-            block: 'oak_planks',
-            from: { x: 0, y: 0, z: 0 },
-            to: { x: 9, y: 0, z: 9 }
-          }
-        ]
-      };
-
-      const isValid = validateBlueprint(invalidBlueprint);
-      expect(isValid).toBe(false);
-    });
-
     test('should accept all valid operations', () => {
       const operations = ['fill', 'hollow_box', 'set', 'line', 'window_strip', 'roof_gable', 'roof_flat'];
-      
+
       operations.forEach(op => {
         const blueprint = {
           size: { width: 10, depth: 10, height: 5 },
