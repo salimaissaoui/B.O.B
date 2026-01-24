@@ -1,0 +1,23 @@
+{
+  "name": "build-orchestrating-bot",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI-powered Minecraft building assistant that safely converts natural language into executable builds",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "keywords": ["minecraft", "bot", "ai", "building", "llm"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mineflayer": "^4.20.0",
+    "@google/generative-ai": "^0.21.0",
+    "ajv": "^8.12.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
