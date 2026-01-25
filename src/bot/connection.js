@@ -1,5 +1,7 @@
 import mineflayer from 'mineflayer';
-import { pathfinder, Movements } from 'mineflayer-pathfinder';
+import pathfinderPlugin from 'mineflayer-pathfinder';
+
+const { pathfinder, Movements } = pathfinderPlugin;
 
 /**
  * Create and configure a Mineflayer bot

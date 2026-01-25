@@ -57,7 +57,7 @@ export function calculateMaterialRequirements(blueprint) {
     }
 
     // Handle direct block placement
-    if (step.block) {
+    if (step.block && !step.size) {
       const blockType = resolveBlock(step.block);
       if (blockType !== 'air') {
         const current = requirements.get(blockType) || 0;
@@ -103,11 +103,16 @@ export function validateMaterials(bot, blueprint) {
   const missing = new Map();
   const available = new Map();
   
+  // If bot has no inventory system (e.g., in tests or when using WorldEdit exclusively),
+  // assume all materials are available
+  const hasInventory = !!(bot && bot.inventory && typeof bot.inventory.items === 'function');
+  
   for (const [blockType, required] of requirements) {
     const inInventory = inventory.get(blockType) || 0;
     available.set(blockType, inInventory);
     
-    if (inInventory < required) {
+    // Only check for missing materials if bot has inventory system
+    if (hasInventory && inInventory < required) {
       missing.set(blockType, required - inInventory);
     }
   }
@@ -119,6 +124,7 @@ export function validateMaterials(bot, blueprint) {
     requirements,
     available,
     missing,
+    hasInventory,
     summary: {
       totalRequired: Array.from(requirements.values()).reduce((sum, count) => sum + count, 0),
       totalAvailable: Array.from(available.values()).reduce((sum, count) => sum + count, 0),
@@ -159,6 +165,11 @@ export function formatValidationResult(validation) {
   if (validation.valid) {
     lines.push('├─────────────────────────────────────────────────────────');
     lines.push('│ Status: ✓ All materials available');
+    lines.push(`│ Total blocks: ${validation.summary.totalRequired}`);
+    lines.push(`│ Block types: ${validation.summary.uniqueBlockTypes}`);
+  } else if (!validation.hasInventory) {
+    lines.push('├─────────────────────────────────────────────────────────');
+    lines.push('│ Status: ℹ No inventory system (using chat commands)');
     lines.push(`│ Total blocks: ${validation.summary.totalRequired}`);
     lines.push(`│ Block types: ${validation.summary.uniqueBlockTypes}`);
   } else {

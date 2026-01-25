@@ -3,8 +3,9 @@
  * Handles bot positioning and movement for block placement
  */
 
-import { goals } from 'mineflayer-pathfinder';
+import pathfinderPlugin from 'mineflayer-pathfinder';
 
+const { goals } = pathfinderPlugin;
 const PLACEMENT_RANGE = 4; // Standard block placement range in Minecraft
 
 /**
