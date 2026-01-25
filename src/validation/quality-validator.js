@@ -7,6 +7,7 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 export class QualityValidator {
   /**
    * Score blueprint quality (0.0 - 1.0)
+   * P1 Fix: Integrated palette usage check
    */
   static scoreBlueprint(blueprint, designPlan) {
     let score = 1.0;
@@ -18,7 +19,7 @@ export class QualityValidator {
     penalties.push(...featureScore.penalties);
 
     // Check structural integrity
-    const structureScore = this.checkStructuralIntegrity(blueprint);
+    const structureScore = this.checkStructuralIntegrity(blueprint, designPlan);
     score *= structureScore.score;
     penalties.push(...structureScore.penalties);
 
@@ -27,6 +28,11 @@ export class QualityValidator {
     score *= proportionScore.score;
     penalties.push(...proportionScore.penalties);
 
+    // P1 Fix: Check palette usage (was dead code before)
+    const paletteScore = this.checkPaletteUsage(blueprint);
+    score *= paletteScore.score;
+    penalties.push(...paletteScore.penalties);
+
     return {
       score,
       passed: score >= SAFETY_LIMITS.minQualityScore,
@@ -34,7 +40,8 @@ export class QualityValidator {
       breakdown: {
         featureCompleteness: featureScore.score,
         structuralIntegrity: structureScore.score,
-        proportions: proportionScore.score
+        proportions: proportionScore.score,
+        paletteUsage: paletteScore.score  // P1 Fix: Include in breakdown
       }
     };
   }
@@ -53,6 +60,12 @@ export class QualityValidator {
     const requestedFeatures = new Set(
       designPlan.features.map(f => f.toLowerCase())
     );
+    const enforceableFeatures = new Set(
+      [...requestedFeatures].filter(feature => this.isEnforceableFeature(feature))
+    );
+    if (enforceableFeatures.size === 0) {
+      return { score: 1.0, penalties: [] };
+    }
     const presentFeatures = new Set();
 
     // Scan blueprint for feature operations
@@ -113,7 +126,7 @@ export class QualityValidator {
     }
 
     // Check for missing features
-    for (const feature of requestedFeatures) {
+    for (const feature of enforceableFeatures) {
       if (!presentFeatures.has(feature)) {
         penalties.push(`Missing requested feature: ${feature}`);
         score *= 0.7; // 30% penalty per missing feature
@@ -126,9 +139,12 @@ export class QualityValidator {
   /**
    * Check structural integrity (foundation, walls, roof order)
    */
-  static checkStructuralIntegrity(blueprint) {
+  static checkStructuralIntegrity(blueprint, designPlan) {
     const penalties = [];
     let score = 1.0;
+    if (this.isOrganicStructure(blueprint, designPlan)) {
+      return { score: 1.0, penalties: [] };
+    }
 
     // Ensure there's a foundation (operations at y=0 or y=1)
     const hasFoundation = blueprint.steps.some(step => {
@@ -229,6 +245,37 @@ export class QualityValidator {
     }
 
     return { score, penalties };
+  }
+
+  static isEnforceableFeature(feature) {
+    const enforceable = [
+      'door', 'doors', 'window', 'windows', 'roof',
+      'stairs', 'staircase', 'spiral staircase', 'spiral_staircase',
+      'balcony', 'tower', 'towers', 'dome', 'fence', 'railing'
+    ];
+    return enforceable.includes(feature);
+  }
+
+  static isOrganicStructure(blueprint, designPlan) {
+    const style = designPlan?.style?.toLowerCase() || '';
+    const organicStyle = style.includes('tree') ||
+      style.includes('foliage') ||
+      style.includes('organic') ||
+      style.includes('natural');
+    if (organicStyle) {
+      return true;
+    }
+    const organicFeatures = (designPlan?.features || [])
+      .some(feature => ['tree', 'foliage', 'canopy', 'roots', 'leaves'].includes(
+        String(feature).toLowerCase()
+      ));
+    if (organicFeatures) {
+      return true;
+    }
+    return blueprint.steps.some(step => {
+      const op = step.op?.toLowerCase() || '';
+      return op.includes('tree') || op.includes('foliage');
+    });
   }
 
   /**

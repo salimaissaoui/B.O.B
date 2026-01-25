@@ -3,6 +3,7 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 import { GeminiClient } from '../llm/gemini-client.js';
 import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
+import { getOperationMetadata } from '../config/operations-registry.js';
 
 /**
  * Stage 4: Validate and repair blueprint
@@ -32,25 +33,29 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
       errors.push(`Invalid blocks used: ${invalidBlocks.join(', ')}`);
     }
 
-    // 3. Coordinate Bounds Checking
+    // 3. Operation parameter validation
+    const opErrors = validateOperationParams(currentBlueprint);
+    errors.push(...opErrors);
+
+    // 4. Coordinate Bounds Checking
     const boundsErrors = validateCoordinateBounds(currentBlueprint, designPlan);
     errors.push(...boundsErrors);
 
-    // 4. Feature Completeness Check (basic)
+    // 5. Feature Completeness Check (basic)
     const featureErrors = validateFeatures(currentBlueprint, designPlan);
     errors.push(...featureErrors);
 
-    // 5. Volume and Step Limits
+    // 6. Volume and Step Limits
     const limitErrors = validateLimits(currentBlueprint);
     errors.push(...limitErrors);
 
-    // 6. WorldEdit Validation
+    // 7. WorldEdit Validation
     const weValidation = WorldEditValidator.validateWorldEditOps(currentBlueprint);
     if (!weValidation.valid) {
       errors.push(...weValidation.errors);
     }
 
-    // 7. Quality Validation (always run for scoring, even if other errors exist)
+    // 8. Quality Validation (always run for scoring, even if other errors exist)
     qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, designPlan);
     if (SAFETY_LIMITS.requireFeatureCompletion && !qualityScore.passed) {
       errors.push(
@@ -115,6 +120,7 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
   if (finalInvalidBlocks.length > 0) {
     finalErrors.push(`Invalid blocks used: ${finalInvalidBlocks.join(', ')}`);
   }
+  finalErrors.push(...validateOperationParams(currentBlueprint));
   finalErrors.push(...validateCoordinateBounds(currentBlueprint, designPlan));
   finalErrors.push(...validateFeatures(currentBlueprint, designPlan));
   finalErrors.push(...validateLimits(currentBlueprint));
@@ -127,6 +133,63 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     blueprint: currentBlueprint, 
     errors: finalErrors 
   };
+}
+
+function validateOperationParams(blueprint) {
+  const errors = [];
+
+  for (let i = 0; i < (blueprint.steps || []).length; i++) {
+    const step = blueprint.steps[i];
+    const meta = getOperationMetadata(step.op);
+    if (!meta) {
+      errors.push(`Step ${i}: Unknown operation '${step.op}'`);
+      continue;
+    }
+
+    errors.push(...validateStepParams(step, meta, `Step ${i}`));
+
+    if (step.fallback) {
+      if (!step.fallback.op) {
+        errors.push(`Step ${i}: Fallback missing op`);
+      } else {
+        const fallbackMeta = getOperationMetadata(step.fallback.op);
+        if (!fallbackMeta) {
+          errors.push(`Step ${i}: Unknown fallback operation '${step.fallback.op}'`);
+        } else {
+          errors.push(...validateStepParams(step.fallback, fallbackMeta, `Step ${i} fallback`));
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+function validateStepParams(step, meta, label) {
+  const errors = [];
+
+  if (meta.requiredParams) {
+    for (const param of meta.requiredParams) {
+      if (step[param] === undefined || step[param] === null) {
+        errors.push(`${label}: Missing required param '${param}'`);
+      }
+    }
+  }
+
+  if (meta.requiredOneOf) {
+    for (const group of meta.requiredOneOf) {
+      const hasAny = group.some((param) => step[param] !== undefined && step[param] !== null);
+      if (!hasAny) {
+        errors.push(`${label}: Missing one of [${group.join(', ')}]`);
+      }
+    }
+  }
+
+  if (meta.blockSuffix && step.block && !step.block.includes(meta.blockSuffix)) {
+    errors.push(`${label}: Block '${step.block}' must include '${meta.blockSuffix}'`);
+  }
+
+  return errors;
 }
 
 /**
@@ -258,6 +321,17 @@ function validateLimits(blueprint) {
     if (volume > SAFETY_LIMITS.maxBlocks) {
       errors.push(`Volume exceeds limit (${volume} > ${SAFETY_LIMITS.maxBlocks})`);
     }
+  }
+
+  // Check dimension bounds
+  if (width && width > SAFETY_LIMITS.maxWidth) {
+    errors.push(`Width exceeds limit (${width} > ${SAFETY_LIMITS.maxWidth})`);
+  }
+  if (depth && depth > SAFETY_LIMITS.maxDepth) {
+    errors.push(`Depth exceeds limit (${depth} > ${SAFETY_LIMITS.maxDepth})`);
+  }
+  if (height && height > SAFETY_LIMITS.maxHeight) {
+    errors.push(`Height exceeds limit (${height} > ${SAFETY_LIMITS.maxHeight})`);
   }
   
   // Check palette size

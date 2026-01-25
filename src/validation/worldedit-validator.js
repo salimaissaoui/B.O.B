@@ -1,5 +1,5 @@
 import { SAFETY_LIMITS } from '../config/limits.js';
-import { isWorldEditOperation } from '../config/operations-registry.js';
+import { isWorldEditOperation, getOperationMetadata } from '../config/operations-registry.js';
 
 /**
  * WorldEdit Validator
@@ -19,8 +19,10 @@ export class WorldEditValidator {
 
       totalWorldEditCmds++;
 
-      // Validate operation has fallback
-      if (SAFETY_LIMITS.worldEdit.fallbackOnError && !step.fallback) {
+      // Validate operation has fallback only when supported
+      const opMeta = getOperationMetadata(step.op);
+      const requiresFallback = Boolean(opMeta?.fallback);
+      if (SAFETY_LIMITS.worldEdit.fallbackOnError && requiresFallback && !step.fallback) {
         errors.push(
           `WorldEdit operation '${step.op}' missing fallback operation`
         );

@@ -23,6 +23,37 @@ import { WorldEditExecutor } from '../worldedit/executor.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { isWorldEditOperation } from '../config/operations-registry.js';
 
+/**
+ * P0 Fix: Simple async mutex to prevent concurrent builds
+ */
+class BuildMutex {
+  constructor() {
+    this.locked = false;
+    this.queue = [];
+  }
+
+  async acquire() {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+
+    // Wait in queue
+    return new Promise((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release() {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
 const OPERATION_MAP = {
   fill,
   hollow_box: hollowBox,
@@ -52,7 +83,7 @@ const OPERATION_MAP = {
 export class Builder {
   constructor(bot) {
     this.bot = bot;
-    this.history = [];  // For undo functionality
+    this.history = [];  // For undo functionality (vanilla operations)
     this.building = false;
     this.currentBuild = null;
     this.maxHistory = 10;
@@ -61,11 +92,18 @@ export class Builder {
     this.worldEdit = new WorldEditExecutor(bot);
     this.worldEditEnabled = false;
 
+    // P0 Fix: Mutex to prevent concurrent builds
+    this.buildMutex = new BuildMutex();
+
+    // P0 Fix: Track WorldEdit operations separately for undo
+    this.worldEditHistory = [];
+
     if (this.bot && typeof this.bot.on === 'function') {
       this.bot.on('end', () => {
         if (this.building) {
           console.warn('Build interrupted: bot disconnected');
           this.building = false;
+          this.buildMutex.release();
         }
       });
     }
@@ -84,23 +122,28 @@ export class Builder {
    * Execute a blueprint at the given starting position
    * @param {Object} blueprint - Validated blueprint
    * @param {Object} startPos - Starting position {x, y, z}
+   * P0 Fix: Uses mutex to prevent concurrent builds
    */
   async executeBlueprint(blueprint, startPos) {
-    if (this.building) {
-      throw new Error('Build already in progress');
-    }
-
-    this.building = true;
-    this.currentBuild = {
-      blueprint,
-      startPos,
-      startTime: Date.now(),
-      blocksPlaced: 0
-    };
-
-    const buildHistory = [];
+    // P0 Fix: Acquire mutex before checking/setting building flag
+    await this.buildMutex.acquire();
 
     try {
+      if (this.building) {
+        throw new Error('Build already in progress');
+      }
+
+      this.building = true;
+      this.currentBuild = {
+        blueprint,
+        startPos,
+        startTime: Date.now(),
+        blocksPlaced: 0,
+        worldEditOpsExecuted: 0  // P0 Fix: Track WE ops for undo
+      };
+
+      const buildHistory = [];
+
       console.log('Starting build execution...');
       console.log(`  Location: ${startPos.x}, ${startPos.y}, ${startPos.z}`);
       console.log(`  Total steps: ${blueprint.steps.length}`);
@@ -108,6 +151,8 @@ export class Builder {
 
       // Reset WorldEdit executor for new build
       this.worldEdit.reset();
+      // P0 Fix: Clear WE history for new build
+      this.worldEditHistory = [];
 
       for (let i = 0; i < blueprint.steps.length; i++) {
         if (!this.building) {
@@ -122,6 +167,13 @@ export class Builder {
         if (isWorldEditOperation(step.op)) {
           try {
             await this.executeWorldEditOperation(step, startPos);
+            // P0 Fix: Track WE operation for undo
+            this.worldEditHistory.push({
+              step,
+              startPos,
+              timestamp: Date.now()
+            });
+            this.currentBuild.worldEditOpsExecuted++;
           } catch (weError) {
             console.warn(`⚠ WorldEdit operation failed: ${weError.message}`);
 
@@ -148,7 +200,8 @@ export class Builder {
       }
 
       const duration = ((Date.now() - this.currentBuild.startTime) / 1000).toFixed(1);
-      console.log(`✓ Build completed in ${duration}s (${this.currentBuild.blocksPlaced} blocks)`);
+      const weOps = this.currentBuild.worldEditOpsExecuted;
+      console.log(`✓ Build completed in ${duration}s (${this.currentBuild.blocksPlaced} blocks, ${weOps} WE ops)`);
 
     } catch (error) {
       console.error(`Build execution failed: ${error.message}`);
@@ -156,6 +209,8 @@ export class Builder {
     } finally {
       this.building = false;
       this.currentBuild = null;
+      // P0 Fix: Release mutex when done
+      this.buildMutex.release();
     }
   }
 
@@ -257,7 +312,60 @@ export class Builder {
   }
 
   /**
+   * P0 Fix: Teleport bot and verify position
+   * @param {Object} targetPos - Target position {x, y, z}
+   * @param {number} tolerance - Position tolerance in blocks (default: 2)
+   * @returns {Promise<boolean>} - True if teleport succeeded
+   */
+  async teleportAndVerify(targetPos, tolerance = 2) {
+    if (!this.bot || !this.bot.entity) {
+      throw new Error('Bot entity not available for teleport');
+    }
+
+    const beforePos = this.bot.entity.position.clone();
+
+    // Send teleport command
+    this.bot.chat(`/tp @s ${targetPos.x} ${targetPos.y} ${targetPos.z}`);
+
+    // Wait for position update with timeout
+    const maxWaitTime = 2000;
+    const checkInterval = 100;
+    let elapsed = 0;
+
+    while (elapsed < maxWaitTime) {
+      await this.sleep(checkInterval);
+      elapsed += checkInterval;
+
+      const currentPos = this.bot.entity.position;
+      const dx = Math.abs(currentPos.x - targetPos.x);
+      const dy = Math.abs(currentPos.y - targetPos.y);
+      const dz = Math.abs(currentPos.z - targetPos.z);
+
+      if (dx <= tolerance && dy <= tolerance && dz <= tolerance) {
+        console.log(`    → Teleported to ${targetPos.x}, ${targetPos.y}, ${targetPos.z}`);
+        return true;
+      }
+    }
+
+    // Check if position changed at all
+    const currentPos = this.bot.entity.position;
+    const moved = beforePos.distanceTo(currentPos) > 0.5;
+
+    if (!moved) {
+      console.warn(`    ⚠ Teleport may have failed (no position change detected)`);
+      console.warn(`    ⚠ Expected: ${targetPos.x}, ${targetPos.y}, ${targetPos.z}`);
+      console.warn(`    ⚠ Current: ${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)}`);
+      return false;
+    }
+
+    // Moved but not to exact target - partial success
+    console.warn(`    ⚠ Teleport position mismatch (may still work)`);
+    return true;
+  }
+
+  /**
    * Execute WorldEdit pyramid command
+   * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditPyramid(descriptor, startPos) {
     const worldBase = {
@@ -266,15 +374,18 @@ export class Builder {
       z: startPos.z + descriptor.base.z
     };
 
-    // Teleport bot to base position for pyramid command
-    this.bot.chat(`/tp @s ${worldBase.x} ${worldBase.y} ${worldBase.z}`);
-    await this.sleep(300);
+    // P0 Fix: Teleport and verify position
+    const teleported = await this.teleportAndVerify(worldBase);
+    if (!teleported) {
+      throw new Error(`Failed to teleport to pyramid base position (${worldBase.x}, ${worldBase.y}, ${worldBase.z})`);
+    }
 
     await this.worldEdit.createPyramid(descriptor.block, descriptor.height, descriptor.hollow);
   }
 
   /**
    * Execute WorldEdit cylinder command
+   * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditCylinder(descriptor, startPos) {
     const worldBase = {
@@ -283,9 +394,11 @@ export class Builder {
       z: startPos.z + descriptor.base.z
     };
 
-    // Teleport bot to base position
-    this.bot.chat(`/tp @s ${worldBase.x} ${worldBase.y} ${worldBase.z}`);
-    await this.sleep(300);
+    // P0 Fix: Teleport and verify position
+    const teleported = await this.teleportAndVerify(worldBase);
+    if (!teleported) {
+      throw new Error(`Failed to teleport to cylinder base position (${worldBase.x}, ${worldBase.y}, ${worldBase.z})`);
+    }
 
     await this.worldEdit.createCylinder(
       descriptor.block,
@@ -297,6 +410,7 @@ export class Builder {
 
   /**
    * Execute WorldEdit sphere command
+   * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditSphere(descriptor, startPos) {
     const worldCenter = {
@@ -305,9 +419,11 @@ export class Builder {
       z: startPos.z + descriptor.center.z
     };
 
-    // Teleport bot to center position
-    this.bot.chat(`/tp @s ${worldCenter.x} ${worldCenter.y} ${worldCenter.z}`);
-    await this.sleep(300);
+    // P0 Fix: Teleport and verify position
+    const teleported = await this.teleportAndVerify(worldCenter);
+    if (!teleported) {
+      throw new Error(`Failed to teleport to sphere center position (${worldCenter.x}, ${worldCenter.y}, ${worldCenter.z})`);
+    }
 
     await this.worldEdit.createSphere(descriptor.block, descriptor.radius, descriptor.hollow);
   }
@@ -415,9 +531,13 @@ export class Builder {
 
   /**
    * Undo the last build
+   * P0 Fix: Also undoes WorldEdit operations
    */
   async undo() {
-    if (this.history.length === 0) {
+    const hasVanillaHistory = this.history.length > 0;
+    const hasWorldEditHistory = this.worldEditHistory.length > 0;
+
+    if (!hasVanillaHistory && !hasWorldEditHistory) {
       throw new Error('No builds to undo');
     }
 
@@ -425,15 +545,33 @@ export class Builder {
       throw new Error('Cannot undo while building');
     }
 
-    const lastBuild = this.history.pop();
-    console.log(`Undoing last build (${lastBuild.length} blocks)...`);
+    // P0 Fix: Undo WorldEdit operations first (they're usually larger)
+    if (hasWorldEditHistory) {
+      console.log(`Undoing ${this.worldEditHistory.length} WorldEdit operations...`);
 
-    for (const { pos, previousBlock } of lastBuild.reverse()) {
       try {
-        await this.placeBlock(pos, previousBlock);
-        await this.sleep(this.getPlacementDelayMs());
+        const result = await this.worldEdit.undoAll();
+        console.log(`  WorldEdit: ${result.undone} undone, ${result.failed} failed`);
       } catch (error) {
-        console.error(`Failed to restore block at ${pos.x},${pos.y},${pos.z}`);
+        console.error(`  WorldEdit undo error: ${error.message}`);
+      }
+
+      // Clear WE history after undo attempt
+      this.worldEditHistory = [];
+    }
+
+    // Undo vanilla operations
+    if (hasVanillaHistory) {
+      const lastBuild = this.history.pop();
+      console.log(`Undoing vanilla blocks (${lastBuild.length} blocks)...`);
+
+      for (const { pos, previousBlock } of lastBuild.reverse()) {
+        try {
+          await this.placeBlock(pos, previousBlock);
+          await this.sleep(this.getPlacementDelayMs());
+        } catch (error) {
+          console.error(`Failed to restore block at ${pos.x},${pos.y},${pos.z}`);
+        }
       }
     }
 
@@ -441,19 +579,33 @@ export class Builder {
   }
 
   /**
+   * P0 Fix: Get count of undoable operations
+   */
+  getUndoInfo() {
+    return {
+      vanillaBuilds: this.history.length,
+      vanillaBlocks: this.history.reduce((sum, build) => sum + build.length, 0),
+      worldEditOps: this.worldEditHistory.length
+    };
+  }
+
+  /**
    * Cancel the current build
+   * P0 Fix: Properly signals cancellation (mutex released in executeBlueprint finally block)
    */
   cancel() {
     if (!this.building) {
       throw new Error('No build in progress');
     }
-    
+
     console.log('Cancelling build...');
     this.building = false;
+    // Note: Mutex is released in executeBlueprint's finally block
   }
 
   /**
    * Get build progress
+   * P0 Fix: Includes WorldEdit operation count
    */
   getProgress() {
     if (!this.currentBuild) {
@@ -462,6 +614,7 @@ export class Builder {
 
     return {
       blocksPlaced: this.currentBuild.blocksPlaced,
+      worldEditOps: this.currentBuild.worldEditOpsExecuted || 0,
       elapsedTime: Date.now() - this.currentBuild.startTime,
       isBuilding: this.building
     };

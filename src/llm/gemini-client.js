@@ -48,7 +48,7 @@ export class GeminiClient {
       }
 
       const text = result.response.text();
-      return JSON.parse(text);
+      return this.parseJsonResponse(text, 'design plan');
     } catch (error) {
       throw new Error(`Design plan generation failed: ${error.message}`);
     }
@@ -84,7 +84,7 @@ export class GeminiClient {
       }
 
       const text = result.response.text();
-      return JSON.parse(text);
+      return this.parseJsonResponse(text, 'blueprint');
     } catch (error) {
       throw new Error(`Blueprint generation failed: ${error.message}`);
     }
@@ -122,7 +122,7 @@ export class GeminiClient {
       }
 
       const text = result.response.text();
-      return JSON.parse(text);
+      return this.parseJsonResponse(text, 'repair');
     } catch (error) {
       throw new Error(`Blueprint repair failed: ${error.message}`);
     }
@@ -206,5 +206,29 @@ export class GeminiClient {
 
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  parseJsonResponse(text, label) {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      const cleaned = text
+        .replace(/```json/gi, '```')
+        .replace(/```/g, '')
+        .trim();
+
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const candidate = cleaned.slice(firstBrace, lastBrace + 1);
+        try {
+          return JSON.parse(candidate);
+        } catch (innerError) {
+          throw new Error(`${label} JSON parse failed after extraction: ${innerError.message}`);
+        }
+      }
+
+      throw new Error(`${label} JSON parse failed: ${error.message}`);
+    }
   }
 }

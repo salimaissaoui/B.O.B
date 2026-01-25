@@ -10,6 +10,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 100,
     complexity: 1,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Fills a rectangular region with blocks'
   },
 
@@ -18,6 +19,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 80,
     complexity: 2,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Creates a hollow rectangular structure'
   },
 
@@ -26,6 +28,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 1,
     complexity: 1,
+    requiredParams: ['block', 'pos'],
     description: 'Places a single block'
   },
 
@@ -34,6 +37,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 10,
     complexity: 1,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Creates a line of blocks'
   },
 
@@ -42,6 +46,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 5,
     complexity: 2,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Creates a row of windows with spacing'
   },
 
@@ -50,6 +55,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 50,
     complexity: 3,
+    requiredParams: ['block', 'from', 'to', 'peakHeight'],
     description: 'Creates a triangular gable roof'
   },
 
@@ -58,6 +64,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 30,
     complexity: 1,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Creates a flat roof'
   },
 
@@ -68,6 +75,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 5000,
     complexity: 1,
     fallback: 'fill',
+    requiredParams: ['block', 'from', 'to', 'fallback'],
     description: 'WorldEdit: Fills large rectangular regions (up to 50k blocks)'
   },
 
@@ -77,6 +85,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 2000,
     complexity: 2,
     fallback: 'hollow_box',
+    requiredParams: ['block', 'from', 'to', 'fallback'],
     description: 'WorldEdit: Creates hollow structures (walls only)'
   },
 
@@ -86,6 +95,8 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 3000,
     complexity: 3,
     fallback: 'roof_gable',
+    requiredParams: ['block', 'height', 'fallback'],
+    requiredOneOf: [['base', 'pos']],
     description: 'WorldEdit: Creates pyramids or roofs'
   },
 
@@ -95,6 +106,8 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 4000,
     complexity: 3,
     fallback: null,
+    requiredParams: ['block', 'radius', 'height'],
+    requiredOneOf: [['base', 'pos']],
     description: 'WorldEdit: Creates cylindrical towers'
   },
 
@@ -104,6 +117,8 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 3000,
     complexity: 3,
     fallback: null,
+    requiredParams: ['block', 'radius'],
+    requiredOneOf: [['center', 'pos', 'base']],
     description: 'WorldEdit: Creates spherical domes'
   },
 
@@ -113,6 +128,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 2000,
     complexity: 2,
     fallback: null,
+    requiredParams: ['from', 'to', 'fromBlock', 'toBlock'],
     description: 'WorldEdit: Replaces blocks in selection'
   },
 
@@ -123,6 +139,8 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 1,
     complexity: 2,
     requiresOrientation: true,
+    requiredParams: ['block', 'pos'],
+    blockSuffix: 'stairs',
     description: 'Places oriented stair blocks'
   },
 
@@ -131,6 +149,8 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 1,
     complexity: 2,
+    requiredParams: ['block', 'pos'],
+    blockSuffix: 'slab',
     description: 'Places top or bottom slab blocks'
   },
 
@@ -139,6 +159,8 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 10,
     complexity: 2,
+    requiredParams: ['block', 'from', 'to'],
+    blockSuffix: 'fence',
     description: 'Creates auto-connecting fence lines'
   },
 
@@ -148,6 +170,8 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 2,
     complexity: 2,
     requiresOrientation: true,
+    requiredParams: ['block', 'pos'],
+    blockSuffix: 'door',
     description: 'Places door with proper orientation'
   },
 
@@ -157,6 +181,8 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 20,
     complexity: 4,
+    requiredParams: ['block', 'base', 'height'],
+    blockSuffix: 'stairs',
     description: 'Creates a spiral staircase'
   },
 
@@ -165,6 +191,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 30,
     complexity: 3,
+    requiredParams: ['block', 'base'],
     description: 'Creates a protruding balcony with railing'
   },
 
@@ -173,6 +200,7 @@ export const OPERATIONS_REGISTRY = {
     type: 'vanilla',
     avgBlocksPerOp: 60,
     complexity: 4,
+    requiredParams: ['block', 'from', 'to'],
     description: 'Creates a four-sided hip roof'
   }
 };

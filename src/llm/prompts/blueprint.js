@@ -13,7 +13,7 @@ ${worldEditAvailable ? `
 WORLDEDIT AVAILABLE - Optimize for performance:
 - Use WorldEdit operations (we_*) for large volumes (>100 blocks)
 - Use vanilla operations for details and small features
-- Each WorldEdit operation MUST include a fallback vanilla operation
+- For operations that support fallbacks (we_fill, we_walls, we_pyramid), include a fallback vanilla operation
 ` : ''}
 
 AVAILABLE OPERATIONS:
@@ -45,6 +45,7 @@ WORLDEDIT OPERATIONS (fast - use for large volumes):
 - we_pyramid: Pyramid/roof. Params: block, base {x,y,z}, height, hollow (true/false), fallback {...}
 - we_cylinder: Cylindrical tower. Params: block, base {x,y,z}, radius, height, hollow, fallback {...}
 - we_sphere: Spherical dome. Params: block, center {x,y,z}, radius, hollow, fallback {...}
+- we_replace: Replace blocks. Params: from {x,y,z}, to {x,y,z}, fromBlock, toBlock
 ` : ''}
 
 BUILDING SEQUENCE (follow this order):

@@ -1,5 +1,5 @@
 export const SAFETY_LIMITS = {
-  maxBlocks: 10000,
+  maxBlocks: 30000,
   maxUniqueBlocks: 15,
   maxHeight: 256,
   maxWidth: 100,

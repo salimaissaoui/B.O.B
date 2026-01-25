@@ -126,11 +126,24 @@ export const blueprintSchema = {
             },
             required: ["x", "y", "z"]
           },
+          center: {
+            type: "object",
+            properties: {
+              x: { type: "integer" },
+              y: { type: "integer" },
+              z: { type: "integer" }
+            },
+            required: ["x", "y", "z"]
+          },
           width: { type: "integer" },
+          depth: { type: "integer" },
           spacing: { type: "integer" },
           peakHeight: { type: "integer" },
           radius: { type: "integer" },
           height: { type: "integer" },
+          fromBlock: { type: "string" },
+          toBlock: { type: "string" },
+          railing: { type: "string" },
           facing: { type: "string", enum: ["north", "south", "east", "west"] },
           half: { type: "string", enum: ["top", "bottom", "upper", "lower"] },
           hollow: { type: "boolean" },
@@ -138,9 +151,33 @@ export const blueprintSchema = {
             type: "object",
             properties: {
               op: { type: "string" },
-              from: { type: "object" },
-              to: { type: "object" },
-              pos: { type: "object" },
+              from: {
+                type: "object",
+                properties: {
+                  x: { type: "integer" },
+                  y: { type: "integer" },
+                  z: { type: "integer" }
+                },
+                required: ["x", "y", "z"]
+              },
+              to: {
+                type: "object",
+                properties: {
+                  x: { type: "integer" },
+                  y: { type: "integer" },
+                  z: { type: "integer" }
+                },
+                required: ["x", "y", "z"]
+              },
+              pos: {
+                type: "object",
+                properties: {
+                  x: { type: "integer" },
+                  y: { type: "integer" },
+                  z: { type: "integer" }
+                },
+                required: ["x", "y", "z"]
+              },
               block: { type: "string" }
             }
           }
