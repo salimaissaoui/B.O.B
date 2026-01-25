@@ -1,4 +1,5 @@
 import mineflayer from 'mineflayer';
+import { pathfinder, Movements } from 'mineflayer-pathfinder';
 
 /**
  * Create and configure a Mineflayer bot
@@ -14,6 +15,9 @@ export function createBot(config) {
     hideErrors: false
   });
 
+  // Load pathfinder plugin
+  bot.loadPlugin(pathfinder);
+
   bot.on('login', () => {
     console.log('✓ B.O.B connected to Minecraft!');
     console.log(`  Server: ${config.host}:${config.port}`);
@@ -25,6 +29,15 @@ export function createBot(config) {
     console.log('✓ B.O.B spawned in world');
     if (bot.entity && bot.entity.position) {
       console.log(`  Position: ${Math.floor(bot.entity.position.x)}, ${Math.floor(bot.entity.position.y)}, ${Math.floor(bot.entity.position.z)}`);
+      
+      // Initialize pathfinder movements
+      try {
+        const defaultMove = new Movements(bot);
+        bot.pathfinder.setMovements(defaultMove);
+        console.log('✓ Pathfinder initialized');
+      } catch (err) {
+        console.warn('⚠ Pathfinder initialization failed:', err.message);
+      }
     }
   });
 

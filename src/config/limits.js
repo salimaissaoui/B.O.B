@@ -33,5 +33,8 @@ export const SAFETY_LIMITS = {
 
   // Quality validation thresholds
   minQualityScore: 0.7,               // Reject blueprints below this score
-  requireFeatureCompletion: true      // Ensure all requested features present
+  requireFeatureCompletion: true,     // Ensure all requested features present
+  
+  // Build optimization settings
+  allowPartialBuilds: false           // Continue build even if materials are missing
 };
