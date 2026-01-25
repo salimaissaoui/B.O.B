@@ -1,7 +1,6 @@
-import { generateDesignPlan } from '../stages/1-design-planner.js';
-import { deriveBlockAllowlist } from '../stages/2-allowlist-deriver.js';
-import { generateBlueprint } from '../stages/3-blueprint-generator.js';
-import { validateAndRepair } from '../stages/4-validator.js';
+import { analyzePrompt } from '../stages/1-analyzer.js';
+import { generateBlueprint } from '../stages/2-generator.js';
+import { validateBlueprint } from '../stages/4-validator.js';
 
 /**
  * Register chat commands for the bot
@@ -111,40 +110,43 @@ async function handleBuildCommand(prompt, bot, builder, apiKey) {
   }
 
   bot.chat(`Building: "${prompt}"...`);
-  
+
   try {
-    // Stage 1: Design Plan
-    bot.chat('Stage 1/5: Creating design plan...');
-    const designPlan = await generateDesignPlan(prompt, apiKey);
-    
-    // Stage 2: Allowlist
-    bot.chat('Stage 2/5: Deriving block allowlist...');
-    const allowlist = deriveBlockAllowlist(designPlan);
-    
-    // Stage 3: Blueprint
-    bot.chat('Stage 3/5: Generating blueprint...');
-    const blueprint = await generateBlueprint(designPlan, allowlist, apiKey, builder.worldEditEnabled);
-    
-    // Stage 4: Validation
-    bot.chat('Stage 4/5: Validating blueprint...');
-    const validation = await validateAndRepair(blueprint, allowlist, designPlan, apiKey);
-    
+    // Stage 1: ANALYZER (lightweight, no LLM)
+    bot.chat('Stage 1/3: Analyzing prompt...');
+    const analysis = analyzePrompt(prompt);
+    console.log(`  Build Type: ${analysis.buildType} (${analysis.buildTypeInfo.confidence})`);
+    console.log(`  Theme: ${analysis.theme?.name || 'default'}`);
+
+    // Stage 2: GENERATOR (single LLM call)
+    bot.chat('Stage 2/3: Generating blueprint...');
+    const blueprint = await generateBlueprint(
+      analysis,
+      apiKey,
+      builder.worldEditEnabled
+    );
+    console.log(`  Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
+    console.log(`  Blocks: ${blueprint.palette.length} types`);
+    console.log(`  Steps: ${blueprint.steps.length} operations`);
+
+    // Stage 3: VALIDATOR + EXECUTOR
+    bot.chat('Stage 3/3: Validating & building...');
+    const validation = await validateBlueprint(blueprint, analysis, apiKey);
+
     if (!validation.valid) {
       bot.chat('✗ Blueprint validation failed');
       console.error('Validation errors:', validation.errors);
       return;
     }
-    
-    // Stage 5: Execution
-    bot.chat('Stage 5/5: Building...');
-    const startPos = bot.entity.position.offset(3, 0, 0);  // Build 3 blocks in front
-    
+
+    // Execute
+    const startPos = bot.entity.position.offset(3, 0, 0);
     await builder.executeBlueprint(validation.blueprint, {
       x: Math.floor(startPos.x),
       y: Math.floor(startPos.y),
       z: Math.floor(startPos.z)
     });
-    
+
     bot.chat('✓ Build complete!');
   } catch (error) {
     console.error('Build command failed:', error);

@@ -18,13 +18,11 @@ AI-powered Minecraft building assistant that safely converts natural language in
 
 ## Architecture
 
-B.O.B uses a five-stage safety pipeline to ensure reliable and safe building:
+B.O.B uses a streamlined three-stage safety pipeline for reliable and efficient building:
 
-1. **Design Plan** (LLM creative) - High-level architectural interpretation
-2. **Allowlist Derivation** (safety filter) - Extract and validate block types
-3. **Blueprint Generation** (LLM constrained) - Create executable instructions
-4. **Validation & Repair** (schema enforcement) - Verify and fix errors
-5. **Execution** (rate-limited building) - Build in Minecraft world
+1. **Analyzer** (no LLM) - Fast prompt analysis with build type and theme detection
+2. **Generator** (single LLM call) - Complete blueprint generation with WorldEdit optimization
+3. **Validator + Executor** - Schema validation, quality scoring, and rate-limited building
 
 ## Quick Start
 
@@ -100,27 +98,27 @@ The bot will connect to your Minecraft server and be ready to accept commands. L
 In Minecraft chat, use these commands:
 
 ```
-/build modern oak house with balcony
+!build modern oak house with balcony
 ```
 Start building from a natural language description.
 
 ```
-/build cancel
+!build cancel
 ```
 Cancel the current build operation.
 
 ```
-/build undo
+!build undo
 ```
 Undo the last completed build.
 
 ```
-/build status
+!build status
 ```
-Check the progress of the current build.
+Check the progress of the current build (includes WorldEdit ops, fallbacks, and unconfirmed operations).
 
 ```
-/build help
+!build help
 ```
 Show available commands.
 
@@ -129,11 +127,13 @@ Show available commands.
 Here are some example build commands:
 
 ```
-/build small wooden cottage with a red roof
-/build modern glass tower 20 blocks tall
-/build stone bridge 10 blocks long
-/build cozy hobbit hole with round door
-/build medieval watchtower with balcony
+!build small wooden cottage with a red roof
+!build modern glass tower 20 blocks tall
+!build stone bridge 10 blocks long
+!build cozy hobbit hole with round door
+!build medieval watchtower with balcony
+!build pixel art charizard
+!build a statue of a dragon
 ```
 
 ## Operations Reference
@@ -246,13 +246,15 @@ B.O.B/
 │   │   └── commands.js         # Chat command handlers
 │   ├── config/
 │   │   ├── blocks.js           # Minecraft block registry
-│   │   ├── limits.js           # Safety limits
+│   │   ├── build-types.js      # Build type/theme detection
+│   │   ├── limits.js           # Safety limits (WorldEdit + vanilla)
+│   │   ├── operations-registry.js # Operation metadata
 │   │   └── schemas.js          # JSON schemas & validators
 │   ├── llm/
 │   │   ├── gemini-client.js    # Gemini API wrapper
 │   │   └── prompts/
-│   │       ├── design-plan.js  # Design plan prompt
-│   │       └── blueprint.js    # Blueprint prompts
+│   │       ├── blueprint.js    # Blueprint generation prompts
+│   │       └── unified-blueprint.js # Combined design+blueprint prompt
 │   ├── operations/
 │   │   ├── fill.js             # Fill operation (vanilla)
 │   │   ├── hollow-box.js       # Hollow box operation (vanilla)
@@ -268,6 +270,7 @@ B.O.B/
 │   │   ├── fence-connect.js    # Fence lines
 │   │   ├── spiral-staircase.js # Spiral staircases
 │   │   ├── balcony.js          # Balconies
+│   │   ├── pixel-art.js        # Pixel art generator
 │   │   ├── we-fill.js          # WorldEdit fill
 │   │   ├── we-walls.js         # WorldEdit walls
 │   │   ├── we-pyramid.js       # WorldEdit pyramids
@@ -278,17 +281,20 @@ B.O.B/
 │   │   ├── worldedit-validator.js  # WorldEdit operation validation
 │   │   └── quality-validator.js    # Build quality scoring
 │   ├── worldedit/
-│   │   └── executor.js         # WorldEdit command executor
+│   │   └── executor.js         # WorldEdit command executor with diagnostics
 │   ├── stages/
-│   │   ├── 1-design-planner.js    # Stage 1: Design planning
-│   │   ├── 2-allowlist-deriver.js # Stage 2: Block validation
-│   │   ├── 3-blueprint-generator.js # Stage 3: Blueprint creation
-│   │   ├── 4-validator.js         # Stage 4: Validation & repair
-│   │   └── 5-builder.js           # Stage 5: Execution
+│   │   ├── 1-analyzer.js       # Stage 1: Prompt analysis (no LLM)
+│   │   ├── 2-generator.js      # Stage 2: Blueprint generation (1 LLM call)
+│   │   ├── 4-validator.js      # Stage 3a: Validation & repair
+│   │   └── 5-builder.js        # Stage 3b: Execution with fallback
 │   └── index.js                # Main entry point
 ├── tests/
-│   ├── schemas/
-│   └── operations/
+│   ├── config/                 # Build type tests
+│   ├── integration/            # Pipeline tests
+│   ├── operations/             # Operation tests
+│   ├── schemas/                # Schema tests
+│   ├── stages/                 # Stage tests
+│   └── worldedit/              # WorldEdit executor tests
 ├── .env.example                # Environment template
 ├── .gitignore
 ├── package.json
@@ -315,28 +321,30 @@ npm test
 
 ## How It Works
 
-### The Five-Stage Pipeline
+### The Three-Stage Pipeline
 
-1. **Design Plan**: The LLM receives your natural language prompt and creates a high-level architectural plan with dimensions, style, materials, and features.
+1. **Analyzer** (no LLM, instant): Analyzes your prompt to detect build type (house, castle, tower, pixel art, statue, etc.), theme (gothic, medieval, modern, etc.), and size. Generates recommended dimensions and materials without any LLM calls.
 
-2. **Allowlist Derivation**: B.O.B extracts all block types from the design plan and validates them against the Minecraft block registry for the target version.
+2. **Generator** (single LLM call): Creates a complete, executable blueprint in one LLM call. The prompt includes build type guidance, WorldEdit operation recommendations, and quality requirements. This single-call approach is faster and produces better results than multi-stage approaches.
 
-3. **Blueprint Generation**: The LLM converts the design plan into executable build instructions, constrained to use only the validated blocks.
-
-4. **Validation & Repair**: The blueprint is validated against JSON schemas, coordinate bounds, and feature requirements. If errors are found, the LLM attempts to repair them automatically.
-
-5. **Execution**: The validated blueprint is executed block-by-block in the Minecraft world with rate limiting and progress tracking.
+3. **Validator + Executor**: 
+   - Validates the blueprint against JSON schemas, coordinate bounds, and quality requirements
+   - Checks WorldEdit operation limits (50k blocks, 50x50x50 dimensions)
+   - Attempts automatic repair if errors are found (up to 3 retries)
+   - Executes the blueprint with rate limiting, fallback support, and progress tracking
 
 ### Safety Mechanisms
 
-- **No Hallucination**: The block allowlist prevents the LLM from inventing non-existent blocks
+- **Block Validation**: All blocks are validated against the Minecraft 1.20.1 registry
 - **Structural Validation**: JSON schemas ensure all coordinates and operations are properly formatted
-- **Bounds Checking**: All placements are verified to be within the specified dimensions
-- **Volume Limits**: Builds are capped at 10,000 blocks to prevent server overload
-- **Automatic Repair**: The system attempts to fix common errors automatically
+- **Bounds Checking**: All placements (from, to, pos, base, center) are verified to be within dimensions
+- **Volume Limits**: Builds are capped at 30,000 blocks to prevent server overload
+- **Automatic Repair**: The system attempts to fix common errors automatically (up to 3 retries)
 - **WorldEdit Safety**: WorldEdit operations have separate limits (50k blocks, 50x50x50 max dimension)
 - **Fallback System**: Automatic fallback to vanilla placement if WorldEdit fails
 - **Quality Scoring**: Validates feature completeness and architectural integrity
+- **Error Classification**: Detailed error messages with suggested fixes for WorldEdit failures
+- **Unconfirmed Operation Tracking**: Monitors operations that didn't receive server acknowledgment
 
 ### WorldEdit Integration
 

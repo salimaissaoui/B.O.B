@@ -1,22 +1,28 @@
-import { validateBlueprint, getValidationErrors } from '../config/schemas.js';
+import { validateBlueprint as validateBlueprintSchema, getValidationErrors } from '../config/schemas.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { GeminiClient } from '../llm/gemini-client.js';
 import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
 import { getOperationMetadata } from '../config/operations-registry.js';
+import { isValidBlock } from '../config/blocks.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
+// Creative build types where allowlist is optional (LLM picks blocks freely)
+const CREATIVE_BUILD_TYPES = [
+  'pixel_art', 'statue', 'character', 'art', 'logo', 
+  'design', 'custom', 'sculpture', 'monument', 'figure'
+];
+
 /**
- * Stage 4: Validate and repair blueprint
+ * Stage 3: Validate and repair blueprint
  * @param {Object} blueprint - Generated blueprint
- * @param {string[]} allowlist - Valid block list
- * @param {Object} designPlan - Original design plan
+ * @param {Object} analysis - Prompt analysis from Stage 1
  * @param {string} apiKey - Gemini API key
  * @returns {Promise<Object>} - Validation result with repaired blueprint
  */
-export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey) {
+export async function validateBlueprint(blueprint, analysis, apiKey) {
   let currentBlueprint = blueprint;
   let retries = 0;
   let qualityScore = null;
@@ -26,8 +32,8 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     console.log('│ DEBUG: Blueprint Validation Starting');
     console.log('├─────────────────────────────────────────────────────────');
     console.log(`│ Blueprint steps: ${blueprint.steps?.length || 0}`);
-    console.log(`│ Allowlist: ${allowlist.length} blocks`);
-    console.log(`│ Design features: ${designPlan.features?.join(', ') || 'none'}`);
+    console.log(`│ Build Type: ${analysis.buildType}`);
+    console.log(`│ Features: ${analysis.hints?.features?.join(', ') || 'none'}`);
     console.log(`│ Max retries: ${SAFETY_LIMITS.maxRetries}`);
     console.log('└─────────────────────────────────────────────────────────\n');
   }
@@ -36,15 +42,16 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     const errors = [];
 
     // 1. JSON Schema Validation
-    const isValidSchema = validateBlueprint(currentBlueprint);
+    const isValidSchema = validateBlueprintSchema(currentBlueprint);
     if (!isValidSchema) {
-      errors.push(...getValidationErrors(validateBlueprint).map(e => `Schema: ${e}`));
+      errors.push(...getValidationErrors(validateBlueprintSchema).map(e => `Schema: ${e}`));
     }
 
-    // 2. Block Allowlist Validation
-    const invalidBlocks = validateBlockAllowlist(currentBlueprint, allowlist);
-    if (invalidBlocks.length > 0) {
-      errors.push(`Invalid blocks used: ${invalidBlocks.join(', ')}`);
+    // 2. Block Validation (Always check Minecraft blocks - no allowlist)
+    const buildType = analysis?.buildType || 'house';
+    const invalidMinecraftBlocks = validateMinecraftBlocks(currentBlueprint);
+    if (invalidMinecraftBlocks.length > 0) {
+      errors.push(`Invalid Minecraft blocks: ${invalidMinecraftBlocks.join(', ')}`);
     }
 
     // 3. Operation parameter validation
@@ -52,15 +59,15 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     errors.push(...opErrors);
 
     // 4. Coordinate Bounds Checking
-    const boundsErrors = validateCoordinateBounds(currentBlueprint, designPlan);
+    const boundsErrors = validateCoordinateBounds(currentBlueprint, analysis);
     errors.push(...boundsErrors);
 
-    // 5. Feature Completeness Check (basic)
-    const featureErrors = validateFeatures(currentBlueprint, designPlan);
+    // 5. Feature Completeness Check (only for structured builds)
+    const featureErrors = validateFeatures(currentBlueprint, analysis);
     errors.push(...featureErrors);
 
     // 5.5. Build-type-specific operation validation
-    const buildTypeErrors = validateBuildTypeOperations(currentBlueprint, designPlan);
+    const buildTypeErrors = validateBuildTypeOperations(currentBlueprint, analysis);
     errors.push(...buildTypeErrors);
 
     // 6. Volume and Step Limits
@@ -74,7 +81,7 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     }
 
     // 8. Quality Validation (always run for scoring, even if other errors exist)
-    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, designPlan);
+    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
     if (SAFETY_LIMITS.requireFeatureCompletion && !qualityScore.passed) {
       errors.push(
         `Blueprint quality too low: ${(qualityScore.score * 100).toFixed(1)}% ` +
@@ -145,8 +152,7 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
         currentBlueprint = await client.repairBlueprint(
           currentBlueprint,
           errors,
-          designPlan,
-          allowlist,
+          analysis,
           qualityScore
         );
         retries++;
@@ -177,16 +183,19 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
   
   // Final validation failed
   const finalErrors = [];
-  if (!validateBlueprint(currentBlueprint)) {
-    finalErrors.push(...getValidationErrors(validateBlueprint));
+  if (!validateBlueprintSchema(currentBlueprint)) {
+    finalErrors.push(...getValidationErrors(validateBlueprintSchema));
   }
-  const finalInvalidBlocks = validateBlockAllowlist(currentBlueprint, allowlist);
-  if (finalInvalidBlocks.length > 0) {
-    finalErrors.push(`Invalid blocks used: ${finalInvalidBlocks.join(', ')}`);
+
+  // Block validation (Minecraft blocks only - no allowlist)
+  const finalInvalidMinecraft = validateMinecraftBlocks(currentBlueprint);
+  if (finalInvalidMinecraft.length > 0) {
+    finalErrors.push(`Invalid Minecraft blocks: ${finalInvalidMinecraft.join(', ')}`);
   }
+
   finalErrors.push(...validateOperationParams(currentBlueprint));
-  finalErrors.push(...validateCoordinateBounds(currentBlueprint, designPlan));
-  finalErrors.push(...validateFeatures(currentBlueprint, designPlan));
+  finalErrors.push(...validateCoordinateBounds(currentBlueprint, analysis));
+  finalErrors.push(...validateFeatures(currentBlueprint, analysis));
   finalErrors.push(...validateLimits(currentBlueprint));
   
   console.error('✗ Blueprint validation failed after all retries');
@@ -257,21 +266,22 @@ function validateStepParams(step, meta, label) {
 }
 
 /**
- * Validate that all blocks in blueprint are in allowlist
+ * Validate that all blocks are valid Minecraft blocks
+ * This allows ANY valid Minecraft block (no allowlist restrictions)
  */
-function validateBlockAllowlist(blueprint, allowlist) {
+function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
   const invalidBlocks = [];
   
   // Check palette
   for (const block of blueprint.palette || []) {
-    if (!allowlist.includes(block)) {
+    if (!isValidBlock(block, minecraftVersion)) {
       invalidBlocks.push(block);
     }
   }
   
   // Check steps
   for (const step of blueprint.steps || []) {
-    if (step.block && !allowlist.includes(step.block)) {
+    if (step.block && !isValidBlock(step.block, minecraftVersion)) {
       if (!invalidBlocks.includes(step.block)) {
         invalidBlocks.push(step.block);
       }
@@ -282,71 +292,72 @@ function validateBlockAllowlist(blueprint, allowlist) {
 }
 
 /**
- * Build-type-specific forbidden operations
- * Prevents using architectural operations on organic builds, etc.
+ * Build-type-specific operation guidance
+ * Provides warnings instead of strict enforcement
  */
-const BUILD_TYPE_FORBIDDEN_OPS = {
+const BUILD_TYPE_OPERATION_GUIDANCE = {
   tree: {
-    forbidden: ['window_strip', 'door', 'hollow_box', 'roof_gable', 'roof_hip', 'roof_flat', 'we_walls', 'we_pyramid', 'balcony', 'spiral_staircase'],
-    reason: 'Trees should only use fill, line, and set operations. No architectural elements.'
+    avoid: ['window_strip', 'door', 'roof_gable', 'roof_hip', 'roof_flat', 'we_walls', 'we_pyramid', 'balcony', 'spiral_staircase'],
+    reason: 'Trees typically use fill/we_fill for volumes, line for branches'
   },
   statue: {
-    forbidden: ['window_strip', 'door', 'roof_gable', 'roof_hip', 'roof_flat', 'balcony'],
-    reason: 'Statues should use fill, line, and set for organic sculpting.'
+    avoid: ['window_strip', 'roof_gable', 'roof_hip', 'roof_flat', 'door'],
+    reason: 'Statues use fill/set/we_sphere for organic sculpting'
   },
   pixel_art: {
-    forbidden: ['hollow_box', 'roof_gable', 'roof_hip', 'roof_flat', 'door', 'window_strip', 'spiral_staircase', 'balcony', 'we_walls', 'we_pyramid', 'we_cylinder', 'we_sphere'],
-    reason: 'Pixel art should use only the pixel_art operation or set operations.'
+    avoid: ['hollow_box', 'roof_gable', 'we_sphere', 'we_cylinder'],
+    reason: 'Pixel art should use pixel_art operation or set operations'
+  },
+  house: {
+    recommended: ['hollow_box', 'door', 'window_strip', 'roof_gable'],
+    reason: 'Houses should have walls, door, windows, roof'
   }
 };
 
 /**
  * Validate that blueprint uses appropriate operations for its build type
+ * Provides warnings instead of hard errors
  */
-function validateBuildTypeOperations(blueprint, designPlan) {
+function validateBuildTypeOperations(blueprint, analysis) {
   const errors = [];
-  const buildType = designPlan?.buildType;
-  
-  if (!buildType || !BUILD_TYPE_FORBIDDEN_OPS[buildType]) {
-    return errors; // No restrictions for this build type
+  const buildType = analysis?.buildType;
+
+  if (!buildType || !BUILD_TYPE_OPERATION_GUIDANCE[buildType]) {
+    return errors; // No guidance for this build type
   }
-  
-  const restrictions = BUILD_TYPE_FORBIDDEN_OPS[buildType];
-  const forbiddenUsed = [];
-  
-  for (const step of blueprint.steps || []) {
-    if (restrictions.forbidden.includes(step.op)) {
-      if (!forbiddenUsed.includes(step.op)) {
-        forbiddenUsed.push(step.op);
+
+  const guidance = BUILD_TYPE_OPERATION_GUIDANCE[buildType];
+  const usedOps = blueprint.steps?.map(s => s.op) || [];
+
+  // Check avoided operations (warnings, not hard errors)
+  if (guidance.avoid) {
+    const unexpectedOps = usedOps.filter(op => guidance.avoid.includes(op));
+    if (unexpectedOps.length > 0) {
+      errors.push(
+        `Warning: ${buildType} uses unexpected operations: ${unexpectedOps.join(', ')}. ${guidance.reason}`
+      );
+
+      if (DEBUG) {
+        console.log('\n┌─────────────────────────────────────────────────────────');
+        console.log('│ DEBUG: Build Type Guidance Warning');
+        console.log('├─────────────────────────────────────────────────────────');
+        console.log(`│ Build type: ${buildType}`);
+        console.log(`│ Unexpected ops: ${unexpectedOps.join(', ')}`);
+        console.log(`│ Reason: ${guidance.reason}`);
+        console.log('└─────────────────────────────────────────────────────────\n');
       }
     }
   }
-  
-  if (forbiddenUsed.length > 0) {
-    errors.push(
-      `Build type '${buildType}' should not use: ${forbiddenUsed.join(', ')}. ${restrictions.reason}`
-    );
-    
-    if (DEBUG) {
-      console.log('\n┌─────────────────────────────────────────────────────────');
-      console.log('│ DEBUG: Build Type Validation Failed');
-      console.log('├─────────────────────────────────────────────────────────');
-      console.log(`│ Build type: ${buildType}`);
-      console.log(`│ Forbidden ops used: ${forbiddenUsed.join(', ')}`);
-      console.log(`│ Reason: ${restrictions.reason}`);
-      console.log('└─────────────────────────────────────────────────────────\n');
-    }
-  }
-  
+
   return errors;
 }
 
 /**
  * Validate coordinate bounds
  */
-function validateCoordinateBounds(blueprint, designPlan) {
+function validateCoordinateBounds(blueprint, analysis) {
   const errors = [];
-  const dimensions = blueprint.size || designPlan?.dimensions;
+  const dimensions = blueprint.size || analysis?.hints?.dimensions;
   if (!dimensions) {
     errors.push('Missing blueprint size for bounds validation');
     return errors;
@@ -392,38 +403,47 @@ function isWithinBounds(coord, width, height, depth) {
 
 /**
  * Validate that required features are present
+ * Only validates for structured builds (not creative builds)
  */
-function validateFeatures(blueprint, designPlan) {
+function validateFeatures(blueprint, analysis) {
   const errors = [];
-  const requiredFeatures = designPlan.features || [];
+  const buildType = analysis?.buildType || 'house';
+  const requiredFeatures = analysis?.hints?.features || [];
   const stepOps = (blueprint.steps || []).map(s => s.op);
-  
-  // Check for door (should have 'set' operations for door placement)
+
+  // Skip feature validation for creative builds
+  const creativeBuildTypes = ['pixel_art', 'statue', 'character', 'art', 'sculpture'];
+  if (creativeBuildTypes.includes(buildType)) {
+    return errors;
+  }
+
+  // For structured builds (house, castle, etc.), validate features
   if (requiredFeatures.includes('door')) {
-    const hasSetOps = stepOps.includes('set');
-    if (!hasSetOps) {
-      errors.push('Missing door feature (no set operations)');
+    const hasDoor = stepOps.includes('door') || stepOps.includes('set');
+    if (!hasDoor) {
+      errors.push('Structured build missing door feature');
     }
   }
-  
+
   // Check for windows (should have window_strip or set operations)
   if (requiredFeatures.includes('windows')) {
-    const hasWindows = stepOps.includes('window_strip') || 
+    const hasWindows = stepOps.includes('window_strip') ||
                        stepOps.filter(op => op === 'set').length > 1;
     if (!hasWindows) {
       errors.push('Missing windows feature');
     }
   }
-  
+
   // Check for roof
   if (requiredFeatures.includes('roof')) {
-    const hasRoof = stepOps.includes('roof_gable') || 
+    const hasRoof = stepOps.includes('roof_gable') ||
+                    stepOps.includes('roof_hip') ||
                     stepOps.includes('roof_flat');
     if (!hasRoof) {
       errors.push('Missing roof feature');
     }
   }
-  
+
   return errors;
 }
 

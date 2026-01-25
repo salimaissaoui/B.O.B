@@ -360,7 +360,6 @@ export const BUILD_TYPES = {
   pixel_art: {
     name: 'Pixel Art',
     keywords: ['pixel', 'pixelart', 'sprite', '2d', '8-bit', '16-bit', 'retro', 'pixel art'],
-    characterKeywords: ['charizard', 'pikachu', 'mario', 'sonic', 'creeper', 'steve', 'logo', 'icon', 'face', 'emoji'],
     description: 'Flat 2D images rendered as blocks on a vertical plane',
     primaryOperation: 'pixel_art',
     dimensions: {
@@ -571,7 +570,8 @@ export const BUILD_TYPES = {
   // =====================
   statue: {
     name: 'Statue/Sculpture',
-    keywords: ['statue', 'sculpture', 'monument', 'figure', 'bust', 'effigy', '3d model'],
+    keywords: ['statue', 'sculpture', 'monument', 'figure', 'bust', 'effigy', '3d model', '3d'],
+    characterKeywords: ['charizard', 'pikachu', 'pokemon', 'mario', 'sonic', 'creeper', 'steve', 'character', 'creature', 'person', 'animal', 'dragon', 'dinosaur'],
     description: '3D representation of a character or object',
     primaryOperations: ['set', 'fill', 'we_sphere', 'we_cylinder'],
     dimensions: {
@@ -782,10 +782,37 @@ export const BUILD_TYPES = {
  */
 export function detectBuildType(prompt) {
   const lowerPrompt = prompt.toLowerCase();
-  
+
+  // CRITICAL: Check for explicit "pixel art" / "2D" FIRST before character detection
+  const pixelArtPattern = /\b(pixel\s*art|pixelart|2d|sprite|8-bit|16-bit)\b/i;
+  if (pixelArtPattern.test(prompt)) {
+    return {
+      type: 'pixel_art',
+      ...BUILD_TYPES.pixel_art,
+      confidence: 'high',
+      matchedKeyword: 'pixel art',
+      reason: 'Explicit pixel art keyword detected'
+    };
+  }
+
+  // Check character names → default to 3D statue
+  const statueInfo = BUILD_TYPES.statue;
+  if (statueInfo.characterKeywords) {
+    for (const keyword of statueInfo.characterKeywords) {
+      if (lowerPrompt.includes(keyword)) {
+        return {
+          type: 'statue',
+          ...statueInfo,
+          confidence: 'high',
+          matchedKeyword: keyword,
+          reason: 'Character detected - building 3D statue (add "pixel art" for 2D)'
+        };
+      }
+    }
+  }
+
   // Priority order for detection (more specific types first)
   const priorityOrder = [
-    'pixel_art',  // Check pixel art first (2D builds)
     'underwater', // Specific environment
     'modern',     // Style modifier - check before house
     'castle',     // Large structures first
@@ -798,12 +825,12 @@ export function detectBuildType(prompt) {
     'farm',
     'house'       // Most generic - check last
   ];
-  
+
   // Check in priority order
   for (const typeKey of priorityOrder) {
     const typeInfo = BUILD_TYPES[typeKey];
     if (!typeInfo) continue;
-    
+
     // Check main keywords
     for (const keyword of typeInfo.keywords) {
       // Use word boundary matching for more accuracy
@@ -818,23 +845,7 @@ export function detectBuildType(prompt) {
       }
     }
   }
-  
-  // Check character keywords for pixel art (lower priority)
-  const pixelArtInfo = BUILD_TYPES.pixel_art;
-  if (pixelArtInfo.characterKeywords) {
-    for (const keyword of pixelArtInfo.characterKeywords) {
-      if (lowerPrompt.includes(keyword)) {
-        return {
-          type: 'pixel_art',
-          ...pixelArtInfo,
-          confidence: 'medium',
-          matchedKeyword: keyword,
-          reason: 'Character/icon detected - defaulting to pixel art'
-        };
-      }
-    }
-  }
-  
+
   // Default to house for generic "build" requests
   return {
     type: 'house',

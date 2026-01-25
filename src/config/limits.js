@@ -22,7 +22,7 @@ export const SAFETY_LIMITS = {
     maxSelectionDimension: 50,        // Max single dimension (x/y/z)
     commandRateLimit: 5,              // WorldEdit commands per second
     commandMinDelayMs: 200,           // Min delay between WE commands
-    maxCommandsPerBuild: 100,         // Total WE commands per build
+    maxCommandsPerBuild: 500,         // Total WE commands per build (each we_fill uses ~5 cmds)
     fallbackOnError: true,            // Auto-fallback to vanilla if WE fails
     requiredPermissions: [            // Expected permissions
       'worldedit.selection',

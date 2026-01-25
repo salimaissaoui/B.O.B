@@ -35,11 +35,19 @@ describe('detectBuildType', () => {
     expect(detectBuildType('make a 2d image').type).toBe('pixel_art');
   });
   
-  test('detects pixel art from character names', () => {
-    expect(detectBuildType('build a charizard').type).toBe('pixel_art');
-    expect(detectBuildType('make pikachu').type).toBe('pixel_art');
-    expect(detectBuildType('create mario').type).toBe('pixel_art');
-    expect(detectBuildType('build a creeper').type).toBe('pixel_art');
+  test('detects statue from character names', () => {
+    // Note: Character names now default to statue (3D) instead of pixel_art (2D)
+    // To get pixel art, user must explicitly say "pixel art charizard"
+    expect(detectBuildType('build a charizard').type).toBe('statue');
+    expect(detectBuildType('make pikachu').type).toBe('statue');
+    expect(detectBuildType('create mario').type).toBe('statue');
+    expect(detectBuildType('build a creeper').type).toBe('statue');
+  });
+  
+  test('detects pixel art when explicitly requested with character', () => {
+    expect(detectBuildType('build pixel art charizard').type).toBe('pixel_art');
+    expect(detectBuildType('make 2d pikachu').type).toBe('pixel_art');
+    expect(detectBuildType('create a sprite of mario').type).toBe('pixel_art');
   });
   
   test('detects house/cottage', () => {
@@ -97,8 +105,10 @@ describe('detectBuildType', () => {
     const highConfidence = detectBuildType('build a pixel art character');
     expect(highConfidence.confidence).toBe('high');
     
-    const mediumConfidence = detectBuildType('make charizard');
-    expect(mediumConfidence.confidence).toBe('medium');
+    // Character names (e.g. charizard) match statue keywords with high confidence
+    const characterConfidence = detectBuildType('make charizard');
+    expect(characterConfidence.confidence).toBe('high');
+    expect(characterConfidence.type).toBe('statue');
     
     const lowConfidence = detectBuildType('build something');
     expect(lowConfidence.confidence).toBe('low');

@@ -31,9 +31,9 @@ export class WorldEditExecutor {
 
         // Handle spam warnings
         if (textLower.includes('spam') ||
-            textLower.includes('too fast') ||
-            textLower.includes('slow down') ||
-            textLower.includes('wait')) {
+          textLower.includes('too fast') ||
+          textLower.includes('slow down') ||
+          textLower.includes('wait')) {
           console.warn('⚠ Spam warning detected, increasing delays...');
           this.spamDetected = true;
           this.backoffMultiplier = Math.min(this.backoffMultiplier * 2, 4.0);
@@ -56,6 +56,7 @@ export class WorldEditExecutor {
   waitForResponse(matcher, timeoutMs = 3000) {
     return new Promise((resolve) => {
       const startTime = Date.now();
+      let timeoutId;
 
       const handler = (text) => {
         const matches = typeof matcher === 'function'
@@ -63,18 +64,16 @@ export class WorldEditExecutor {
           : matcher.test(text);
 
         if (matches) {
+          if (timeoutId) clearTimeout(timeoutId);
           this.pendingResponse = null;
           resolve(text);
-        } else if (Date.now() - startTime > timeoutMs) {
-          this.pendingResponse = null;
-          resolve(null);
         }
       };
 
       this.pendingResponse = { handler, startTime };
 
       // Set timeout fallback
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (this.pendingResponse && this.pendingResponse.startTime === startTime) {
           this.pendingResponse = null;
           resolve(null);
@@ -110,8 +109,8 @@ export class WorldEditExecutor {
           // WorldEdit responds with version info like "WorldEdit version 7.2.15"
           // or FAWE: "FastAsyncWorldEdit version 2.x.x"
           return lower.includes('worldedit') ||
-                 lower.includes('fawe') ||
-                 lower.includes('asyncworldedit');
+            lower.includes('fawe') ||
+            lower.includes('asyncworldedit');
         },
         3000 // 3 second timeout
       );
@@ -134,8 +133,8 @@ export class WorldEditExecutor {
           (text) => {
             const lower = text.toLowerCase();
             return lower.includes('selection') ||
-                   lower.includes('cuboid') ||
-                   lower.includes('region');
+              lower.includes('cuboid') ||
+              lower.includes('region');
           },
           2000
         );
@@ -205,19 +204,19 @@ export class WorldEditExecutor {
           // "Operation completed"
           // Error patterns: "Unknown command", "No permission", "Selection too large"
           return /\d+\s*block/.test(lower) ||
-                 lower.includes('changed') ||
-                 lower.includes('affected') ||
-                 lower.includes('operation complete') ||
-                 lower.includes('no blocks') ||
-                 lower.includes('unknown command') ||
-                 lower.includes('no permission') ||
-                 lower.includes('don\'t have permission') ||
-                 lower.includes('not permitted') ||
-                 lower.includes('selection too large') ||
-                 lower.includes('maximum') ||
-                 lower.includes('error') ||
-                 lower.includes('cannot') ||
-                 lower.includes('failed');
+            lower.includes('changed') ||
+            lower.includes('affected') ||
+            lower.includes('operation complete') ||
+            lower.includes('no blocks') ||
+            lower.includes('unknown command') ||
+            lower.includes('no permission') ||
+            lower.includes('don\'t have permission') ||
+            lower.includes('not permitted') ||
+            lower.includes('selection too large') ||
+            lower.includes('maximum') ||
+            lower.includes('error') ||
+            lower.includes('cannot') ||
+            lower.includes('failed');
         },
         options.acknowledgmentTimeout || 5000
       );
@@ -312,8 +311,8 @@ export class WorldEditExecutor {
 
     // Permission errors
     if (lower.includes('no permission') ||
-        lower.includes('don\'t have permission') ||
-        lower.includes('not permitted')) {
+      lower.includes('don\'t have permission') ||
+      lower.includes('not permitted')) {
       return {
         type: 'PERMISSION_DENIED',
         message: `WorldEdit permission denied: ${response}`,
@@ -332,8 +331,8 @@ export class WorldEditExecutor {
 
     // Selection too large
     if (lower.includes('selection too large') ||
-        lower.includes('maximum') ||
-        lower.includes('exceeds limit')) {
+      lower.includes('maximum') ||
+      lower.includes('exceeds limit')) {
       return {
         type: 'SELECTION_TOO_LARGE',
         message: `WorldEdit selection exceeds server limits: ${response}`,
@@ -433,8 +432,8 @@ export class WorldEditExecutor {
     }
 
     if (dimensions.x > SAFETY_LIMITS.worldEdit.maxSelectionDimension ||
-        dimensions.y > SAFETY_LIMITS.worldEdit.maxSelectionDimension ||
-        dimensions.z > SAFETY_LIMITS.worldEdit.maxSelectionDimension) {
+      dimensions.y > SAFETY_LIMITS.worldEdit.maxSelectionDimension ||
+      dimensions.z > SAFETY_LIMITS.worldEdit.maxSelectionDimension) {
       throw new Error(
         `Selection dimension too large: ${dimensions.x}x${dimensions.y}x${dimensions.z} ` +
         `(max per axis: ${SAFETY_LIMITS.worldEdit.maxSelectionDimension})`

@@ -1,82 +1,10 @@
-import { deriveBlockAllowlist } from '../../src/stages/2-allowlist-deriver.js';
 import { isValidBlock } from '../../src/config/blocks.js';
 
-describe('Block Allowlist Derivation', () => {
-  test('should derive blocks from materials section', () => {
-    const designPlan = {
-      dimensions: { width: 10, depth: 10, height: 5 },
-      style: 'modern',
-      materials: {
-        primary: 'oak_planks',
-        roof: 'oak_stairs',
-        floor: 'stone'
-      },
-      features: ['door', 'windows']
-    };
-
-    const allowlist = deriveBlockAllowlist(designPlan);
-
-    expect(allowlist).toContain('oak_planks');
-    expect(allowlist).toContain('oak_stairs');
-    expect(allowlist).toContain('stone');
-    expect(allowlist.length).toBeLessThanOrEqual(15);
-  });
-
-  test('should handle multiple material properties', () => {
-    const designPlan = {
-      dimensions: { width: 10, depth: 10, height: 5 },
-      style: 'modern',
-      materials: {
-        primary: 'oak_planks',
-        secondary: 'spruce_planks',
-        roof: 'oak_stairs'
-      },
-      features: ['door']
-    };
-
-    const allowlist = deriveBlockAllowlist(designPlan);
-
-    expect(allowlist).toContain('oak_planks');
-    expect(allowlist).toContain('spruce_planks');
-    expect(allowlist).toContain('oak_stairs');
-  });
-
-  test('should enforce unique block limit', () => {
-    const designPlan = {
-      dimensions: { width: 10, depth: 10, height: 5 },
-      style: 'test',
-      materials: {
-        primary: 'oak_planks',
-        secondary: 'stone',
-        accent: 'glass'
-      },
-      features: ['door']
-    };
-
-    const allowlist = deriveBlockAllowlist(designPlan);
-
-    expect(allowlist.length).toBeLessThanOrEqual(15);
-  });
-
-  test('should filter invalid blocks', () => {
-    const designPlan = {
-      dimensions: { width: 10, depth: 10, height: 5 },
-      style: 'modern',
-      materials: {
-        primary: 'oak_planks',
-        secondary: 'not_a_real_block',
-        roof: 'stone'
-      },
-      features: ['door']
-    };
-
-    const allowlist = deriveBlockAllowlist(designPlan);
-
-    expect(allowlist).toContain('oak_planks');
-    expect(allowlist).toContain('stone');
-    expect(allowlist).not.toContain('not_a_real_block');
-  });
-});
+/**
+ * Block validation tests
+ * Note: The allowlist derivation stage was removed in the 5→3 pipeline refactor.
+ * These tests now focus on block validation which is still used by the validator.
+ */
 
 describe('Block Validation', () => {
   test('should validate common Minecraft blocks', () => {
@@ -96,5 +24,40 @@ describe('Block Validation', () => {
   test('should reject invalid blocks', () => {
     expect(isValidBlock('invalid_block')).toBe(false);
     expect(isValidBlock('fake_material')).toBe(false);
+  });
+
+  test('should validate stair blocks', () => {
+    expect(isValidBlock('oak_stairs')).toBe(true);
+    expect(isValidBlock('stone_stairs')).toBe(true);
+    expect(isValidBlock('cobblestone_stairs')).toBe(true);
+  });
+
+  test('should validate slab blocks', () => {
+    expect(isValidBlock('oak_slab')).toBe(true);
+    expect(isValidBlock('stone_slab')).toBe(true);
+  });
+
+  test('should validate door blocks', () => {
+    expect(isValidBlock('oak_door')).toBe(true);
+    expect(isValidBlock('iron_door')).toBe(true);
+  });
+
+  test('should validate fence blocks', () => {
+    expect(isValidBlock('oak_fence')).toBe(true);
+    expect(isValidBlock('nether_brick_fence')).toBe(true);
+  });
+
+  test('should validate wool colors', () => {
+    expect(isValidBlock('white_wool')).toBe(true);
+    expect(isValidBlock('red_wool')).toBe(true);
+    expect(isValidBlock('blue_wool')).toBe(true);
+    expect(isValidBlock('black_wool')).toBe(true);
+  });
+
+  test('should validate concrete colors', () => {
+    expect(isValidBlock('white_concrete')).toBe(true);
+    expect(isValidBlock('red_concrete')).toBe(true);
+    expect(isValidBlock('blue_concrete')).toBe(true);
+    expect(isValidBlock('black_concrete')).toBe(true);
   });
 });

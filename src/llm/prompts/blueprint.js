@@ -1,6 +1,26 @@
 import { BUILD_TYPES, BUILD_THEMES, getThemeOperations } from '../../config/build-types.js';
 import { getExamplesForType, formatExamplesForPrompt } from '../../config/build-examples.js';
 
+/**
+ * Check if this is a creative build type where LLM should have block freedom
+ * Creative builds: pixel_art, statue, character, custom art, etc.
+ */
+function isCreativeBuild(buildType) {
+  const creativeTypes = [
+    'pixel_art',
+    'statue',
+    'character',
+    'art',
+    'logo',
+    'design',
+    'custom',
+    'sculpture',
+    'monument',
+    'figure'
+  ];
+  return creativeTypes.includes(buildType);
+}
+
 export const blueprintPrompt = (designPlan, allowlist, worldEditAvailable = false) => {
   // Detect build type and theme
   const buildType = designPlan.buildType || 'house';
@@ -464,8 +484,16 @@ ${themeInfo ? `THEME: ${themeInfo.name}` : ''}
 ${examplesSection}
 ${getTypeGuidance()}
 ${themeGuidance}
+${isCreativeBuild(buildType) ? `
+BLOCK GUIDANCE (Creative Build - YOU CHOOSE):
+- Suggested palette: ${allowlist.join(', ')}
+- You MAY use ANY valid Minecraft blocks that fit the build
+- Choose colors, materials, and details that best represent the subject
+- Be creative! Don't limit yourself to the suggested blocks
+` : `
 STRICT CONSTRAINTS:
 - Only use these blocks: ${allowlist.join(', ')}
+`}
 - Coordinates must be relative (start at 0,0,0)
 - Maximum dimensions: ${designPlan.dimensions.width}x${designPlan.dimensions.height}x${designPlan.dimensions.depth}
 - ALL requested features MUST be included in the blueprint

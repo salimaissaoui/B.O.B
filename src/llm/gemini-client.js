@@ -1,7 +1,4 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { designPlanPrompt } from './prompts/design-plan.js';
-import { blueprintPrompt, repairPrompt } from './prompts/blueprint.js';
-import { designPlanSchema, blueprintSchema } from '../config/schemas.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 
 export class GeminiClient {
@@ -21,65 +18,29 @@ export class GeminiClient {
   }
 
   /**
-   * Generate a high-level design plan from user prompt
-   * @param {string} userPrompt - Natural language building request
-   * @returns {Promise<Object>} - Design plan object
+   * Generic content generation method
+   * @param {Object} options - Generation options
+   * @param {string} options.prompt - The prompt to send to the LLM
+   * @param {number} options.temperature - Temperature setting (0.0 to 1.0)
+   * @param {string} options.responseFormat - Expected response format ('json' or 'text')
+   * @returns {Promise<Object|string>} - Generated content
    */
-  async generateDesignPlan(userPrompt) {
-    const prompt = designPlanPrompt(userPrompt);
-    
+  async generateContent(options) {
+    const {
+      prompt,
+      temperature = 0.5,
+      responseFormat = 'json'
+    } = options;
+
     try {
-      // Include JSON parsing in retry scope so malformed responses trigger retry
-      const designPlan = await this.requestWithRetry('design plan', async () => {
+      const label = 'content generation';
+      const content = await this.requestWithRetry(label, async () => {
         const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-            responseMimeType: 'application/json',
-            responseSchema: designPlanSchema
-          }
-        });
-
-        // Track token usage
-        if (result.response.usageMetadata) {
-          this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
-          this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
-        }
-
-        const text = result.response.text();
-        return this.parseJsonResponse(text, 'design plan');
-      });
-
-      return designPlan;
-    } catch (error) {
-      throw new Error(`Design plan generation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Generate executable blueprint from design plan
-   * @param {Object} designPlan - High-level design plan
-   * @param {string[]} allowlist - Allowed block types
-   * @param {boolean} worldEditAvailable - Whether WorldEdit is available
-   * @returns {Promise<Object>} - Blueprint object
-   */
-  async generateBlueprint(designPlan, allowlist, worldEditAvailable = false) {
-    const prompt = blueprintPrompt(designPlan, allowlist, worldEditAvailable);
-    
-    try {
-      // Include JSON parsing in retry scope so malformed responses trigger retry
-      const blueprint = await this.requestWithRetry('blueprint', async () => {
-        // NOTE: We intentionally don't use responseSchema for blueprints because
-        // the schema is too complex and causes Gemini to truncate output.
-        // Instead, we rely on the prompt to guide JSON structure and our repair logic.
-        const result = await this.model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.4,
+            temperature,
             maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,
-            responseMimeType: 'application/json'
-            // Removed responseSchema - causes truncation with complex blueprints
+            responseMimeType: responseFormat === 'json' ? 'application/json' : 'text/plain'
           }
         });
 
@@ -90,18 +51,22 @@ export class GeminiClient {
         }
 
         const text = result.response.text();
-        
+
         // Log response length for debugging
         if (text.length < 1000) {
-          console.warn(`⚠ Short blueprint response: ${text.length} chars (may be truncated)`);
+          console.warn(`⚠ Short response: ${text.length} chars (may be truncated)`);
         }
-        
-        return this.parseJsonResponse(text, 'blueprint');
+
+        if (responseFormat === 'json') {
+          return this.parseJsonResponse(text, label);
+        }
+
+        return text;
       });
 
-      return blueprint;
+      return content;
     } catch (error) {
-      throw new Error(`Blueprint generation failed: ${error.message}`);
+      throw new Error(`Content generation failed: ${error.message}`);
     }
   }
 
@@ -109,25 +74,23 @@ export class GeminiClient {
    * Repair a blueprint based on validation errors
    * @param {Object} blueprint - Current blueprint
    * @param {string[]} errors - Validation errors
-   * @param {Object} designPlan - Original design plan
-   * @param {string[]} allowlist - Allowed blocks
+   * @param {Object} analysis - Prompt analysis from Stage 1
    * @param {Object} qualityScore - Optional quality score for feedback
    * @returns {Promise<Object>} - Repaired blueprint
    */
-  async repairBlueprint(blueprint, errors, designPlan, allowlist, qualityScore = null) {
-    const prompt = repairPrompt(blueprint, errors, designPlan, allowlist, qualityScore);
-    
+  async repairBlueprint(blueprint, errors, analysis, qualityScore = null) {
+    // Build repair prompt
+    const prompt = this.buildRepairPrompt(blueprint, errors, analysis, qualityScore);
+
     try {
       // Include JSON parsing in retry scope so malformed responses trigger retry
       const repairedBlueprint = await this.requestWithRetry('repair', async () => {
-        // NOTE: We intentionally don't use responseSchema for the same reason as blueprints
         const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
             maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,
             responseMimeType: 'application/json'
-            // Removed responseSchema - causes truncation with complex blueprints
           }
         });
 
@@ -145,6 +108,48 @@ export class GeminiClient {
     } catch (error) {
       throw new Error(`Blueprint repair failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Build repair prompt
+   */
+  buildRepairPrompt(blueprint, errors, analysis, qualityScore) {
+    return `
+The following blueprint has validation errors. Fix them while maintaining the design intent.
+
+BLUEPRINT:
+${JSON.stringify(blueprint, null, 2)}
+
+VALIDATION ERRORS:
+${errors.join('\n')}
+
+${qualityScore ? `
+QUALITY SCORE: ${(qualityScore.score * 100).toFixed(1)}% (minimum required: 70%)
+
+QUALITY ISSUES:
+${qualityScore.penalties.join('\n')}
+` : ''}
+
+CONSTRAINTS:
+- Only use valid Minecraft 1.20.1 blocks
+- Dimensions: ${analysis.hints.dimensions.width}x${analysis.hints.dimensions.height}x${analysis.hints.dimensions.depth}
+- All coordinates must be within bounds
+- Required features MUST be included: ${analysis.hints.features.join(', ')}
+
+REPAIR INSTRUCTIONS:
+1. Fix validation errors (coordinate bounds, invalid blocks, etc.)
+2. Ensure ALL required features are present in the blueprint
+3. Verify structural integrity (foundation, walls, roof)
+4. Check that dimensions match requirements (within 20% tolerance)
+5. Use appropriate operations for each feature type
+
+Remember:
+- Doors should use "door" operation (creates 2-block tall door)
+- Windows should use "window_strip" for rows
+- Replace sequences of 3+ "set" operations with "line", "fill", or "hollow_box"
+
+Fix the specific errors mentioned above. Output only the corrected JSON blueprint.
+`;
   }
 
   /**
