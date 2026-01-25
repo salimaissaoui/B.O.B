@@ -258,12 +258,12 @@ export const BUILD_EXAMPLES = {
   },
   
   // =====================================================
-  // TREES
+  // TREES - CRITICAL: No windows, doors, roofs, or pyramids!
   // =====================================================
   tree: {
     giant_oak: {
       name: "Giant Oak Tree",
-      description: "A large oak tree with sprawling branches",
+      description: "A large oak tree with sprawling branches - uses ONLY fill, line, and set",
       designPlan: {
         buildType: "tree",
         dimensions: { width: 15, height: 20, depth: 15 },
@@ -277,29 +277,62 @@ export const BUILD_EXAMPLES = {
         size: { width: 15, height: 20, depth: 15 },
         palette: ["oak_log", "oak_leaves"],
         steps: [
-          // Main trunk (tapered)
+          // STEP 1-2: TRUNK (tapered - thick at base, thin at top)
           { op: "fill", block: "oak_log", from: { x: 6, y: 0, z: 6 }, to: { x: 8, y: 8, z: 8 } },
           { op: "fill", block: "oak_log", from: { x: 7, y: 9, z: 7 }, to: { x: 7, y: 12, z: 7 } },
-          // Main branches
+          // STEP 3-8: BRANCHES (line operations going outward AND upward)
           { op: "line", block: "oak_log", from: { x: 6, y: 8, z: 7 }, to: { x: 2, y: 10, z: 7 } },
           { op: "line", block: "oak_log", from: { x: 8, y: 8, z: 7 }, to: { x: 12, y: 10, z: 7 } },
           { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 6 }, to: { x: 7, y: 10, z: 2 } },
           { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 8 }, to: { x: 7, y: 10, z: 12 } },
-          // Diagonal branches
           { op: "line", block: "oak_log", from: { x: 6, y: 9, z: 6 }, to: { x: 3, y: 11, z: 3 } },
           { op: "line", block: "oak_log", from: { x: 8, y: 9, z: 8 }, to: { x: 11, y: 11, z: 11 } },
-          // Leaf clusters (main canopy)
+          // STEP 9-16: LEAF CLUSTERS (overlapping fill cubes - NOT pyramids!)
           { op: "fill", block: "oak_leaves", from: { x: 3, y: 10, z: 3 }, to: { x: 11, y: 14, z: 11 } },
-          // Top canopy
           { op: "fill", block: "oak_leaves", from: { x: 5, y: 15, z: 5 }, to: { x: 9, y: 17, z: 9 } },
-          // Branch tip clusters
           { op: "fill", block: "oak_leaves", from: { x: 0, y: 9, z: 5 }, to: { x: 4, y: 12, z: 9 } },
           { op: "fill", block: "oak_leaves", from: { x: 10, y: 9, z: 5 }, to: { x: 14, y: 12, z: 9 } },
           { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 0 }, to: { x: 9, y: 12, z: 4 } },
           { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 10 }, to: { x: 9, y: 12, z: 14 } },
-          // Corner clusters
           { op: "fill", block: "oak_leaves", from: { x: 1, y: 10, z: 1 }, to: { x: 5, y: 13, z: 5 } },
           { op: "fill", block: "oak_leaves", from: { x: 9, y: 10, z: 9 }, to: { x: 13, y: 13, z: 13 } }
+        ]
+      }
+    },
+    
+    spruce_tree: {
+      name: "Tall Spruce Tree",
+      description: "A conical spruce tree with layered branches",
+      designPlan: {
+        buildType: "tree",
+        dimensions: { width: 11, height: 18, depth: 11 },
+        materials: {
+          primary: "spruce_log",
+          secondary: "spruce_leaves"
+        },
+        features: ["trunk", "branches", "conical_canopy"]
+      },
+      blueprint: {
+        size: { width: 11, height: 18, depth: 11 },
+        palette: ["spruce_log", "spruce_leaves"],
+        steps: [
+          // Trunk - single column
+          { op: "fill", block: "spruce_log", from: { x: 5, y: 0, z: 5 }, to: { x: 5, y: 16, z: 5 } },
+          // Layered leaf rings (largest at bottom, smallest at top)
+          { op: "fill", block: "spruce_leaves", from: { x: 2, y: 4, z: 2 }, to: { x: 8, y: 5, z: 8 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 6, z: 3 }, to: { x: 7, y: 7, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 2, y: 8, z: 2 }, to: { x: 8, y: 9, z: 8 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 10, z: 3 }, to: { x: 7, y: 11, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 4, y: 12, z: 4 }, to: { x: 6, y: 13, z: 6 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 4, y: 14, z: 4 }, to: { x: 6, y: 15, z: 6 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 5, y: 16, z: 5 }, to: { x: 5, y: 17, z: 5 } },
+          // Branch extensions at each layer
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 2, y: 5, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 8, y: 5, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 5, z: 2 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 5, z: 8 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 9, z: 5 }, to: { x: 3, y: 9, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 9, z: 5 }, to: { x: 7, y: 9, z: 5 } }
         ]
       }
     }
@@ -404,28 +437,66 @@ export function getExamplesForType(buildType, theme = null, maxExamples = 2) {
 /**
  * Format examples for inclusion in prompts
  * @param {Object[]} examples - Array of example objects
+ * @param {string} buildType - The type of build (for custom formatting)
  * @returns {string} Formatted examples string
  */
-export function formatExamplesForPrompt(examples) {
+export function formatExamplesForPrompt(examples, buildType = 'house') {
   if (!examples || examples.length === 0) return '';
   
-  let formatted = '\n=== REFERENCE BUILDS (Learn from these!) ===\n';
+  const isTree = buildType === 'tree';
+  const isOrganic = isTree || buildType === 'statue';
+  
+  let formatted = '\n=== REFERENCE BUILDS (FOLLOW THESE PATTERNS!) ===\n';
+  
+  if (isTree) {
+    formatted += `
+*** CRITICAL FOR TREES ***
+- ONLY use: fill, line, set
+- NEVER use: window_strip, door, hollow_box, roof_*, we_pyramid
+- Look at how the examples use MULTIPLE overlapping fill cubes for leaves
+- Branches use LINE operations, not fill
+`;
+  }
   
   for (const example of examples) {
+    // For trees, show ALL steps since they're commonly done wrong
+    const stepsToShow = isTree ? example.blueprint.steps : example.blueprint.steps.slice(0, 6);
+    const remainingSteps = isTree ? 0 : Math.max(0, example.blueprint.steps.length - 6);
+    
     formatted += `
 --- ${example.name} ---
 ${example.description}
 Dimensions: ${example.designPlan.dimensions.width}x${example.designPlan.dimensions.height}x${example.designPlan.dimensions.depth}
 Materials: ${Object.values(example.designPlan.materials).join(', ')}
-Step count: ${example.blueprint.steps.length}
+Total steps: ${example.blueprint.steps.length}
 
-Sample steps:
-${JSON.stringify(example.blueprint.steps.slice(0, 5), null, 2)}
-${example.blueprint.steps.length > 5 ? `... and ${example.blueprint.steps.length - 5} more steps` : ''}
+${isTree ? 'COMPLETE STEPS (follow this pattern exactly):' : 'Sample steps:'}
+${JSON.stringify(stepsToShow, null, 2)}
+${remainingSteps > 0 ? `... and ${remainingSteps} more steps` : ''}
 `;
   }
   
-  formatted += `
+  // Build-type specific patterns
+  if (isTree) {
+    formatted += `
+=== TREE BUILDING PATTERN ===
+1. TRUNK: fill operations (tapered - thicker at base)
+2. BRANCHES: line operations (going outward AND upward)
+3. LEAF CLUSTERS: Multiple overlapping fill cubes
+4. DETAIL: set operations for individual leaves
+
+FORBIDDEN: window_strip, door, roof_*, hollow_box, we_pyramid
+`;
+  } else if (isOrganic) {
+    formatted += `
+=== ORGANIC BUILD PATTERN ===
+- Use fill for solid masses
+- Use line for elongated shapes
+- Use set for details
+- NO architectural elements (doors, windows, roofs)
+`;
+  } else {
+    formatted += `
 === KEY PATTERNS FROM EXAMPLES ===
 - Foundation FIRST (fill at y=0)
 - Corner pillars with secondary material for depth
@@ -435,6 +506,7 @@ ${example.blueprint.steps.length > 5 ? `... and ${example.blueprint.steps.length
 - Details (lighting, trim) come LAST
 - Aim for ${examples[0]?.blueprint.steps.length || 15}+ build steps
 `;
+  }
   
   return formatted;
 }

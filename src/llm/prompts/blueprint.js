@@ -128,26 +128,54 @@ KEY POINTS:
     if (isTree) {
       return `
 ***** TREE/ORGANIC BUILD MODE *****
-Build a natural tree structure.
+Build a NATURAL tree structure - NOT a building!
 
-RECOMMENDED OPERATIONS:
-- ${worldEditAvailable ? 'we_cylinder' : 'fill'}: Main trunk
-- ${worldEditAvailable ? 'we_sphere' : 'fill'}: Leaf clusters
-- line: Branches
-- set: Detail leaves
+FORBIDDEN OPERATIONS (DO NOT USE):
+- window_strip: Trees don't have windows!
+- door: Trees don't have doors!
+- hollow_box: Trees are solid, not hollow!
+- roof_gable, roof_hip, roof_flat: Trees don't have roofs!
+- we_walls: Trees are not buildings!
+- we_pyramid: Creates unnatural geometric shapes - DON'T USE for leaves!
 
-BUILD ORDER:
-1. Trunk: ${worldEditAvailable ? 'we_cylinder' : 'fill'} for main trunk
-2. Main branches: line operations from trunk
-3. Canopy: ${worldEditAvailable ? 'we_sphere' : 'fill'} for leaf masses
-4. Secondary branches: Smaller line operations
-5. Detail: Individual leaves with set
+REQUIRED OPERATIONS (USE THESE):
+- fill: For trunk sections (tapered - thicker at base)
+- line: For branches extending from trunk
+- fill: For leaf clusters (multiple overlapping cubes, NOT pyramids)
+- set: For scattered individual leaves (organic feel)
 
-KEY POINTS:
-- Trunk tapers toward top
-- Branches grow outward and upward
-- Leaf clusters overlap for natural look
-- Leave some gaps for organic feel
+BUILD ORDER (follow exactly):
+1. TRUNK BASE: fill with log block, thick (3x3) at bottom
+   Example: { "op": "fill", "block": "oak_log", "from": {"x": 6, "y": 0, "z": 6}, "to": {"x": 8, "y": 6, "z": 8} }
+
+2. TRUNK MIDDLE: fill with log, thinner (2x2 or 1x1)
+   Example: { "op": "fill", "block": "oak_log", "from": {"x": 7, "y": 7, "z": 7}, "to": {"x": 7, "y": 10, "z": 7} }
+
+3. MAIN BRANCHES: line operations going outward AND upward
+   Example: { "op": "line", "block": "oak_log", "from": {"x": 7, "y": 8, "z": 7}, "to": {"x": 3, "y": 10, "z": 7} }
+
+4. DIAGONAL BRANCHES: More line operations at angles
+   Example: { "op": "line", "block": "oak_log", "from": {"x": 7, "y": 9, "z": 7}, "to": {"x": 11, "y": 11, "z": 11} }
+
+5. LEAF CLUSTERS: Multiple overlapping fill cubes (NOT pyramid!)
+   - Main canopy around top of trunk
+   - Smaller clusters at branch ends
+   - Clusters should OVERLAP for natural look
+   Example: { "op": "fill", "block": "oak_leaves", "from": {"x": 4, "y": 10, "z": 4}, "to": {"x": 10, "y": 14, "z": 10} }
+
+6. ADDITIONAL LEAF CLUSTERS: Add 3-5 more at different heights/positions
+   Example: { "op": "fill", "block": "oak_leaves", "from": {"x": 1, "y": 9, "z": 5}, "to": {"x": 4, "y": 12, "z": 8} }
+
+7. DETAIL LEAVES: Scattered set operations for organic edges
+   Example: { "op": "set", "block": "oak_leaves", "pos": {"x": 0, "y": 11, "z": 7} }
+
+KEY TECHNIQUES:
+- Trunk TAPERS: 3x3 at base → 2x2 middle → 1x1 at top
+- Branches go OUTWARD and UPWARD (not horizontal)
+- Leaf clusters are OVERLAPPING CUBES (not geometric shapes)
+- Add 4-6 branches minimum for realistic look
+- Leave small gaps in leaves for organic feel
+- Total should be 15-25 steps for a quality tree
 `;
     }
     
@@ -296,7 +324,7 @@ QUALITY TECHNIQUES:
   
   // Get relevant example builds for few-shot learning
   const examples = isPixelArt ? [] : getExamplesForType(buildType, themeKey, 2);
-  const examplesSection = formatExamplesForPrompt(examples);
+  const examplesSection = formatExamplesForPrompt(examples, buildType);
   
   return `
 Convert this design plan into executable build instructions:

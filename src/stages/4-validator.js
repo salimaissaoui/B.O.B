@@ -59,6 +59,10 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
     const featureErrors = validateFeatures(currentBlueprint, designPlan);
     errors.push(...featureErrors);
 
+    // 5.5. Build-type-specific operation validation
+    const buildTypeErrors = validateBuildTypeOperations(currentBlueprint, designPlan);
+    errors.push(...buildTypeErrors);
+
     // 6. Volume and Step Limits
     const limitErrors = validateLimits(currentBlueprint);
     errors.push(...limitErrors);
@@ -275,6 +279,66 @@ function validateBlockAllowlist(blueprint, allowlist) {
   }
   
   return invalidBlocks;
+}
+
+/**
+ * Build-type-specific forbidden operations
+ * Prevents using architectural operations on organic builds, etc.
+ */
+const BUILD_TYPE_FORBIDDEN_OPS = {
+  tree: {
+    forbidden: ['window_strip', 'door', 'hollow_box', 'roof_gable', 'roof_hip', 'roof_flat', 'we_walls', 'we_pyramid', 'balcony', 'spiral_staircase'],
+    reason: 'Trees should only use fill, line, and set operations. No architectural elements.'
+  },
+  statue: {
+    forbidden: ['window_strip', 'door', 'roof_gable', 'roof_hip', 'roof_flat', 'balcony'],
+    reason: 'Statues should use fill, line, and set for organic sculpting.'
+  },
+  pixel_art: {
+    forbidden: ['hollow_box', 'roof_gable', 'roof_hip', 'roof_flat', 'door', 'window_strip', 'spiral_staircase', 'balcony', 'we_walls', 'we_pyramid', 'we_cylinder', 'we_sphere'],
+    reason: 'Pixel art should use only the pixel_art operation or set operations.'
+  }
+};
+
+/**
+ * Validate that blueprint uses appropriate operations for its build type
+ */
+function validateBuildTypeOperations(blueprint, designPlan) {
+  const errors = [];
+  const buildType = designPlan?.buildType;
+  
+  if (!buildType || !BUILD_TYPE_FORBIDDEN_OPS[buildType]) {
+    return errors; // No restrictions for this build type
+  }
+  
+  const restrictions = BUILD_TYPE_FORBIDDEN_OPS[buildType];
+  const forbiddenUsed = [];
+  
+  for (const step of blueprint.steps || []) {
+    if (restrictions.forbidden.includes(step.op)) {
+      if (!forbiddenUsed.includes(step.op)) {
+        forbiddenUsed.push(step.op);
+      }
+    }
+  }
+  
+  if (forbiddenUsed.length > 0) {
+    errors.push(
+      `Build type '${buildType}' should not use: ${forbiddenUsed.join(', ')}. ${restrictions.reason}`
+    );
+    
+    if (DEBUG) {
+      console.log('\n┌─────────────────────────────────────────────────────────');
+      console.log('│ DEBUG: Build Type Validation Failed');
+      console.log('├─────────────────────────────────────────────────────────');
+      console.log(`│ Build type: ${buildType}`);
+      console.log(`│ Forbidden ops used: ${forbiddenUsed.join(', ')}`);
+      console.log(`│ Reason: ${restrictions.reason}`);
+      console.log('└─────────────────────────────────────────────────────────\n');
+    }
+  }
+  
+  return errors;
 }
 
 /**
