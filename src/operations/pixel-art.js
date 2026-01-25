@@ -21,7 +21,7 @@
  * - Column 0 at the LEFT (from viewer's perspective)
  */
 export function pixelArt(step) {
-  const { base, grid, facing = 'south' } = step;
+  const { base, grid, legend, facing = 'south' } = step;
 
   if (!base || !grid || !Array.isArray(grid)) {
     throw new Error('Pixel art requires base position and grid array');
@@ -33,24 +33,80 @@ export function pixelArt(step) {
 
   const blocks = [];
   const height = grid.length;
-  const width = grid[0]?.length || 0;
-
-  if (width === 0) {
-    throw new Error('Pixel art grid rows cannot be empty');
+  // Handle both array-of-strings and array-of-arrays
+  const firstRow = grid[0];
+  // FIX: Normalize grid width (auto-pad rows)
+  let maxW = 0;
+  for (let i = 0; i < grid.length; i++) {
+    const len = typeof grid[i] === 'string' ? grid[i].length : grid[i].length;
+    maxW = Math.max(maxW, len);
   }
 
-  // Direction mappings:
-  // facing 'south' = art faces south, built on X-Y plane at constant Z
-  // facing 'north' = art faces north, built on X-Y plane at constant Z (mirrored X)
-  // facing 'east'  = art faces east, built on Z-Y plane at constant X
-  // facing 'west'  = art faces west, built on Z-Y plane at constant X (mirrored Z)
+  // Auto-pad rows to maxW
+  const isStringGrid = typeof firstRow === 'string';
+  for (let i = 0; i < grid.length; i++) {
+    const row = grid[i];
+    const len = isStringGrid ? row.length : row.length;
+
+    if (len < maxW) {
+      const padding = maxW - len;
+      if (isStringGrid) {
+        grid[i] = row + '.'.repeat(padding); // Append air
+      } else {
+        // Append air blocks for array format
+        for (let k = 0; k < padding; k++) grid[i].push('air');
+      }
+      console.log(`    Autofixed row ${i}: padded with ${padding} blocks`);
+    } else if (len > maxW) {
+      // Should not happen given logic above, but safety check
+      if (isStringGrid) {
+        grid[i] = row.substring(0, maxW);
+      } else {
+        grid[i] = grid[i].slice(0, maxW);
+      }
+    }
+  }
+
+  const width = maxW; // Update width to normalized value
+
+  // VALIDATION: Check all rows have consistent width (should pass now)
+  for (let i = 0; i < grid.length; i++) {
+    const rowLen = typeof grid[i] === 'string' ? grid[i].length : grid[i].length;
+    if (rowLen !== width) {
+      console.warn(`⚠ Pixel art row ${i} has inconsistent width: ${rowLen} vs expected ${width}`);
+    }
+  }
+
+  // VALIDATION: If using compressed format (strings), legend is required
+  if (typeof firstRow === 'string' && !legend) {
+    console.warn('⚠ Pixel art uses compressed format but no legend provided, blocks may not render');
+  }
+
+  console.log(`  Pixel art grid: ${width}x${height}, legend: ${legend ? 'yes' : 'no'}`);
+
+  // Direction mappings... (omitted)
 
   for (let row = 0; row < height; row++) {
+    const gridRow = grid[row];
+    // Handle row being string or array
+    const isStringRow = typeof gridRow === 'string';
+
     for (let col = 0; col < width; col++) {
-      const block = grid[row][col];
+      let rawSymbol = isStringRow ? gridRow[col] : gridRow[col];
+
+      // If we have a legend, resolve the symbol to a block name
+      let block;
+      if (legend && rawSymbol) {
+        block = legend[rawSymbol] || 'air'; // Default to air if not in legend
+      } else {
+        block = rawSymbol; // Legacy mode: symbol IS the block name
+      }
+
+      // Defensive trimming
+      if (typeof block === 'string') block = block.trim();
 
       // Skip empty pixels
-      if (!block || block === '' || block === 'air') {
+      if (!block || block === '' || block === 'air' || block === 'void' || block === 'cave_air' || block === '.') {
         continue;
       }
 

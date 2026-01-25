@@ -53,6 +53,14 @@ export class QualityValidator {
     const penalties = [];
     let score = 1.0;
 
+    // Skip feature checks for pixel art and organic structures
+    const isPixelArt = blueprint.buildType === 'pixel_art' ||
+      blueprint.steps.some(step => step.op === 'pixel_art');
+
+    if (isPixelArt || this.isOrganicStructure(blueprint, designPlan)) {
+      return { score: 1.0, penalties: [] };
+    }
+
     if (!designPlan.features || designPlan.features.length === 0) {
       return { score: 1.0, penalties: [] };
     }
@@ -142,7 +150,12 @@ export class QualityValidator {
   static checkStructuralIntegrity(blueprint, designPlan) {
     const penalties = [];
     let score = 1.0;
-    if (this.isOrganicStructure(blueprint, designPlan)) {
+
+    // Check if it's pixel art or organic
+    const isPixelArt = blueprint.buildType === 'pixel_art' ||
+      blueprint.steps.some(step => step.op === 'pixel_art');
+
+    if (isPixelArt || this.isOrganicStructure(blueprint, designPlan)) {
       return { score: 1.0, penalties: [] };
     }
 
@@ -164,8 +177,8 @@ export class QualityValidator {
     // Check for walls
     const hasWalls = blueprint.steps.some(step => {
       return step.op.includes('wall') ||
-             step.op === 'hollow_box' ||
-             step.op === 'we_walls';
+        step.op === 'hollow_box' ||
+        step.op === 'we_walls';
     });
 
     if (!hasWalls && blueprint.steps.length > 3) {

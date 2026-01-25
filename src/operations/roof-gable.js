@@ -1,3 +1,5 @@
+import { calculateBounds } from '../utils/coordinates.js';
+
 /**
  * Roof gable operation - Creates a triangular/gabled roof
  * @param {Object} step - Step configuration
@@ -14,17 +16,13 @@ export function roofGable(step) {
     throw new Error('Roof gable operation requires from, to, and block');
   }
 
+  const { minX, maxX, minY, minZ, maxZ, width, depth } = calculateBounds(from, to);
+
   // Calculate default peakHeight based on roof dimensions if not provided
-  const width = Math.abs(to.x - from.x) + 1;
-  const depth = Math.abs(to.z - from.z) + 1;
   const peakHeight = step.peakHeight || Math.ceil(Math.min(width, depth) / 2) + 1;
-  
+  const baseY = minY;
+
   const blocks = [];
-  const minX = Math.min(from.x, to.x);
-  const maxX = Math.max(from.x, to.x);
-  const minZ = Math.min(from.z, to.z);
-  const maxZ = Math.max(from.z, to.z);
-  const baseY = Math.min(from.y, to.y);
 
   // Calculate max offset at base level (half the width, rounded down)
   const halfWidth = Math.floor(width / 2);

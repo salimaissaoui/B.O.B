@@ -1,3 +1,5 @@
+import { calculateBounds } from '../utils/coordinates.js';
+
 /**
  * Roof flat operation - Creates a flat roof
  * @param {Object} step - Step configuration
@@ -8,19 +10,16 @@
  */
 export function roofFlat(step) {
   const { from, to, block } = step;
-  
+
   if (!from || !to || !block) {
     throw new Error('Roof flat operation requires from, to, and block');
   }
-  
+
+  const { minX, maxX, maxY, minZ, maxZ } = calculateBounds(from, to);
   const blocks = [];
-  const minX = Math.min(from.x, to.x);
-  const maxX = Math.max(from.x, to.x);
-  const minZ = Math.min(from.z, to.z);
-  const maxZ = Math.max(from.z, to.z);
-  
+
   // Use the higher Y coordinate for the roof level
-  const roofY = Math.max(from.y, to.y);
+  const roofY = maxY;
   
   // Create a flat plane at the roof level
   for (let x = minX; x <= maxX; x++) {

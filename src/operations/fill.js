@@ -1,3 +1,5 @@
+import { calculateBounds } from '../utils/coordinates.js';
+
 /**
  * Fill operation - Creates a solid rectangular area
  * @param {Object} step - Step configuration
@@ -8,18 +10,13 @@
  */
 export function fill(step) {
   const { from, to, block } = step;
-  
+
   if (!from || !to || !block) {
     throw new Error('Fill operation requires from, to, and block');
   }
-  
+
   const blocks = [];
-  const minX = Math.min(from.x, to.x);
-  const maxX = Math.max(from.x, to.x);
-  const minY = Math.min(from.y, to.y);
-  const maxY = Math.max(from.y, to.y);
-  const minZ = Math.min(from.z, to.z);
-  const maxZ = Math.max(from.z, to.z);
+  const { minX, maxX, minY, maxY, minZ, maxZ } = calculateBounds(from, to);
   
   for (let x = minX; x <= maxX; x++) {
     for (let y = minY; y <= maxY; y++) {

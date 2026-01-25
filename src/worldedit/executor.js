@@ -224,6 +224,12 @@ export class WorldEditExecutor {
 
     // Execute via chat
     console.log(`  [WorldEdit] ${command}`);
+
+    // Feedback for user
+    if (expectsBlockChange) {
+      this.bot.chat(`WE >> ${command}`);
+    }
+
     this.bot.chat(command);
 
     this.lastCommandTime = Date.now();

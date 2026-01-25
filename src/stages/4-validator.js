@@ -3,6 +3,7 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 import { GeminiClient } from '../llm/gemini-client.js';
 import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
+import { validateGeometry } from '../validation/geometry-validator.js';
 import { getOperationMetadata } from '../config/operations-registry.js';
 import { isValidBlock } from '../config/blocks.js';
 
@@ -69,6 +70,12 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
     // 5.5. Build-type-specific operation validation
     const buildTypeErrors = validateBuildTypeOperations(currentBlueprint, analysis);
     errors.push(...buildTypeErrors);
+
+    // 5.6. Geometry validation (structural correctness)
+    const geometryResult = validateGeometry(currentBlueprint, buildType);
+    if (!geometryResult.valid) {
+      errors.push(...geometryResult.errors);
+    }
 
     // 6. Volume and Step Limits
     const limitErrors = validateLimits(currentBlueprint);

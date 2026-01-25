@@ -1,3 +1,5 @@
+import { calculateBounds } from '../utils/coordinates.js';
+
 /**
  * Hip Roof Operation
  * Creates a four-sided sloped roof
@@ -16,17 +18,10 @@ export function roofHip(step) {
     throw new Error('roof_hip requires from, to, and block parameters');
   }
 
+  const { minX, maxX, maxY, minZ, maxZ, width, depth } = calculateBounds(step.from, step.to);
   const blocks = [];
   const peakHeight = step.peakHeight || 4;
-
-  const minX = Math.min(step.from.x, step.to.x);
-  const maxX = Math.max(step.from.x, step.to.x);
-  const minZ = Math.min(step.from.z, step.to.z);
-  const maxZ = Math.max(step.from.z, step.to.z);
-  const baseY = Math.max(step.from.y, step.to.y);
-
-  const width = maxX - minX + 1;
-  const depth = maxZ - minZ + 1;
+  const baseY = maxY;
 
   // Build roof layers from bottom to top
   for (let layer = 0; layer < peakHeight; layer++) {

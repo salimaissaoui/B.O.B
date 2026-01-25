@@ -87,16 +87,24 @@ export const blueprintSchema = {
               "stairs", "slab", "fence_connect", "door",
               // Complex operations (new)
               "spiral_staircase", "balcony", "roof_hip", "pixel_art",
+              // Smart operations (procedural)
+              "smart_wall", "smart_floor", "smart_roof",
               // System operations
               "site_prep", "clear_area"
             ]
           },
           block: { type: "string" },
+          legend: {
+            type: "object",
+            additionalProperties: { type: "string" }
+          },
           grid: {
             type: "array",
             items: {
-              type: "array",
-              items: { type: "string" }
+              anyOf: [
+                { type: "string" }, // Compressed row: "###..."
+                { type: "array", items: { type: "string" } } // Legacy row: ["#", "#", "."]
+              ]
             }
           },
           from: {
@@ -155,6 +163,15 @@ export const blueprintSchema = {
           railing: { type: "string" },
           facing: { type: "string", enum: ["north", "south", "east", "west"] },
           half: { type: "string", enum: ["top", "bottom", "upper", "lower"] },
+          pattern: {
+            type: "string",
+            enum: ["solid", "checker", "striped", "horizontal_stripe", "border", "noise", "brick", "diagonal", "tiled", "parquet", "radial", "herringbone", "spiral", "diamond"]
+          },
+          style: {
+            type: "string",
+            enum: ["gable", "hip", "dome", "pagoda", "a-frame", "flat", "shed"]
+          },
+          overhang: { type: "integer" },
           hollow: { type: "boolean" },
           fallback: {
             type: "object",

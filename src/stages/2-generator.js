@@ -1,9 +1,21 @@
 import { GeminiClient } from '../llm/gemini-client.js';
 import { unifiedBlueprintPrompt } from '../llm/prompts/unified-blueprint.js';
-import { optimizeBlueprint } from './optimization/layering.js';
+import { optimizeBuildOrder } from './optimization/layering.js';
+import { generateFromWebReference } from '../services/sprite-reference.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+
+/**
+ * Extract subject from pixel art prompt
+ */
+function extractPixelArtSubject(userPrompt) {
+  return userPrompt.toLowerCase()
+    .replace(/pixel\s*art/gi, '')
+    .replace(/build/gi, '')
+    .replace(/a\s+/gi, '')
+    .trim();
+}
 
 /**
  * Stage 2: Generate complete blueprint (single LLM call)
@@ -35,6 +47,28 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     console.log(`│ Suggested Dimensions: ${analysis.hints.dimensions.width}x${analysis.hints.dimensions.height}x${analysis.hints.dimensions.depth}`);
     console.log(`│ WorldEdit: ${worldEditAvailable ? 'ENABLED' : 'DISABLED'}`);
     console.log('└─────────────────────────────────────────────────────────\n');
+  }
+
+  // PIXEL ART: Use dedicated sprite generation with better prompting
+  if (buildType === 'pixel_art') {
+    const subject = extractPixelArtSubject(userPrompt);
+    console.log(`🎨 Generating pixel art for: "${subject}"`);
+
+    try {
+      const spriteBlueprint = await generateFromWebReference(subject, apiKey);
+      if (spriteBlueprint) {
+        console.log('✓ Sprite generated successfully');
+        console.log(`  Size: ${spriteBlueprint.size.width}x${spriteBlueprint.size.height}`);
+        return spriteBlueprint;
+      }
+    } catch (spriteError) {
+      console.warn(`\n┌─────────────────────────────────────────────────────────`);
+      console.warn(`│ ⚠ SPRITE GENERATION FAILED`);
+      console.warn(`├─────────────────────────────────────────────────────────`);
+      console.warn(`│ Reason: ${spriteError.message}`);
+      console.warn(`│ Fallback: Using standard LLM generation`);
+      console.warn(`└─────────────────────────────────────────────────────────\n`);
+    }
   }
 
   try {
@@ -73,8 +107,20 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     blueprint.buildType = buildType;
     blueprint.theme = analysis.theme?.theme || 'default';
 
+    // VALIDATION: For pixel_art buildType, ensure pixel_art operation is used
+    if (buildType === 'pixel_art') {
+      const hasPixelArtOp = blueprint.steps.some(step => step.op === 'pixel_art');
+      if (!hasPixelArtOp) {
+        throw new Error(
+          'Pixel art generation failed: LLM did not generate pixel_art operation. ' +
+          'This usually means the sprite is too complex or the prompt was misunderstood. ' +
+          'Try a simpler subject or be more specific.'
+        );
+      }
+    }
+
     // OPTIMIZATION: Reorder steps for structural integrity (bottom-up)
-    blueprint = optimizeBlueprint(blueprint);
+    blueprint = optimizeBuildOrder(blueprint);
 
     // FEATURE: Always add site prep as first step
     if (blueprint.steps[0].op !== 'site_prep') {

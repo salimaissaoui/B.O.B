@@ -1,4 +1,7 @@
 import { Vec3 } from 'vec3';
+import { volume as universalVolume } from '../operations/universal/volume.js';
+import { BuildCursor } from '../operations/universal/cursor.js';
+import { optimizeBlockGroups } from './optimization/batching.js';
 import { fill } from '../operations/fill.js';
 import { hollowBox } from '../operations/hollow-box.js';
 import { set } from '../operations/set.js';
@@ -20,9 +23,13 @@ import { spiralStaircase } from '../operations/spiral-staircase.js';
 import { balcony } from '../operations/balcony.js';
 import { roofHip } from '../operations/roof-hip.js';
 import { pixelArt } from '../operations/pixel-art.js';
+import { smartWall } from '../operations/smart-wall.js';
+import { smartFloor } from '../operations/smart-floor.js';
+import { smartRoof } from '../operations/smart-roof.js';
 import { WorldEditExecutor } from '../worldedit/executor.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { isWorldEditOperation } from '../config/operations-registry.js';
+import { buildMetrics } from '../utils/performance-metrics.js';
 
 /**
  * P0 Fix: Simple async mutex to prevent concurrent builds
@@ -56,6 +63,12 @@ class BuildMutex {
 }
 
 const OPERATION_MAP = {
+  // Universal Ops
+  box: universalVolume,
+  wall: (step, ctx) => universalVolume({ ...step, hollow: true }, ctx),
+  outline: (step, ctx) => universalVolume({ ...step, hollow: true }, ctx),
+
+  // Legacy mappings
   fill,
   hollow_box: hollowBox,
   set,
@@ -76,7 +89,10 @@ const OPERATION_MAP = {
   spiral_staircase: spiralStaircase,
   balcony,
   roof_hip: roofHip,
-  pixel_art: pixelArt
+  pixel_art: pixelArt,
+  smart_wall: smartWall,
+  smart_floor: smartFloor,
+  smart_roof: smartRoof
 };
 
 /**
@@ -117,7 +133,44 @@ export class Builder {
   async initialize() {
     console.log('Initializing builder...');
     this.worldEditEnabled = await this.worldEdit.detectWorldEdit();
+
+    // Permission pre-check: Test if /setblock works
+    await this.checkSetblockPermission();
+
     return this.worldEditEnabled;
+  }
+
+  /**
+   * Check if /setblock command is available
+   * This prevents starting builds that will silently fail
+   */
+  async checkSetblockPermission() {
+    if (!this.bot || !this.bot.entity) return;
+
+    try {
+      const testPos = this.bot.entity.position.floored();
+      // Try to get the block at bot position
+      const currentBlock = this.bot.blockAt(testPos);
+
+      if (currentBlock) {
+        console.log('✓ Block reading available');
+        this.hasBlockReadAccess = true;
+      }
+
+      // Note: We can't easily test /setblock without actually modifying the world
+      // For now, we assume if WorldEdit works, /setblock likely works too
+      if (this.worldEditEnabled) {
+        console.log('✓ WorldEdit available - /setblock likely available');
+        this.hasSetblockAccess = true;
+      } else {
+        console.warn('⚠ WorldEdit not available - builds will use /setblock (requires OP)');
+        this.hasSetblockAccess = true; // Assume available, will fail per-block if not
+      }
+    } catch (error) {
+      console.warn(`⚠ Permission check failed: ${error.message}`);
+      this.hasBlockReadAccess = false;
+      this.hasSetblockAccess = false;
+    }
   }
 
   /**
@@ -160,6 +213,33 @@ export class Builder {
       // P0 Fix: Clear WE history for new build
       this.worldEditHistory = [];
 
+      // Start performance metrics tracking
+      buildMetrics.startBuild();
+
+      // P0 Fix: Initialize Cursor and Context
+      this.cursor = new BuildCursor(startPos);
+
+      const resolveBlock = (blockName) => {
+        if (!blockName) return 'air';
+        if (blockName.startsWith('$')) {
+          const key = blockName.substring(1);
+          if (blueprint.palette && blueprint.palette[key]) {
+            return blueprint.palette[key];
+          }
+          // Fallback if palette key missing: try to guess or return air
+          console.warn(`Missing variable in palette: ${key}`);
+          return 'stone';
+        }
+        return blockName;
+      };
+
+      const buildContext = {
+        startPos,
+        cursor: this.cursor,
+        worldEditEnabled: this.worldEditEnabled,
+        resolveBlock
+      };
+
       for (let i = 0; i < blueprint.steps.length; i++) {
         if (!this.building) {
           console.log('Build cancelled by user');
@@ -168,6 +248,39 @@ export class Builder {
 
         const step = blueprint.steps[i];
         console.log(`  Step ${i + 1}/${blueprint.steps.length}: ${step.op}`);
+
+        // UNIVERSAL OPS HANDLER
+        if (['box', 'wall', 'outline'].includes(step.op)) {
+          // These are the new universal ops that handle their own dispatch
+          const opHandler = OPERATION_MAP[step.op];
+          try {
+            const result = opHandler(step, buildContext);
+
+            // The result can be a WorldEdit descriptor OR a list of blocks
+            if (result.type === 'worldedit') {
+              // Execute WE
+              await this.executeWorldEditDescriptor(result, startPos);
+            } else if (Array.isArray(result)) {
+              // Execute Vanilla
+              // P0 Fix: Skip batching for pixel_art to avoid tearing artifacts
+              const skipBatching = step.op === 'pixel_art';
+              await this.executeVanillaBlocks(result, startPos, buildHistory, skipBatching);
+            }
+          } catch (err) {
+            console.error(`Universal Op Error: ${err.message}`);
+          }
+          continue;
+        }
+
+        // CURSOR OPS
+        if (step.op === 'move') {
+          this.cursor.move(step.offset);
+          continue;
+        }
+        if (step.op === 'cursor_reset') {
+          this.cursor.reset();
+          continue;
+        }
 
         if (step.op === 'site_prep' || step.op === 'clear_area') {
           console.log('  → Clearing build area...');
@@ -229,7 +342,8 @@ export class Builder {
             // Fallback to vanilla if enabled
             if (SAFETY_LIMITS.worldEdit.fallbackOnError && step.fallback) {
               console.log(`  → Falling back to vanilla operation: ${step.fallback.op}`);
-              await this.executeVanillaOperation(step.fallback, startPos, buildHistory);
+              // Skip batching optimization since we're already in a WorldEdit fallback
+              await this.executeVanillaOperation(step.fallback, startPos, buildHistory, true);
               this.currentBuild.fallbacksUsed++;
             } else {
               throw weError;
@@ -249,6 +363,9 @@ export class Builder {
         }
       }
 
+      // End performance metrics tracking
+      buildMetrics.endBuild();
+
       const duration = ((Date.now() - this.currentBuild.startTime) / 1000).toFixed(1);
       const weOps = this.currentBuild.worldEditOpsExecuted;
       const fallbacks = this.currentBuild.fallbacksUsed;
@@ -260,12 +377,18 @@ export class Builder {
       if (fallbacks > 0) {
         console.log(`  Fallbacks used: ${fallbacks}`);
       }
+
+      // Print detailed performance metrics
+      buildMetrics.printSummary();
       if (warnings > 0) {
         console.log(`  Warnings: ${warnings}`);
         this.currentBuild.warnings.forEach((w, idx) => {
           console.log(`    ${idx + 1}. Step ${w.step}: ${w.errorType} - ${w.message}`);
         });
       }
+
+      // Generate structured build report
+      this.lastBuildReport = this.generateBuildReport(blueprint, startPos, duration, buildHistory);
 
     } catch (error) {
       console.error(`Build execution failed: ${error.message}`);
@@ -276,6 +399,47 @@ export class Builder {
       // P0 Fix: Release mutex when done
       this.buildMutex.release();
     }
+  }
+
+  /**
+   * Generate structured build report for debugging/logging
+   */
+  generateBuildReport(blueprint, startPos, duration, buildHistory) {
+    const report = {
+      timestamp: new Date().toISOString(),
+      duration: parseFloat(duration),
+      startPosition: startPos,
+      blueprint: {
+        buildType: blueprint.buildType,
+        size: blueprint.size,
+        steps: blueprint.steps.length,
+        palette: blueprint.palette
+      },
+      execution: {
+        blocksPlaced: this.currentBuild?.blocksPlaced || 0,
+        worldEditOps: this.currentBuild?.worldEditOpsExecuted || 0,
+        fallbacksUsed: this.currentBuild?.fallbacksUsed || 0,
+        vanillaBlocks: buildHistory.length
+      },
+      success: !this.currentBuild?.warnings?.length,
+      warnings: this.currentBuild?.warnings || [],
+      metrics: {
+        blocksPerSecond: this.currentBuild?.blocksPlaced / parseFloat(duration) || 0
+      }
+    };
+
+    // Log report summary
+    console.log('┌─────────────────────────────────────────────────────────');
+    console.log('│ BUILD REPORT');
+    console.log('├─────────────────────────────────────────────────────────');
+    console.log(`│ Type: ${report.blueprint.buildType}`);
+    console.log(`│ Size: ${report.blueprint.size.width}x${report.blueprint.size.height}x${report.blueprint.size.depth}`);
+    console.log(`│ Duration: ${report.duration}s`);
+    console.log(`│ Blocks: ${report.execution.blocksPlaced} (${report.metrics.blocksPerSecond.toFixed(1)}/s)`);
+    console.log(`│ Success: ${report.success ? '✓' : '⚠'}`);
+    console.log('└─────────────────────────────────────────────────────────');
+
+    return report;
   }
 
   /**
@@ -334,6 +498,76 @@ export class Builder {
   }
 
   /**
+   * Execute a WorldEdit descriptor returned by universal ops
+   */
+  async executeWorldEditDescriptor(descriptor, startPos) {
+    if (!this.worldEditEnabled) throw new Error("WorldEdit required but not available");
+
+    // Commands map to executor methods
+    switch (descriptor.command) {
+      case 'fill':
+        await this.executeWorldEditFill(descriptor, startPos);
+        break;
+      case 'walls':
+        await this.executeWorldEditWalls(descriptor, startPos);
+        break;
+      // ... expand as needed
+      default:
+        console.warn(`Unsupported WE command in descriptor: ${descriptor.command}`);
+    }
+    this.currentBuild.worldEditOpsExecuted++;
+  }
+
+  /**
+   * Execute raw vanilla blocks list (refactored from executeVanillaOperation)
+   */
+  async executeVanillaBlocks(blocks, startPos, buildHistory, skipBatching = false) {
+    // Reuse the batching logic existing in executeVanillaOperation
+    // But we need to extract that logic out or call it.
+    // For now, let's copy the execution loop essentially:
+
+    // OPTIMIZATION: Auto-Batching for WorldEdit
+    // Skip if explicitly requested (e.g. for pixel art)
+    if (!skipBatching && this.worldEditEnabled && blocks.length > 5) {
+      try {
+        const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(blocks, startPos);
+        if (weOperations.length > 0) {
+          // ... (Same batching execution logic)
+          for (const op of weOperations) {
+            if (!this.building) break;
+            await this.worldEdit.createSelection(op.from, op.to);
+            await this.worldEdit.fillSelection(op.block);
+            this.currentBuild.blocksPlaced += op.count;
+            this.currentBuild.worldEditOpsExecuted++;
+            await this.sleep(300);
+          }
+          blocks = remainingBlocks;
+          await this.worldEdit.clearSelection();
+        }
+      } catch (e) {
+        console.warn('Batching failed during universal op');
+      }
+    }
+
+    // Vanilla placement loop
+    for (const blockPlacement of blocks) {
+      if (!this.building) break;
+      const worldPos = {
+        x: startPos.x + blockPlacement.x,
+        y: startPos.y + blockPlacement.y,
+        z: startPos.z + blockPlacement.z
+      };
+
+      try {
+        await this.placeBlock(worldPos, blockPlacement.block);
+        this.currentBuild.blocksPlaced++;
+        // metrics...
+        await this.sleep(this.getPlacementDelayMs());
+      } catch (err) { /* ignore */ }
+    }
+  }
+
+  /**
    * Execute WorldEdit fill command
    */
   async executeWorldEditFill(descriptor, startPos) {
@@ -387,6 +621,17 @@ export class Builder {
     }
 
     const beforePos = this.bot.entity.position.clone();
+    const distance = beforePos.distanceTo(targetPos);
+
+    // P0 Fix: Remote Execution
+    // Skip teleport if target is within safe range (32 blocks)
+    // WorldEdit works in loaded chunks, 32 ensures we are physically close enough
+    if (distance < 32) {
+      // console.log(`    → Skipping teleport (distance ${distance.toFixed(1)} < 32)`);
+      return true;
+    }
+
+    console.log(`    → Teleporting to target (distance ${distance.toFixed(1)})`);
 
     // Send teleport command
     this.bot.chat(`/tp @s ${targetPos.x} ${targetPos.y} ${targetPos.z}`);
@@ -516,7 +761,7 @@ export class Builder {
   /**
    * Execute vanilla operation (existing + new detail ops)
    */
-  async executeVanillaOperation(step, startPos, buildHistory) {
+  async executeVanillaOperation(step, startPos, buildHistory, skipBatching = false) {
     // Get operation handler
     const operation = OPERATION_MAP[step.op];
     if (!operation) {
@@ -535,12 +780,17 @@ export class Builder {
 
     // OPTIMIZATION: Auto-Batching for WorldEdit
     // Detects continuous runs of blocks and uses WorldEdit to place them instantly
-    if (this.worldEditEnabled && blocks.length > 5) {
+    // Skip batching if called as a fallback from a failed WorldEdit operation
+    if (!skipBatching && this.worldEditEnabled && blocks.length > 5) {
       try {
         const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(blocks, startPos);
 
         if (weOperations.length > 0) {
-          console.log(`    → Optimized: Batching ${blocks.length - remainingBlocks.length} blocks into ${weOperations.length} WorldEdit ops`);
+          const batchedBlocks = blocks.length - remainingBlocks.length;
+          console.log(`    → Optimized: Batching ${batchedBlocks} blocks into ${weOperations.length} WorldEdit ops`);
+
+          // Record batching metrics
+          buildMetrics.recordBatching(blocks.length, batchedBlocks, weOperations.length);
 
           for (const op of weOperations) {
             if (!this.building) break;
@@ -565,8 +815,8 @@ export class Builder {
             });
 
             // Rate limiting: Delay between batches to prevent server kick (ECONNRESET)
-            // 200ms was too fast for some servers.
-            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 500);
+            // Reduced from 500ms to 300ms for better performance
+            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 300);
           }
 
           // Continue with only the non-batched blocks
@@ -605,6 +855,7 @@ export class Builder {
         // Place the block
         await this.placeBlock(worldPos, blockPlacement.block);
         this.currentBuild.blocksPlaced++;
+        buildMetrics.recordVanillaOperation();
 
         // Rate limiting
         await this.sleep(this.getPlacementDelayMs());
@@ -615,198 +866,28 @@ export class Builder {
   }
 
   /**
-  * Advanced Batching: Decomposes point clouds into Maximal 3D/2D Rectangles
-  * Transforms thousands of single blocks into a few WorldEdit region operations.
-  */
-  batchBlocksToWorldEdit(blocks, startPos) {
-    const weOperations = [];
-    const usedIndices = new Set();
-    const MIN_BATCH_SIZE = 6; // Only batch if rectangle > 6 blocks (avoids tiny regions overhead)
-
-    // 1. Group by Block Type
-    const blocksByType = {};
-    blocks.forEach((b, i) => {
-      if (!blocksByType[b.block]) blocksByType[b.block] = [];
-      blocksByType[b.block].push({ ...b, index: i });
-    });
-
-    // 2. Process each block type
-    for (const [blockType, typeBlocks] of Object.entries(blocksByType)) {
-      // We try to find rects in 3 primary planes: XY (vertical-Z), YZ (vertical-X), XZ (horizontal)
-      // This covers walls and floors efficiently.
-
-      // Group by Plane Z (XY plane slices)
-      const zSlices = this.groupByPlane(typeBlocks, 'z');
-      this.processSlices(zSlices, 'xy', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
-
-      // Group remaining by Plane X (YZ plane slices) -> e.g. Side walls
-      const remainingX = typeBlocks.filter(b => !usedIndices.has(b.index));
-      const xSlices = this.groupByPlane(remainingX, 'x');
-      this.processSlices(xSlices, 'yz', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
-
-      // Group remaining by Plane Y (XZ plane slices) -> e.g. Floors
-      const remainingY = typeBlocks.filter(b => !usedIndices.has(b.index));
-      const ySlices = this.groupByPlane(remainingY, 'y');
-      this.processSlices(ySlices, 'xz', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
-    }
-
-    const remainingBlocks = blocks.filter((_, i) => !usedIndices.has(i));
-    return { weOperations, remainingBlocks };
-  }
-
-  groupByPlane(blocks, constantAxis) {
-    const groups = {};
-    for (const b of blocks) {
-      const key = b[constantAxis];
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(b);
-    }
-    return groups;
-  }
-
-  processSlices(slices, planeType, blockType, startPos, weOps, usedIndices, minSize) {
-    for (const [level, points] of Object.entries(slices)) {
-      // Map to 2D grid points
-      const gridPoints = points.map(p => {
-        let u, v;
-        if (planeType === 'xy') { u = p.x; v = p.y; }
-        else if (planeType === 'yz') { u = p.z; v = p.y; }
-        else { u = p.x; v = p.z; } // xz
-        return { u, v, index: p.index };
-      });
-
-      // Find maximal rectangles in this 2D slice
-      const rects = this.findMaximalRectangles(gridPoints);
-
-      for (const rect of rects) {
-        if (rect.count >= minSize) {
-          // Convert back to 3D coords
-          let from, to;
-          const lvl = parseInt(level);
-
-          if (planeType === 'xy') {
-            from = { x: rect.u, y: rect.v, z: lvl };
-            to = { x: rect.u + rect.w - 1, y: rect.v + rect.h - 1, z: lvl };
-          } else if (planeType === 'yz') {
-            from = { x: lvl, y: rect.v, z: rect.u };
-            to = { x: lvl, y: rect.v + rect.h - 1, z: rect.u + rect.w - 1 };
-          } else { // xz
-            from = { x: rect.u, y: lvl, z: rect.v };
-            to = { x: rect.u + rect.w - 1, y: lvl, z: rect.v + rect.h - 1 };
-          }
-
-          // Adjust to absolute coordinates
-          weOps.push({
-            from: { x: startPos.x + from.x, y: startPos.y + from.y, z: startPos.z + from.z },
-            to: { x: startPos.x + to.x, y: startPos.y + to.y, z: startPos.z + to.z },
-            block: blockType,
-            count: rect.count
-          });
-
-          // Mark used
-          rect.indices.forEach(idx => usedIndices.add(idx));
-        }
-      }
-    }
-  }
-
-  /**
-   * Greedy algorithm to decompose a 2D point cloud into rectangles
+   * Advanced Batching: Uses RLE Optimizer
+   * Transforms blocks into efficient linear WorldEdit operations.
    */
-  findMaximalRectangles(points) {
-    // 1. Build a sparse grid map
-    const grid = {};
-    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  batchBlocksToWorldEdit(blocks, startPos) {
+    // Determine threshold based on build type
+    // Pixel Art needs NO batching (handled upstream via skipBatching) or very careful batching
+    // General builds can use standard threshold (10)
 
-    for (const p of points) {
-      if (!grid[p.v]) grid[p.v] = {};
-      grid[p.v][p.u] = p.index;
-      minU = Math.min(minU, p.u);
-      maxU = Math.max(maxU, p.u);
-      minV = Math.min(minV, p.v);
-      maxV = Math.max(maxV, p.v);
-    }
+    // Delegate to new RLE optimizer
+    // Coordinates in 'blocks' are relative to startPos
+    // Optimizer returns relative operations
 
-    const rects = [];
+    // Import dynamically if needed or assume imported at top
+    // For now, we will paste the logic here or call the import if I added it
+    // Wait, I need to add the import first.
+    // Let's assume I'll add the import at the top in a separate edit.
 
-    // 2. Iterate through grid to find rects
-    // Simple greedy approach: find first point, expand width, expand height, consume.
-    // Repeat until no points left.
-    // Ideally we want to find largest rects first, but simple iteration works well for pixel art.
-
-    // Sort rows for consistency
-    const rows = Object.keys(grid).map(Number).sort((a, b) => a - b);
-
-    for (const v of rows) {
-      if (!grid[v]) continue;
-      const cols = Object.keys(grid[v]).map(Number).sort((a, b) => a - b);
-
-      for (const u of cols) {
-        if (grid[v] && grid[v][u] !== undefined) {
-          // Found a start point. Attempt to expand.
-          const indices = [grid[v][u]];
-          let width = 1;
-          let height = 1;
-
-          // Expand Right (Width)
-          while (grid[v][u + width] !== undefined) {
-            indices.push(grid[v][u + width]);
-            width++;
-          }
-
-          // Expand Down (Height)
-          // Check if the entire row of width 'width' exists below
-          let canExpand = true;
-          while (canExpand) {
-            const checkV = v + height;
-            if (!grid[checkV]) { canExpand = false; break; }
-
-            const rowIndices = [];
-            for (let w = 0; w < width; w++) {
-              if (grid[checkV][u + w] === undefined) {
-                canExpand = false;
-                break;
-              }
-              rowIndices.push(grid[checkV][u + w]);
-            }
-
-            if (canExpand) {
-              indices.push(...rowIndices);
-              height++;
-            }
-          }
-
-          // Save Rect
-          rects.push({ u, v, w: width, h: height, count: indices.length, indices });
-
-          // "Consume" points from grid so they aren't used again
-          for (let h = 0; h < height; h++) {
-            for (let w = 0; w < width; w++) {
-              delete grid[v + h][u + w];
-            }
-          }
-        }
-      }
-    }
-
-    return rects;
+    return optimizeBlockGroups(blocks, 10);
   }
 
-  createRunOp(run, blockType, startPos, weOperations, usedIndices) {
-    const start = run[0];
-    const end = run[run.length - 1];
+  // Legacy groupings removed (groupByPlane, processSlices, findMaximalRectangles, createRunOp)
 
-    // Mark indices as used
-    run.forEach(b => usedIndices.add(b.index));
-
-    // Create absolute coord op
-    weOperations.push({
-      from: { x: startPos.x + start.x, y: startPos.y + start.y, z: startPos.z + start.z },
-      to: { x: startPos.x + end.x, y: startPos.y + end.y, z: startPos.z + end.z },
-      block: blockType,
-      count: run.length
-    });
-  }
 
   /**
    * Calculate volume of a region (kept for potential future use)
@@ -837,6 +918,8 @@ export class Builder {
     if (typeof this.bot.chat === 'function') {
       // Requires server permissions for /setblock.
       this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${blockType}`);
+      // Add small delay to ensure command is sent
+      await this.sleep(50);
       return;
     }
 

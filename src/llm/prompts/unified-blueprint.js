@@ -17,11 +17,27 @@ function getBuildTypeGuidance(buildType, hints) {
   const guidance = {
     pixel_art: `
 === PIXEL ART BUILD ===
-- Use pixel_art operation with 2D grid
-- Grid dimensions: width x height x 1 depth
-- Row 0 is TOP of image
-- Use wool for vibrant colors, concrete for flat tones
-- Include outlines with black_wool
+⚠️ CRITICAL: You MUST use the "pixel_art" operation. Do NOT use fill/hollow_box/set operations.
+
+- SIZE LIMIT: Maximum 64x64 pixels. Keep it simple and iconic.
+- VISUALIZATION: Imagine the sprite as ASCII art first.
+- ROW 0 is TOP of image. All rows MUST have the SAME length.
+- COMPRESSED FORMAT (REQUIRED):
+  - Output 'grid' as an array of strings (e.g. ["...###...", "...#O#..."])
+  - Output 'legend' object mapping chars to blocks
+- LEGEND (REQUIRED):
+  - '.' = air (transparent background)
+  - '#' = black_wool (outlines)
+  - Use single chars for all colors (O, Y, R, W, B, etc.)
+- CRITICAL: Every row must be the exact same length. Pad with '.' if needed.
+- OPERATION FORMAT:
+  {
+    "op": "pixel_art",
+    "base": {"x": 0, "y": 0, "z": 0},
+    "facing": "south",
+    "grid": ["row0", "row1", ...],
+    "legend": {".": "air", "#": "black_wool", ...}
+  }
 `,
 
     statue: `
@@ -126,6 +142,11 @@ function getOperationReference() {
   return `
 === AVAILABLE OPERATIONS ===
 
+SMART OPERATIONS (PREFER THESE for structures):
+- smart_wall: Procedural wall. Params: from, to, palette ["primary", ...], pattern ("checker", "striped", "noise", "border")
+- smart_floor: Procedural floor. Params: from, to, palette, pattern ("checker", "tiled", "parquet", "radial")
+- smart_roof: Procedural roof. Params: from, to, block, style ("gable", "dome", "pagoda", "a-frame")
+
 BASIC (vanilla):
 - fill: Solid box. Params: block, from {x,y,z}, to {x,y,z}
 - hollow_box: Hollow box. Params: block, from {x,y,z}, to {x,y,z}
@@ -133,11 +154,8 @@ BASIC (vanilla):
 - line: Line of blocks. Params: block, from {x,y,z}, to {x,y,z}
 - door: Door (2 blocks tall). Params: block (*_door), pos {x,y,z}, facing (north/south/east/west)
 - window_strip: Window row with spacing. Params: block, from {x,y,z}, to {x,y,z}, spacing (default: 2)
-- roof_gable: Triangular roof. Params: block, from {x,y,z}, to {x,y,z}, peakHeight
-- roof_hip: Hip roof. Params: block, from {x,y,z}, to {x,y,z}, peakHeight
-- roof_flat: Flat roof. Params: block, from {x,y,z}, to {x,y,z}
 - spiral_staircase: Spiral stairs. Params: block (*_stairs), base {x,y,z}, height, radius (default: 2)
-- pixel_art: 2D image. Params: base {x,y,z}, facing (south), grid (2D array of blocks)
+- pixel_art: 2D image. Params: base {x,y,z}, facing (south), grid, legend
 
 WORLDEDIT (fast for large volumes):
 - we_fill: Large fill. Params: block, from, to, fallback
@@ -204,36 +222,55 @@ Adjust based on subject (max: 100x256x100)
 
 ${getWorldEditGuidance(worldEditAvailable)}
 
-${getOperationReference()}
+=== UNIVERSAL OPERATIONS (PREFER THESE) ===
+- box: Solid volume. Params: size {x,y,z} OR from/to, block
+- wall: Hollow box/walls. Params: size {x,y,z} OR from/to, block
+- outline: Frame/wireframe. Params: size {x,y,z} OR from/to, block
+- move: Move cursor relative. Params: offset {x,y,z}
+- cursor_reset: Reset cursor to origin.
+
+=== SPECIALIST OPERATIONS ===
+- pixel_art: 2D sprite. Params: grid (array of strings), legend, facing
+- spiral_staircase: Params: block, height, radius
+- window_strip: Params: block, spacing
+
+=== VARIABLE MATERIALS ===
+Use variables in 'block' fields to allow theming:
+- "$primary" (Main walls)
+- "$secondary" (Frames/Pillars)
+- "$accent" (Details)
+- "$roof" (Roofing)
+- "$window" (Glass)
 
 === OUTPUT FORMAT ===
 {
   "buildType": "${buildType}",
   "theme": "${theme?.theme || 'default'}",
-  "description": "Brief description of the build",
+  "description": "Brief description",
   "size": {"width": <number>, "height": <number>, "depth": <number>},
-  "palette": ["all", "blocks", "used"],
+  "palette": {
+     "primary": "stone_bricks",
+     "secondary": "oak_log",
+     "accent": "cracked_stone_bricks",
+     "roof": "spruce_stairs",
+     "window": "glass_pane",
+     // Add others as needed
+  },
   "steps": [
-    {"op": "operation_name", "block": "block_name", ...params...},
+    {"op": "box", "size": {"x": 10, "y": 1, "z": 10}, "block": "$primary"}, // Foundation
+    {"op": "move", "offset": {"x": 0, "y": 1, "z": 0}},
+    {"op": "wall", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"}, // Walls
     ...
   ]
 }
 
 CRITICAL RULES:
-- Coordinates are relative (start at 0,0,0)
-- Include ALL required features: ${hints.features.join(', ')}
-- Minimum ${creativeBuild ? '15' : '20'} steps for quality builds (prefer more details)
-- LAYER YOUR BUILDS: Base shape -> Secondary shapes -> Details/Trim -> Interior
-- AVOID flat walls: Use depth, pillars, and window sills to add texture
-- Output ONLY valid JSON (no markdown, no explanations)
-- Complete the entire JSON (don't truncate)
-
-⚠️ OPERATION NAMES - USE EXACTLY THESE (DO NOT INVENT NAMES):
-Vanilla: fill, hollow_box, set, line, door, window_strip, roof_gable, roof_hip, roof_flat, spiral_staircase, pixel_art
-WorldEdit: we_fill, we_walls, we_sphere, we_cylinder, we_pyramid
-❌ INVALID: fill_cylinder, fill_sphere, fill_box (these do NOT exist - use we_cylinder, we_sphere instead)
-
-Output only the JSON blueprint now:
+- Prefer "box", "wall", "outline" for structural elements.
+- USE "pixel_art" operation for 2D sprites/images.
+- Use "$variables" for blocks whenever possible.
+- Coordinates relative to CURSOR (which starts at 0,0,0).
+- Use "move" to stack structures easily.
+- Output ONLY valid JSON.
 `;
 }
 

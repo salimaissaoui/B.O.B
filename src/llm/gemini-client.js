@@ -199,13 +199,13 @@ REPAIR INSTRUCTIONS:
 2. Ensure ALL required features are present in the blueprint
 3. Verify structural integrity (foundation, walls, roof)
 4. Check that dimensions match requirements (within 20% tolerance)
-5. Use appropriate operations for each feature type
+5.- Minimum ${['pixel_art', 'statue'].includes(blueprint.buildType) ? '1' : '15'} steps
+- Use appropriate operations for each feature type
 
 Remember:
 - Doors should use "door" operation (creates 2-block tall door)
 - Windows should use "window_strip" for rows
 - Replace sequences of 3+ "set" operations with "line", "fill", or "hollow_box"
-
 Fix the specific errors mentioned above. Output only the corrected JSON blueprint.
 `;
   }
@@ -407,14 +407,17 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
 
     // If more opens than closes, try to close them
     if (openBrackets > closeBrackets) {
-      // Check if we're in the middle of an array - try to close it
       const lastChar = repaired.trim().slice(-1);
-      if (lastChar !== ']' && lastChar !== '}') {
-        // Might be truncated mid-value, try to close gracefully
-        // Remove partial last element if it looks incomplete
-        repaired = repaired.replace(/,\s*"[^"]*$/, ''); // Remove incomplete string
-        repaired = repaired.replace(/,\s*{[^}]*$/, ''); // Remove incomplete object
+
+      // If we are inside a string (odd number of quotes), close it
+      const quoteCount = (repaired.match(/"/g) || []).length;
+      if (quoteCount % 2 !== 0) {
+        repaired += '"';
       }
+
+      // If ends with comma, remove it
+      repaired = repaired.replace(/,\s*$/, '');
+
       repaired += ']'.repeat(openBrackets - closeBrackets);
     }
 

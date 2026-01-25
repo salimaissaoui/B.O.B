@@ -69,7 +69,7 @@ export const OPERATIONS_REGISTRY = {
   },
 
   site_prep: {
-    handler: 'clear-area',
+    handler: 'site-prep',
     type: 'system',
     avgBlocksPerOp: 0,
     complexity: 1,
@@ -220,6 +220,55 @@ export const OPERATIONS_REGISTRY = {
     complexity: 3,
     requiredParams: ['base', 'grid'],
     description: 'Creates 2D pixel art from a grid'
+  },
+
+  // Smart Operations (High-Level Procedural Tools)
+  //
+  // SMART VS LEGACY OPERATIONS:
+  // Smart operations provide high-level procedural generation with patterns/styles,
+  // designed for AI-friendly usage where architectural variety is desired.
+  // Legacy operations provide precise, low-level control for explicit building.
+  //
+  // WHEN TO USE SMART OPERATIONS:
+  // - When creating structures with architectural patterns (checkered, tiled, etc.)
+  // - When variety and procedural detail are desired
+  // - When LLM should have creative freedom in pattern selection
+  //
+  // WHEN TO USE LEGACY OPERATIONS:
+  // - When precise block placement is required
+  // - When replicating exact designs or blueprints
+  // - When performance is critical (smart ops generate more blocks)
+  //
+  // OVERLAP EXAMPLES:
+  // - smart_wall with pattern='solid' ≈ fill (but smart_wall offers patterns)
+  // - smart_roof with style='gable' ≈ roof_gable (but smart_roof offers more styles)
+  // - smart_floor with pattern='solid' ≈ roof_flat (but smart_floor offers patterns)
+  //
+  smart_wall: {
+    handler: 'smart-wall',
+    type: 'smart',
+    avgBlocksPerOp: 200,
+    complexity: 3,
+    requiredParams: ['from', 'to', 'palette'],
+    description: 'Procedurally generated wall with patterns (solid, striped, checkered, border)'
+  },
+
+  smart_floor: {
+    handler: 'smart-floor',
+    type: 'smart',
+    avgBlocksPerOp: 400,
+    complexity: 3,
+    requiredParams: ['from', 'to', 'palette'],
+    description: 'Procedurally generated floor with patterns (parquet, tiled, radial)'
+  },
+
+  smart_roof: {
+    handler: 'smart-roof',
+    type: 'smart',
+    avgBlocksPerOp: 500,
+    complexity: 4,
+    requiredParams: ['from', 'to', 'block'],
+    description: 'Procedurally generated roof with styles (A-frame, dome, pagoda)'
   }
 };
 

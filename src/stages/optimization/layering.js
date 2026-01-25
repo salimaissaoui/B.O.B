@@ -1,98 +1,86 @@
 /**
- * Blueprint Optimization Logic
- * Reorders build steps to ensure structural integrity (bottom-up building)
+ * Layering Optimizer
+ * Sorts blueprint steps by Y coordinate to ensure bottom-up building.
+ * This is a HARD ENFORCEMENT that overrides LLM output order.
  */
-
-import { isWorldEditOperation } from '../../config/operations-registry.js';
 
 /**
- * Optimizes a blueprint by reordering steps for professional execution
- * @param {Object} blueprint - The original blueprint
- * @returns {Object} - Optimized blueprint
+ * Get the minimum Y coordinate from a step
  */
-export function optimizeBlueprint(blueprint) {
-    if (!blueprint || !blueprint.steps || blueprint.steps.length === 0) {
-        return blueprint;
-    }
+function getMinY(step) {
+    // Check various coordinate properties
+    if (step.from?.y !== undefined) return step.from.y;
+    if (step.pos?.y !== undefined) return step.pos.y;
+    if (step.base?.y !== undefined) return step.base.y;
+    if (step.center?.y !== undefined) return step.center.y;
 
-    // Clone blueprint to avoid mutating original
-    const optimized = { ...blueprint };
-
-    // 1. Separate operations by type
-    const sitePrepSteps = [];
-    const worldEditSteps = [];
-    const vanillaSteps = [];
-
-    for (const step of optimized.steps) {
-        if (step.op === 'site_prep' || step.op === 'clear_area') {
-            sitePrepSteps.push(step);
-        } else if (isWorldEditOperation(step.op)) {
-            worldEditSteps.push(step);
-        } else {
-            vanillaSteps.push(step);
-        }
-    }
-
-    // 2. Sort Vanilla Steps Bottom-Up (Y-level)
-    // This ensures we build foundations before roofs (gravity/physics safety)
-    vanillaSteps.sort((a, b) => {
-        const yA = getStepYLevel(a);
-        const yB = getStepYLevel(b);
-
-        // Primary sort: Height (low to high)
-        if (yA !== yB) {
-            return yA - yB;
-        }
-
-        // Secondary sort: Operation priority (set blocks before connecting things like fences)
-        return getOpPriority(a.op) - getOpPriority(b.op);
-    });
-
-    // 3. Reconstruct Step List
-    // Order: Site Prep -> WorldEdit (Bulk) -> Vanilla (Detail/Bottom-Up)
-    optimized.steps = [
-        ...sitePrepSteps,
-        ...worldEditSteps,
-        ...vanillaSteps
-    ];
-
-    return optimized;
-}
-
-/**
- * Extract an approximate Y-level for sorting
- */
-function getStepYLevel(step) {
-    // Try strictly defined coordinates first
-    if (step.pos) return step.pos.y;
-    if (step.base) return step.base.y;
-    if (step.from) return Math.min(step.from.y, step.to?.y || step.from.y);
-    if (step.center) return step.center.y;
-
-    // Default fallback (shouldn't happen with valid schemas)
+    // Default to 0 if no Y found (will be placed first)
     return 0;
 }
 
 /**
- * Priority for same-level operations (Lower = Earlier)
+ * Get operation priority (lower = executed first)
+ * This ensures site prep and foundations happen before walls
  */
-function getOpPriority(op) {
+function getOperationPriority(step) {
     const priorities = {
-        'fill': 1,
-        'hollow_box': 1,
-        'floor': 1,
-        'set': 2,
-        'line': 2,
-        'walls': 3,
-        'stairs': 4,
-        'slab': 4,
-        'door': 5,
-        'window_strip': 5,
-        'fence_connect': 6,
-        'roof_gable': 8, // Roofs usually last even if same y-level start
-        'roof_hip': 8,
-        'roof_flat': 8
+        'site_prep': 0,
+        'clear_area': 0,
+        'we_fill': 10,      // Bulk fills (foundations)
+        'fill': 10,
+        'smart_floor': 20,  // Floors
+        'smart_wall': 30,   // Walls
+        'we_walls': 30,
+        'hollow_box': 30,
+        'we_cylinder': 40,  // Towers
+        'we_sphere': 40,
+        'smart_roof': 50,   // Roofs last
+        'we_pyramid': 50,
+        'roof_gable': 50,
+        'roof_hip': 50,
+        'roof_flat': 50,
+        'door': 60,         // Details after structure
+        'window_strip': 60,
+        'stairs': 60,
+        'spiral_staircase': 60,
+        'set': 70,          // Individual blocks last
+        'line': 70,
+        'pixel_art': 80,    // Special case
     };
 
-    return priorities[op] || 5; // Default middle priority
+    return priorities[step.op] ?? 100;
 }
+
+/**
+ * Sort blueprint steps for optimal building order
+ * @param {Object} blueprint - The generated blueprint
+ * @returns {Object} - Blueprint with sorted steps
+ */
+export function optimizeBuildOrder(blueprint) {
+    if (!blueprint?.steps || !Array.isArray(blueprint.steps)) {
+        return blueprint;
+    }
+
+    // Create a copy to avoid mutating original
+    const optimized = { ...blueprint };
+
+    // Sort steps:
+    // 1. By operation priority (site prep -> foundations -> walls -> roof -> details)
+    // 2. Then by Y coordinate (bottom to top)
+    optimized.steps = [...blueprint.steps].sort((a, b) => {
+        const priorityA = getOperationPriority(a);
+        const priorityB = getOperationPriority(b);
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        // Same priority: sort by Y (bottom first)
+        return getMinY(a) - getMinY(b);
+    });
+
+    console.log('✓ Blueprint optimized (bottom-up layering)');
+    return optimized;
+}
+
+export default optimizeBuildOrder;

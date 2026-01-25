@@ -9,7 +9,9 @@
       "Bash(node --check:*)",
       "Bash(node test-generators.js:*)",
       "Bash(node test-enhanced-system.js)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(npm start)"
     ]
   }
 }

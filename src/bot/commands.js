@@ -16,23 +16,24 @@ export function registerCommands(bot, builder, apiKey) {
     try {
       // Check exact matches FIRST before startsWith
       // Cancel command
+      // Cancel command
       if (message === '!build cancel') {
         try {
           builder.cancel();
-          bot.chat('Build cancelled');
+          safeChat(bot, 'Build cancelled');
         } catch (error) {
-          bot.chat(`Error: ${error.message}`);
+          safeChat(bot, `Error: ${error.message}`);
         }
       }
 
       // Undo command
       else if (message === '!build undo') {
         try {
-          bot.chat('Undoing last build...');
+          safeChat(bot, 'Undoing last build...');
           await builder.undo();
-          bot.chat('Last build undone');
+          safeChat(bot, 'Last build undone');
         } catch (error) {
-          bot.chat(`Error: ${error.message}`);
+          safeChat(bot, `Error: ${error.message}`);
         }
       }
 
@@ -41,37 +42,37 @@ export function registerCommands(bot, builder, apiKey) {
         const progress = builder.getProgress();
         if (progress) {
           const elapsed = (progress.elapsedTime / 1000).toFixed(1);
-          bot.chat(`Building... ${elapsed}s elapsed`);
-          bot.chat(`  Blocks: ${progress.blocksPlaced}`);
+          safeChat(bot, `Building... ${elapsed}s elapsed`);
+          safeChat(bot, `  Blocks: ${progress.blocksPlaced}`);
 
           if (builder.worldEditEnabled) {
-            bot.chat(`  WorldEdit ops: ${progress.worldEditOps}`);
+            safeChat(bot, `  WorldEdit ops: ${progress.worldEditOps}`);
 
             if (progress.fallbacksUsed > 0) {
-              bot.chat(`  Fallbacks: ${progress.fallbacksUsed}`);
+              safeChat(bot, `  Fallbacks: ${progress.fallbacksUsed}`);
             }
 
             const weStatus = builder.worldEdit.getStatus();
             if (weStatus.unconfirmedOps > 0) {
-              bot.chat(`  Unconfirmed WE ops: ${weStatus.unconfirmedOps}`);
+              safeChat(bot, `  Unconfirmed WE ops: ${weStatus.unconfirmedOps}`);
             }
           }
 
           if (progress.warnings && progress.warnings.length > 0) {
-            bot.chat(`  Warnings: ${progress.warnings.length}`);
+            safeChat(bot, `  Warnings: ${progress.warnings.length}`);
           }
         } else {
-          bot.chat('No build in progress');
+          safeChat(bot, 'No build in progress');
         }
       }
 
       // Help command
       else if (message === '!build help') {
-        bot.chat('B.O.B Commands:');
-        bot.chat('  !build <description> - Start a new build');
-        bot.chat('  !build cancel - Cancel current build');
-        bot.chat('  !build undo - Undo last build');
-        bot.chat('  !build status - Check build progress');
+        safeChat(bot, 'B.O.B Commands:');
+        safeChat(bot, '  !build <description> - Start a new build');
+        safeChat(bot, '  !build cancel - Cancel current build');
+        safeChat(bot, '  !build undo - Undo last build');
+        safeChat(bot, '  !build status - Check build progress');
       }
 
       // Build command (check LAST since it uses startsWith)
@@ -79,15 +80,15 @@ export function registerCommands(bot, builder, apiKey) {
         const prompt = message.slice(7).trim();
 
         if (!prompt) {
-          bot.chat('Usage: !build <description>');
+          safeChat(bot, 'Usage: !build <description>');
           return;
         }
 
-        await handleBuildCommand(prompt, bot, builder, apiKey);
+        await handleBuildCommand(prompt, bot, builder, apiKey, username);
       }
     } catch (error) {
       console.error('Command error:', error);
-      bot.chat(`✗ Error: ${error.message}`);
+      safeChat(bot, `✗ Error: ${error.message}`);
     }
   });
 
@@ -98,28 +99,28 @@ export function registerCommands(bot, builder, apiKey) {
 /**
  * Handle the /build command
  */
-async function handleBuildCommand(prompt, bot, builder, apiKey) {
+async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   if (builder.building) {
-    bot.chat('✗ Build already in progress');
+    safeChat(bot, '✗ Build already in progress');
     return;
   }
 
   if (!bot.entity || !bot.entity.position) {
-    bot.chat('✗ Bot not spawned yet');
+    safeChat(bot, '✗ Bot not spawned yet');
     return;
   }
 
-  bot.chat(`Building: "${prompt}"...`);
+  safeChat(bot, `Building: "${prompt}"...`);
 
   try {
     // Stage 1: ANALYZER (lightweight, no LLM)
-    bot.chat('Stage 1/3: Analyzing prompt...');
+    safeChat(bot, 'Stage 1/3: Analyzing prompt...');
     const analysis = analyzePrompt(prompt);
     console.log(`  Build Type: ${analysis.buildType} (${analysis.buildTypeInfo.confidence})`);
     console.log(`  Theme: ${analysis.theme?.name || 'default'}`);
 
     // Stage 2: GENERATOR (single LLM call)
-    bot.chat('Stage 2/3: Generating blueprint...');
+    safeChat(bot, 'Stage 2/3: Generating blueprint...');
     const blueprint = await generateBlueprint(
       analysis,
       apiKey,
@@ -130,26 +131,64 @@ async function handleBuildCommand(prompt, bot, builder, apiKey) {
     console.log(`  Steps: ${blueprint.steps.length} operations`);
 
     // Stage 3: VALIDATOR + EXECUTOR
-    bot.chat('Stage 3/3: Validating & building...');
+    safeChat(bot, 'Stage 3/3: Validating & building...');
     const validation = await validateBlueprint(blueprint, analysis, apiKey);
 
     if (!validation.valid) {
-      bot.chat('✗ Blueprint validation failed');
+      safeChat(bot, '✗ Blueprint validation failed');
       console.error('Validation errors:', validation.errors);
       return;
     }
 
     // Execute
-    const startPos = bot.entity.position.offset(3, 0, 0);
-    await builder.executeBlueprint(validation.blueprint, {
+    // Try to build relative to the player who issued the command
+    let targetEntity = bot.entity;
+    let targetName = 'Bot';
+
+    if (username && bot.players[username] && bot.players[username].entity) {
+      targetEntity = bot.players[username].entity;
+      targetName = username;
+      console.log(`Building relative to player: ${username}`);
+    } else {
+      console.log('Player entity not found, building relative to bot');
+    }
+
+    // Calculate position 5 blocks in front of the target based on yaw
+    const viewDir = {
+      x: -Math.sin(targetEntity.yaw),
+      z: -Math.cos(targetEntity.yaw)
+    };
+
+    // Offset 5 blocks forward
+    const startPos = targetEntity.position.offset(
+      viewDir.x * 5,
+      0,
+      viewDir.z * 5
+    );
+
+    const buildPos = {
       x: Math.floor(startPos.x),
       y: Math.floor(startPos.y),
       z: Math.floor(startPos.z)
-    });
+    };
 
-    bot.chat('✓ Build complete!');
+    safeChat(bot, `Starting build at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
+
+    await builder.executeBlueprint(validation.blueprint, buildPos);
+
+    safeChat(bot, '✓ Build complete!');
   } catch (error) {
     console.error('Build command failed:', error);
-    bot.chat(`✗ Build failed: ${error.message}`);
+    safeChat(bot, `✗ Build failed: ${error.message}`);
+  }
+}
+
+function safeChat(bot, message) {
+  try {
+    if (bot && bot.chat) {
+      bot.chat(message);
+    }
+  } catch (err) {
+    console.warn(`Failed to send chat message: ${message} (Bot likely disconnected)`);
   }
 }
