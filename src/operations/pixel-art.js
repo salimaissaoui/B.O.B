@@ -50,13 +50,18 @@ export function pixelArt(step) {
 
     if (len < maxW) {
       const padding = maxW - len;
+      // P0 Fix: Center align the row instead of just appending (fixes skewing)
+      const leftPad = Math.floor(padding / 2);
+      const rightPad = padding - leftPad;
+
       if (isStringGrid) {
-        grid[i] = row + '.'.repeat(padding); // Append air
+        grid[i] = '.'.repeat(leftPad) + row + '.'.repeat(rightPad);
       } else {
-        // Append air blocks for array format
-        for (let k = 0; k < padding; k++) grid[i].push('air');
+        // Array format
+        for (let k = 0; k < leftPad; k++) grid[i].unshift('air');
+        for (let k = 0; k < rightPad; k++) grid[i].push('air');
       }
-      console.log(`    Autofixed row ${i}: padded with ${padding} blocks`);
+      console.log(`    Autofixed row ${i}: centered with ${leftPad}L/${rightPad}R padding`);
     } else if (len > maxW) {
       // Should not happen given logic above, but safety check
       if (isStringGrid) {

@@ -216,9 +216,12 @@ STRUCTURED BUILD - Material Recommendations:
 - You may adjust materials to fit the design
 `}
 
-=== DIMENSIONS (YOU DECIDE) ===
-Suggested: ${hints.dimensions.width}x${hints.dimensions.height}x${hints.dimensions.depth}
-Adjust based on subject (max: 100x256x100)
+=== DIMENSIONS (ADAPTIVE SCALING) ===
+Determine the natural size needed for high detail:
+- Simple objects (e.g. apple, ball): 16x16 - 32x32
+- Complex objects (e.g. dragon, castle): 48x48 - 80x80
+- Max Limit: 100x100x100 (Safety Cap)
+- DO NOT artificially squash the build. Use the space needed for quality.
 
 ${getWorldEditGuidance(worldEditAvailable)}
 

@@ -30,6 +30,7 @@ import { WorldEditExecutor } from '../worldedit/executor.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { isWorldEditOperation } from '../config/operations-registry.js';
 import { buildMetrics } from '../utils/performance-metrics.js';
+import { ActionQueue } from '../utils/queue/action-queue.js';
 
 /**
  * P0 Fix: Simple async mutex to prevent concurrent builds
@@ -116,6 +117,9 @@ export class Builder {
     // P0 Fix: Track WorldEdit operations separately for undo
     this.worldEditHistory = [];
 
+    // P0 Fix: Reliability Queue
+    this.actionQueue = new ActionQueue();
+
     if (this.bot && typeof this.bot.on === 'function') {
       this.bot.on('end', () => {
         if (this.building) {
@@ -138,6 +142,55 @@ export class Builder {
     await this.checkSetblockPermission();
 
     return this.worldEditEnabled;
+  }
+
+  /**
+   * Automatic Site Prep
+   * Clears the area before building based on blueprint dimensions.
+   */
+  async autoClearArea(blueprint, startPos) {
+    console.log('  → Auto-clearing build site...');
+
+    // Default safe size if missing
+    const w = blueprint.size?.width || 10;
+    const h = blueprint.size?.height || 10;
+    const d = blueprint.size?.depth || 10;
+
+    // Safety padding
+    const padding = 1;
+
+    // If pixel art, Z depth is usually 1, but clear a bit of space anyway
+    const depthClear = blueprint.buildType === 'pixel_art' ? 2 : d;
+
+    if (this.worldEditEnabled) {
+      const from = { x: startPos.x - padding, y: startPos.y, z: startPos.z - padding };
+      const to = { x: startPos.x + w + padding, y: startPos.y + h + padding, z: startPos.z + depthClear + padding };
+
+      try {
+        await this.worldEdit.createSelection(from, to);
+        await this.worldEdit.fillSelection('air');
+        await this.worldEdit.clearSelection();
+        console.log('    ✓ Site cleared (WorldEdit)');
+      } catch (e) {
+        console.warn(`    ⚠ Auto-clear failed: ${e.message}`);
+      }
+    } else {
+      console.log('    ⚠ Auto-clear skipped (Vanilla clearing too slow)');
+    }
+  }
+
+  /**
+   * Validate step against build mode constraints
+   */
+  validateStepForMode(step, buildType) {
+    if (buildType === 'pixel_art') {
+      const allowed = ['pixel_art', 'move', 'cursor_reset'];
+      if (!allowed.includes(step.op)) {
+        console.warn(`    ⚠ Operation '${step.op}' blocked by Pixel Art Mode`);
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -219,6 +272,9 @@ export class Builder {
       // P0 Fix: Initialize Cursor and Context
       this.cursor = new BuildCursor(startPos);
 
+      // P0 Fix: Auto-Clear Area
+      await this.autoClearArea(blueprint, startPos);
+
       const resolveBlock = (blockName) => {
         if (!blockName) return 'air';
         if (blockName.startsWith('$')) {
@@ -247,6 +303,17 @@ export class Builder {
         }
 
         const step = blueprint.steps[i];
+
+        // P0 Fix: Skip LLM-generated site prep (we already did it)
+        if (step.op === 'site_prep' || step.op === 'clear_area') {
+          continue;
+        }
+
+        // P0 Fix: Enforce Mode Constraints
+        if (!this.validateStepForMode(step, blueprint.buildType)) {
+          continue;
+        }
+
         console.log(`  Step ${i + 1}/${blueprint.steps.length}: ${step.op}`);
 
         // UNIVERSAL OPS HANDLER
@@ -282,32 +349,7 @@ export class Builder {
           continue;
         }
 
-        if (step.op === 'site_prep' || step.op === 'clear_area') {
-          console.log('  → Clearing build area...');
-          try {
-            // Use WorldEdit if available for fast clearing
-            if (this.worldEditEnabled) {
-              const border = 1; // Clear 1 block wider border
-              const width = blueprint.size?.width || 10;
-              const height = blueprint.size?.height || 10;
-              const depth = blueprint.size?.depth || 10;
-
-              // Clear from slightly below start up to full height
-              const from = { x: startPos.x - border, y: startPos.y, z: startPos.z - border };
-              const to = { x: startPos.x + width + border, y: startPos.y + height, z: startPos.z + depth + border };
-
-              await this.worldEdit.createSelection(from, to);
-              await this.worldEdit.fillSelection('air');
-              await this.worldEdit.clearSelection();
-              console.log('    ✓ Area cleared (WorldEdit)');
-            } else {
-              console.log('    ⚠ Site prep skipped (WorldEdit disabled - manual clearing recommended)');
-            }
-          } catch (e) {
-            console.warn(`    ⚠ Site prep failed: ${e.message}`);
-          }
-          continue; // Skip vanilla execution logic
-        }
+        // Legacy site prep block removed (handled by autoClearArea)
 
         // Check if this is a WorldEdit operation
         if (isWorldEditOperation(step.op)) {
@@ -559,11 +601,16 @@ export class Builder {
       };
 
       try {
-        await this.placeBlock(worldPos, blockPlacement.block);
+        // P0 Fix: Use ActionQueue for reliability
+        await this.actionQueue.add(() => this.placeBlock(worldPos, blockPlacement.block));
+
         this.currentBuild.blocksPlaced++;
         // metrics...
         await this.sleep(this.getPlacementDelayMs());
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        console.error(`Final block failure at ${worldPos.x},${worldPos.y},${worldPos.z}: ${err.message}`);
+        // Consider aborting or tracking failure
+      }
     }
   }
 

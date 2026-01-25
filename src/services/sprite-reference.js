@@ -144,7 +144,8 @@ OUTPUT FORMAT (JSON only):
 }
 
 - Determine the true bounding box of the sprite (ignore empty space)
-- Map pixels to roughly a 32x32 to 64x64 grid
+- Map pixels to the OPTIMAL RESOLUTION for detail (between 32x32 and 80x80)
+- Do NOT squash the sprite. If it needs to be tall (e.g. 30x60), make it tall.
 - Output ONLY valid JSON
 - Use '.' for transparent/background pixels
 - Use single characters for each color`;
