@@ -19,13 +19,16 @@ export class WorldEditValidator {
 
       totalWorldEditCmds++;
 
-      // Validate operation has fallback only when supported
+      // Note: fallback is optional in the step - if not specified, the builder
+      // will use the operation's default fallback from the operations registry.
+      // Only log a warning if fallbackOnError is enabled but no fallback exists
+      // anywhere (neither in step nor in registry).
       const opMeta = getOperationMetadata(step.op);
-      const requiresFallback = Boolean(opMeta?.fallback);
-      if (SAFETY_LIMITS.worldEdit.fallbackOnError && requiresFallback && !step.fallback) {
-        errors.push(
-          `WorldEdit operation '${step.op}' missing fallback operation`
-        );
+      const hasAnyFallback = step.fallback || opMeta?.fallback;
+      if (SAFETY_LIMITS.worldEdit.fallbackOnError && !hasAnyFallback) {
+        // This is just informational - operations like we_cylinder and we_sphere
+        // intentionally have no vanilla fallback
+        // No error needed here - the builder handles this gracefully
       }
 
       // Validate selection size for operations with from/to

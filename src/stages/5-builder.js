@@ -19,6 +19,7 @@ import { door } from '../operations/door.js';
 import { spiralStaircase } from '../operations/spiral-staircase.js';
 import { balcony } from '../operations/balcony.js';
 import { roofHip } from '../operations/roof-hip.js';
+import { pixelArt } from '../operations/pixel-art.js';
 import { WorldEditExecutor } from '../worldedit/executor.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { isWorldEditOperation } from '../config/operations-registry.js';
@@ -74,7 +75,8 @@ const OPERATION_MAP = {
   door,
   spiral_staircase: spiralStaircase,
   balcony,
-  roof_hip: roofHip
+  roof_hip: roofHip,
+  pixel_art: pixelArt
 };
 
 /**
@@ -139,7 +141,9 @@ export class Builder {
         startPos,
         startTime: Date.now(),
         blocksPlaced: 0,
-        worldEditOpsExecuted: 0  // P0 Fix: Track WE ops for undo
+        worldEditOpsExecuted: 0,  // P0 Fix: Track WE ops for undo
+        fallbacksUsed: 0,  // Track fallback operations
+        warnings: []  // Track warnings during build
       };
 
       const buildHistory = [];
@@ -167,7 +171,7 @@ export class Builder {
         if (isWorldEditOperation(step.op)) {
           try {
             await this.executeWorldEditOperation(step, startPos);
-            // P0 Fix: Track WE operation for undo
+            // P0 Fix: Track WE operation for undo (only on success)
             this.worldEditHistory.push({
               step,
               startPos,
@@ -175,12 +179,29 @@ export class Builder {
             });
             this.currentBuild.worldEditOpsExecuted++;
           } catch (weError) {
-            console.warn(`⚠ WorldEdit operation failed: ${weError.message}`);
+            // Log structured error information
+            const errorType = weError.errorType || 'UNKNOWN';
+            const suggestedFix = weError.suggestedFix || 'Check server logs';
+
+            console.warn(`⚠ WorldEdit operation failed: ${step.op}`);
+            console.warn(`  Error type: ${errorType}`);
+            console.warn(`  Message: ${weError.message}`);
+            console.warn(`  Suggested fix: ${suggestedFix}`);
+
+            // Track warning
+            this.currentBuild.warnings.push({
+              step: i + 1,
+              operation: step.op,
+              errorType,
+              message: weError.message,
+              suggestedFix
+            });
 
             // Fallback to vanilla if enabled
             if (SAFETY_LIMITS.worldEdit.fallbackOnError && step.fallback) {
-              console.log('  → Falling back to vanilla operation...');
+              console.log(`  → Falling back to vanilla operation: ${step.fallback.op}`);
               await this.executeVanillaOperation(step.fallback, startPos, buildHistory);
+              this.currentBuild.fallbacksUsed++;
             } else {
               throw weError;
             }
@@ -201,7 +222,21 @@ export class Builder {
 
       const duration = ((Date.now() - this.currentBuild.startTime) / 1000).toFixed(1);
       const weOps = this.currentBuild.worldEditOpsExecuted;
-      console.log(`✓ Build completed in ${duration}s (${this.currentBuild.blocksPlaced} blocks, ${weOps} WE ops)`);
+      const fallbacks = this.currentBuild.fallbacksUsed;
+      const warnings = this.currentBuild.warnings.length;
+
+      console.log(`✓ Build completed in ${duration}s`);
+      console.log(`  Blocks placed: ${this.currentBuild.blocksPlaced}`);
+      console.log(`  WorldEdit ops: ${weOps}`);
+      if (fallbacks > 0) {
+        console.log(`  Fallbacks used: ${fallbacks}`);
+      }
+      if (warnings > 0) {
+        console.log(`  Warnings: ${warnings}`);
+        this.currentBuild.warnings.forEach((w, idx) => {
+          console.log(`    ${idx + 1}. Step ${w.step}: ${w.errorType} - ${w.message}`);
+        });
+      }
 
     } catch (error) {
       console.error(`Build execution failed: ${error.message}`);
@@ -605,7 +640,7 @@ export class Builder {
 
   /**
    * Get build progress
-   * P0 Fix: Includes WorldEdit operation count
+   * P0 Fix: Includes WorldEdit operation count, fallbacks, and warnings
    */
   getProgress() {
     if (!this.currentBuild) {
@@ -615,6 +650,8 @@ export class Builder {
     return {
       blocksPlaced: this.currentBuild.blocksPlaced,
       worldEditOps: this.currentBuild.worldEditOpsExecuted || 0,
+      fallbacksUsed: this.currentBuild.fallbacksUsed || 0,
+      warnings: this.currentBuild.warnings || [],
       elapsedTime: Date.now() - this.currentBuild.startTime,
       isBuilding: this.building
     };

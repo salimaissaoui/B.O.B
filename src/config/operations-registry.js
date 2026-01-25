@@ -75,7 +75,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 5000,
     complexity: 1,
     fallback: 'fill',
-    requiredParams: ['block', 'from', 'to', 'fallback'],
+    requiredParams: ['block', 'from', 'to'],
     description: 'WorldEdit: Fills large rectangular regions (up to 50k blocks)'
   },
 
@@ -85,7 +85,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 2000,
     complexity: 2,
     fallback: 'hollow_box',
-    requiredParams: ['block', 'from', 'to', 'fallback'],
+    requiredParams: ['block', 'from', 'to'],
     description: 'WorldEdit: Creates hollow structures (walls only)'
   },
 
@@ -95,7 +95,7 @@ export const OPERATIONS_REGISTRY = {
     avgBlocksPerOp: 3000,
     complexity: 3,
     fallback: 'roof_gable',
-    requiredParams: ['block', 'height', 'fallback'],
+    requiredParams: ['block', 'height'],
     requiredOneOf: [['base', 'pos']],
     description: 'WorldEdit: Creates pyramids or roofs'
   },

@@ -11,6 +11,8 @@ AI-powered Minecraft building assistant that safely converts natural language in
 - ✅ Architectural detail operations (stairs, slabs, doors, balconies)
 - ✅ Quality validation with feature completeness checking
 - ✅ Automatic fallback from WorldEdit to vanilla placement
+- ✅ Enhanced WorldEdit diagnostics with error classification
+- ✅ Comprehensive build statistics and progress tracking
 - ✅ Undo/cancel support
 - ✅ Live in-game construction
 
@@ -134,16 +136,105 @@ Here are some example build commands:
 /build medieval watchtower with balcony
 ```
 
+## Operations Reference
+
+B.O.B uses a variety of operations to build structures efficiently. Operations are automatically selected by the AI based on your build description.
+
+### Basic Operations (Vanilla)
+
+- **fill**: Solid rectangular fill
+  - Use for: Floors, solid walls, foundations
+  - Parameters: block, from {x,y,z}, to {x,y,z}
+
+- **hollow_box**: Creates hollow rectangular structure (walls only)
+  - Use for: Building frames, rooms
+  - Parameters: block, from {x,y,z}, to {x,y,z}
+
+- **set**: Places a single block
+  - Use for: Individual block placement, details
+  - Parameters: block, pos {x,y,z}
+
+- **line**: Creates a line of blocks
+  - Use for: Beams, edges, decorative lines
+  - Parameters: block, from {x,y,z}, to {x,y,z}
+
+- **window_strip**: Creates evenly-spaced windows
+  - Use for: Window rows in walls
+  - Parameters: block, from {x,y,z}, to {x,y,z}, spacing (default: 2)
+
+### Roof Operations (Vanilla)
+
+- **roof_gable**: Triangular gabled roof
+  - Parameters: block, from {x,y,z}, to {x,y,z}, peakHeight
+
+- **roof_hip**: Four-sided hip roof
+  - Parameters: block, from {x,y,z}, to {x,y,z}, peakHeight
+
+- **roof_flat**: Flat roof
+  - Parameters: block, from {x,y,z}, to {x,y,z}
+
+### Detail Operations (Vanilla)
+
+- **stairs**: Places oriented stairs
+  - Parameters: block (*_stairs), pos {x,y,z}, facing (north/south/east/west)
+
+- **slab**: Places top or bottom slabs
+  - Parameters: block (*_slab), pos {x,y,z}, half (top/bottom)
+
+- **fence_connect**: Creates fence lines
+  - Parameters: block (*_fence), from {x,y,z}, to {x,y,z}
+
+- **door**: Places 2-block tall doors
+  - Parameters: block (*_door), pos {x,y,z}, facing (north/south/east/west)
+
+### Advanced Operations (Vanilla)
+
+- **spiral_staircase**: Creates spiral staircase
+  - Parameters: block (*_stairs), base {x,y,z}, height, radius (default: 2)
+
+- **balcony**: Creates protruding balcony with optional railing
+  - Parameters: block (floor), base {x,y,z}, width, depth, facing, railing (optional)
+
+### WorldEdit Operations (Requires Plugin)
+
+- **we_fill**: Large-scale fill (up to 50,000 blocks)
+  - Parameters: block, from {x,y,z}, to {x,y,z}, fallback {...}
+  - Limit: 50x50x50 max dimension per operation
+
+- **we_walls**: Creates hollow structures efficiently
+  - Parameters: block, from {x,y,z}, to {x,y,z}, fallback {...}
+  - Limit: 50x50x50 max dimension per operation
+
+- **we_pyramid**: Creates pyramids or pyramid roofs
+  - Parameters: block, base {x,y,z}, height, hollow (true/false), fallback {...}
+  - Limit: 50 block max height
+
+- **we_cylinder**: Creates cylindrical towers
+  - Parameters: block, base {x,y,z}, radius, height, hollow, fallback {...}
+  - Limit: 25 block max radius (50 diameter), 50 block max height
+
+- **we_sphere**: Creates spherical domes
+  - Parameters: block, center {x,y,z}, radius, hollow, fallback {...}
+  - Limit: 25 block max radius (50 diameter)
+
+- **we_replace**: Replaces blocks in region
+  - Parameters: from {x,y,z}, to {x,y,z}, fromBlock, toBlock
+  - Limit: 50x50x50 max dimension per operation
+
 ## Safety Features
 
 B.O.B includes multiple safety mechanisms:
 
 - **Block Allowlist**: Only uses blocks explicitly mentioned in the design plan
 - **JSON Schema Validation**: Ensures all outputs match expected structure
-- **Coordinate Bounds Checking**: Prevents out-of-bounds placements
-- **Volume Limits**: Maximum 10,000 blocks per build
-- **Rate Limiting**: 10 blocks per second to prevent server lag
+- **Coordinate Bounds Checking**: Prevents out-of-bounds placements for all coordinate types (from, to, pos, base, center)
+- **Volume Limits**: Maximum 30,000 blocks per build
+- **Step Limits**: Maximum 1,000 operations per blueprint
+- **Rate Limiting**: 50 blocks per second to prevent server lag
 - **Undo Support**: Full build history with one-command rollback
+- **WorldEdit Limits**: 50k blocks per selection, 100 commands per build, 50x50x50 max dimensions
+- **Error Classification**: Detailed error messages with suggested fixes for WorldEdit failures
+- **Fallback Tracking**: Automatic fallback to vanilla with detailed logging
 
 ## Project Structure
 
@@ -269,22 +360,27 @@ Performance comparison:
 ### Vanilla Mode (without WorldEdit)
 - Maximum build size: 100x256x100 blocks
 - Maximum unique blocks: 15 per build
-- Maximum total blocks: 10,000
+- Maximum total blocks: 30,000
+- Maximum steps: 1,000 operations
 - Build rate: ~50 blocks/second
+- Chat command min delay: 500ms between commands
 - Requires line-of-sight and proximity for block placement (Mineflayer limitation)
 
 ### WorldEdit Mode (recommended)
 - Maximum build size: 100x256x100 blocks (overall structure)
 - Maximum WorldEdit selection: 50x50x50 blocks per operation
-- Maximum WorldEdit selection volume: 50,000 blocks
+- Maximum WorldEdit selection volume: 50,000 blocks per command
 - Maximum WorldEdit commands: 100 per build
+- WorldEdit command rate limit: 200ms minimum delay between commands
 - Build rate: ~25,000 blocks/second for large operations
 - Automatic fallback to vanilla if WorldEdit unavailable
+- Adaptive throttling on spam detection (increases delays up to 4x)
 
 ### General Limitations
 - Requires OP permissions or specific WorldEdit permissions
 - Complex organic shapes (curves, custom terrain) have limited support
 - Interior decoration not automated (furniture, lighting, etc.)
+- Quality validation requires 70% minimum score for feature completeness
 
 ## Troubleshooting
 
@@ -302,6 +398,186 @@ Performance comparison:
 - The bot needs to be close enough to the build area
 - Ensure the bot has the required blocks in inventory (for survival mode)
 - Check server permissions allow the bot to place blocks
+
+### WorldEdit Issues
+
+#### WorldEdit not detected
+**Symptoms**: Bot starts but doesn't use WorldEdit, or says "WorldEdit not available"
+
+**Solutions**:
+1. Verify WorldEdit/FAWE is installed in `plugins/` or `mods/` directory
+2. Check plugin is loaded: run `/plugins` or `/version` in-game
+3. Restart server after installing WorldEdit
+4. Check server console for WorldEdit loading errors
+
+#### Permission denied errors
+**Symptoms**: "No permission" or "not permitted" errors during WorldEdit operations
+
+**Solutions**:
+1. Grant bot user WorldEdit permissions via LuckPerms, PermissionsEx, or permissions.yml:
+   ```yaml
+   BOB_Builder:
+     permissions:
+       - worldedit.selection.*
+       - worldedit.selection.pos
+       - worldedit.region.*
+       - worldedit.region.set
+       - worldedit.region.walls
+       - worldedit.generation.*
+       - worldedit.generation.pyramid
+       - worldedit.generation.cylinder
+       - worldedit.generation.sphere
+       - minecraft.command.setblock
+       - minecraft.command.tp
+   ```
+2. Verify bot is OP (if using vanilla permissions): `/op BOB_Builder`
+3. Check server logs for permission denial details
+
+#### Selection too large errors
+**Symptoms**: "Selection too large" or "exceeds limit" messages
+
+**Solutions**:
+1. Increase WorldEdit limits in `config.yml` or `worldedit-config.yml`:
+   ```yaml
+   limits:
+     max-blocks-changed:
+       default: 50000
+     max-radius: 50
+     max-super-pickaxe-size: 5
+   ```
+2. B.O.B already enforces safe limits (50k blocks, 50x50x50 dimensions)
+3. If using FAWE, check `config/FastAsyncWorldEdit/config.yml` for additional limits
+
+#### Spam warnings / kicked for spam
+**Symptoms**: Bot gets kicked or warned for command spam, WorldEdit commands fail
+
+**Solutions**:
+1. **Increase command delays** in `src/config/limits.js`:
+   ```javascript
+   worldEdit: {
+     commandMinDelayMs: 300,  // Increase from 200ms
+   }
+   ```
+2. **Enable anti-spam on server**: Install plugins like AntiSpam or configure built-in filters
+3. **Monitor backoff multiplier**: B.O.B automatically increases delays when spam is detected
+4. **Reduce WorldEdit commands per build** if server is sensitive:
+   ```javascript
+   maxCommandsPerBuild: 50,  // Reduce from 100
+   ```
+
+#### Unconfirmed operations
+**Symptoms**: "No acknowledgment received" warnings in build logs
+
+**Causes**:
+- Chat message lag
+- Anti-spam filters hiding responses
+- WorldEdit executing successfully but response not captured
+
+**Solutions**:
+1. Check build still completed correctly (blocks placed)
+2. Increase acknowledgment timeout in WorldEdit executor if needed
+3. Verify chat isn't being filtered by anti-spam plugins
+4. Consider using FAWE for better performance on large operations
+
+#### Fallback operations triggered
+**Symptoms**: Build completes but shows "Fallbacks used: X" in summary
+
+**Causes**:
+- WorldEdit permission issues
+- Selection size limits exceeded
+- WorldEdit plugin temporarily unavailable
+
+**Check**:
+1. Review build warnings for specific error types
+2. Verify permissions are correctly configured
+3. Check server logs for WorldEdit errors
+4. Monitor build status with `!build status` during execution
+
+### Anti-Spam Best Practices
+
+To avoid spam-related issues when using B.O.B:
+
+1. **Configure reasonable delays**: Don't set delays too low
+2. **Use WorldEdit for large builds**: It's more efficient than vanilla placement
+3. **Monitor build progress**: Use `!build status` to check for issues
+4. **Whitelist the bot**: Configure anti-spam plugins to trust the bot user
+5. **Review logs**: Check console for spam warnings and adjust accordingly
+
+## Debug Mode
+
+When troubleshooting issues, enable debug mode for detailed logging at each pipeline stage.
+
+### Enabling Debug Mode
+
+Set the environment variable before starting B.O.B:
+
+```bash
+# Windows (PowerShell)
+$env:BOB_DEBUG="true"; npm start
+
+# Windows (CMD)
+set BOB_DEBUG=true && npm start
+
+# Linux/Mac
+BOB_DEBUG=true npm start
+```
+
+Or add to your `.env` file:
+```
+BOB_DEBUG=true
+```
+
+### Debug Output
+
+With debug mode enabled, you'll see detailed information for:
+
+1. **Build Type Detection**
+   - Which build type was detected (pixel_art, house, tower, etc.)
+   - Matched keywords and confidence level
+   - Why a particular type was chosen
+
+2. **Design Plan Generation**
+   - User prompt received
+   - Full design plan from LLM
+   - Detected dimensions and features
+   - Validation errors if any
+
+3. **Blueprint Generation**
+   - Build type and recommended operations
+   - Allowlist and WorldEdit status
+   - Operation breakdown (counts by type)
+   - First few steps of the blueprint
+   - Palette used
+
+4. **Validation & Repair**
+   - All validation errors found
+   - Quality score and penalties
+   - Repair attempts and results
+   - Final validation status
+
+### Example Debug Output
+
+```
+┌─────────────────────────────────────────────────────────
+│ DEBUG: Design Plan Generation
+├─────────────────────────────────────────────────────────
+│ User Prompt: "build a pixelart charizard"
+│ Detected Type: pixel_art (medium confidence)
+│ Matched Keyword: charizard
+│ Reason: Character/icon detected - defaulting to pixel art
+└─────────────────────────────────────────────────────────
+
+┌─────────────────────────────────────────────────────────
+│ DEBUG: Blueprint Generation
+├─────────────────────────────────────────────────────────
+│ Build Type: pixel_art (Pixel Art)
+│ Dimensions: 32x32x1
+│ Allowlist: orange_wool, red_wool, yellow_wool, black_wool, white_wool
+│ WorldEdit: DISABLED
+│ Features: pixel_art, facing_south
+│ Recommended Ops: pixel_art
+└─────────────────────────────────────────────────────────
+```
 
 ## Contributing
 

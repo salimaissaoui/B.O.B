@@ -145,3 +145,96 @@ export function suggestAlternatives(blockName, version = '1.20.1') {
     .filter(b => b.includes(category))
     .slice(0, 3);
 }
+
+/**
+ * Color palette for pixel art - maps common colors to best Minecraft blocks
+ * Wool is recommended for vibrant colors, concrete for solid flat colors,
+ * terracotta for muted/earthy tones
+ */
+export const PIXEL_ART_PALETTE = {
+  // Basic colors - using wool for vibrancy
+  red: 'red_wool',
+  orange: 'orange_wool',
+  yellow: 'yellow_wool',
+  lime: 'lime_wool',
+  green: 'green_wool',
+  cyan: 'cyan_wool',
+  light_blue: 'light_blue_wool',
+  blue: 'blue_wool',
+  purple: 'purple_wool',
+  magenta: 'magenta_wool',
+  pink: 'pink_wool',
+  white: 'white_wool',
+  light_gray: 'light_gray_wool',
+  gray: 'gray_wool',
+  black: 'black_wool',
+  brown: 'brown_wool',
+  
+  // Concrete alternatives (more saturated, flat look)
+  bright_red: 'red_concrete',
+  bright_orange: 'orange_concrete',
+  bright_yellow: 'yellow_concrete',
+  bright_lime: 'lime_concrete',
+  bright_green: 'green_concrete',
+  bright_cyan: 'cyan_concrete',
+  bright_light_blue: 'light_blue_concrete',
+  bright_blue: 'blue_concrete',
+  bright_purple: 'purple_concrete',
+  bright_magenta: 'magenta_concrete',
+  bright_pink: 'pink_concrete',
+  bright_white: 'white_concrete',
+  bright_black: 'black_concrete',
+  
+  // Skin tones and special colors
+  skin_light: 'orange_terracotta',
+  skin_medium: 'brown_terracotta',
+  skin_dark: 'brown_wool',
+  gold: 'gold_block',
+  tan: 'sandstone',
+  cream: 'birch_planks',
+  beige: 'smooth_sandstone',
+  
+  // Metallic and special
+  silver: 'iron_block',
+  dark_gray: 'gray_concrete',
+  navy: 'blue_terracotta',
+  maroon: 'red_terracotta',
+  olive: 'green_terracotta',
+  teal: 'cyan_terracotta',
+  coral: 'pink_terracotta',
+  peach: 'pink_terracotta',
+  
+  // Fire/flame colors
+  flame_red: 'red_wool',
+  flame_orange: 'orange_wool',
+  flame_yellow: 'yellow_wool',
+  
+  // Transparent/empty
+  transparent: 'air',
+  empty: 'air',
+  none: 'air'
+};
+
+/**
+ * Get recommended blocks for pixel art based on a color description
+ * @param {string} colorName - Descriptive color name
+ * @returns {string} - Best matching Minecraft block
+ */
+export function getPixelArtBlock(colorName) {
+  const normalized = colorName.toLowerCase().replace(/[^a-z_]/g, '_');
+  
+  // Direct match
+  if (PIXEL_ART_PALETTE[normalized]) {
+    return PIXEL_ART_PALETTE[normalized];
+  }
+  
+  // Partial match
+  for (const [key, block] of Object.entries(PIXEL_ART_PALETTE)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return block;
+    }
+  }
+  
+  // Default to white if no match
+  return 'white_wool';
+}

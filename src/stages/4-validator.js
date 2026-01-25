@@ -5,6 +5,9 @@ import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
 import { getOperationMetadata } from '../config/operations-registry.js';
 
+// Debug mode - set via environment variable
+const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+
 /**
  * Stage 4: Validate and repair blueprint
  * @param {Object} blueprint - Generated blueprint
@@ -17,6 +20,17 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
   let currentBlueprint = blueprint;
   let retries = 0;
   let qualityScore = null;
+
+  if (DEBUG) {
+    console.log('\n┌─────────────────────────────────────────────────────────');
+    console.log('│ DEBUG: Blueprint Validation Starting');
+    console.log('├─────────────────────────────────────────────────────────');
+    console.log(`│ Blueprint steps: ${blueprint.steps?.length || 0}`);
+    console.log(`│ Allowlist: ${allowlist.length} blocks`);
+    console.log(`│ Design features: ${designPlan.features?.join(', ') || 'none'}`);
+    console.log(`│ Max retries: ${SAFETY_LIMITS.maxRetries}`);
+    console.log('└─────────────────────────────────────────────────────────\n');
+  }
 
   while (retries < SAFETY_LIMITS.maxRetries) {
     const errors = [];
@@ -74,6 +88,17 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
         console.log(`  WorldEdit blocks: ${weValidation.stats.worldEditBlocks}`);
       }
       console.log(`  Total operations: ${currentBlueprint.steps.length}`);
+      
+      if (DEBUG) {
+        console.log('\n┌─────────────────────────────────────────────────────────');
+        console.log('│ DEBUG: Validation PASSED');
+        console.log('├─────────────────────────────────────────────────────────');
+        console.log(`│ Attempts: ${retries + 1}`);
+        console.log(`│ Quality: ${(qualityScore.score * 100).toFixed(1)}%`);
+        console.log(`│ Quality bonuses: ${qualityScore.bonuses?.join(', ') || 'none'}`);
+        console.log('└─────────────────────────────────────────────────────────\n');
+      }
+      
       return {
         valid: true,
         blueprint: currentBlueprint,
@@ -92,6 +117,25 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
       }
       console.log('  Attempting repair...');
 
+      if (DEBUG) {
+        console.log('\n┌─────────────────────────────────────────────────────────');
+        console.log(`│ DEBUG: Validation FAILED - Attempt ${retries + 1}/${SAFETY_LIMITS.maxRetries}`);
+        console.log('├─────────────────────────────────────────────────────────');
+        console.log('│ Errors:');
+        for (const err of errors) {
+          console.log(`│   • ${err}`);
+        }
+        if (qualityScore?.penalties?.length > 0) {
+          console.log('│ Quality Penalties:');
+          for (const penalty of qualityScore.penalties) {
+            console.log(`│   • ${penalty}`);
+          }
+        }
+        console.log('├─────────────────────────────────────────────────────────');
+        console.log('│ Attempting LLM repair...');
+        console.log('└─────────────────────────────────────────────────────────\n');
+      }
+
       try {
         const client = new GeminiClient(apiKey);
         currentBlueprint = await client.repairBlueprint(
@@ -102,8 +146,24 @@ export async function validateAndRepair(blueprint, allowlist, designPlan, apiKey
           qualityScore
         );
         retries++;
+        
+        if (DEBUG) {
+          console.log('\n┌─────────────────────────────────────────────────────────');
+          console.log('│ DEBUG: Repair Response Received');
+          console.log('├─────────────────────────────────────────────────────────');
+          console.log(`│ New steps count: ${currentBlueprint.steps?.length || 0}`);
+          console.log(`│ New palette: ${currentBlueprint.palette?.join(', ') || 'none'}`);
+          console.log('└─────────────────────────────────────────────────────────\n');
+        }
       } catch (repairError) {
         console.error(`  Repair failed: ${repairError.message}`);
+        if (DEBUG) {
+          console.log('\n┌─────────────────────────────────────────────────────────');
+          console.log('│ DEBUG: Repair FAILED');
+          console.log('├─────────────────────────────────────────────────────────');
+          console.log(`│ Error: ${repairError.message}`);
+          console.log('└─────────────────────────────────────────────────────────\n');
+        }
         break;
       }
     } else {
@@ -228,32 +288,32 @@ function validateCoordinateBounds(blueprint, designPlan) {
     return errors;
   }
   const { width, depth, height } = dimensions;
-  
+
   for (let i = 0; i < (blueprint.steps || []).length; i++) {
     const step = blueprint.steps[i];
-    
-    // Check 'from' coordinates
-    if (step.from) {
-      if (!isWithinBounds(step.from, width, height, depth)) {
-        errors.push(`Step ${i}: 'from' coordinate out of bounds`);
+
+    // Check all coordinate keys: from, to, pos, base, center
+    const coordKeys = ['from', 'to', 'pos', 'base', 'center'];
+    for (const key of coordKeys) {
+      if (step[key]) {
+        if (!isWithinBounds(step[key], width, height, depth)) {
+          errors.push(`Step ${i}: '${key}' coordinate out of bounds`);
+        }
       }
     }
-    
-    // Check 'to' coordinates
-    if (step.to) {
-      if (!isWithinBounds(step.to, width, height, depth)) {
-        errors.push(`Step ${i}: 'to' coordinate out of bounds`);
-      }
-    }
-    
-    // Check 'pos' coordinates
-    if (step.pos) {
-      if (!isWithinBounds(step.pos, width, height, depth)) {
-        errors.push(`Step ${i}: 'pos' coordinate out of bounds`);
+
+    // Check fallback coordinates if present
+    if (step.fallback) {
+      for (const key of coordKeys) {
+        if (step.fallback[key]) {
+          if (!isWithinBounds(step.fallback[key], width, height, depth)) {
+            errors.push(`Step ${i} fallback: '${key}' coordinate out of bounds`);
+          }
+        }
       }
     }
   }
-  
+
   return errors;
 }
 

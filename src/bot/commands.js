@@ -42,7 +42,25 @@ export function registerCommands(bot, builder, apiKey) {
         const progress = builder.getProgress();
         if (progress) {
           const elapsed = (progress.elapsedTime / 1000).toFixed(1);
-          bot.chat(`Building... ${progress.blocksPlaced} blocks placed (${elapsed}s)`);
+          bot.chat(`Building... ${elapsed}s elapsed`);
+          bot.chat(`  Blocks: ${progress.blocksPlaced}`);
+
+          if (builder.worldEditEnabled) {
+            bot.chat(`  WorldEdit ops: ${progress.worldEditOps}`);
+
+            if (progress.fallbacksUsed > 0) {
+              bot.chat(`  Fallbacks: ${progress.fallbacksUsed}`);
+            }
+
+            const weStatus = builder.worldEdit.getStatus();
+            if (weStatus.unconfirmedOps > 0) {
+              bot.chat(`  Unconfirmed WE ops: ${weStatus.unconfirmedOps}`);
+            }
+          }
+
+          if (progress.warnings && progress.warnings.length > 0) {
+            bot.chat(`  Warnings: ${progress.warnings.length}`);
+          }
         } else {
           bot.chat('No build in progress');
         }

@@ -29,8 +29,9 @@ export class GeminiClient {
     const prompt = designPlanPrompt(userPrompt);
     
     try {
-      const result = await this.requestWithRetry('design plan', () =>
-        this.model.generateContent({
+      // Include JSON parsing in retry scope so malformed responses trigger retry
+      const designPlan = await this.requestWithRetry('design plan', async () => {
+        const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.7,
@@ -38,17 +39,19 @@ export class GeminiClient {
             responseMimeType: 'application/json',
             responseSchema: designPlanSchema
           }
-        })
-      );
+        });
 
-      // Track token usage
-      if (result.response.usageMetadata) {
-        this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
-        this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
-      }
+        // Track token usage
+        if (result.response.usageMetadata) {
+          this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
+          this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
+        }
 
-      const text = result.response.text();
-      return this.parseJsonResponse(text, 'design plan');
+        const text = result.response.text();
+        return this.parseJsonResponse(text, 'design plan');
+      });
+
+      return designPlan;
     } catch (error) {
       throw new Error(`Design plan generation failed: ${error.message}`);
     }
@@ -65,26 +68,38 @@ export class GeminiClient {
     const prompt = blueprintPrompt(designPlan, allowlist, worldEditAvailable);
     
     try {
-      const result = await this.requestWithRetry('blueprint', () =>
-        this.model.generateContent({
+      // Include JSON parsing in retry scope so malformed responses trigger retry
+      const blueprint = await this.requestWithRetry('blueprint', async () => {
+        // NOTE: We intentionally don't use responseSchema for blueprints because
+        // the schema is too complex and causes Gemini to truncate output.
+        // Instead, we rely on the prompt to guide JSON structure and our repair logic.
+        const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 4096,
-            responseMimeType: 'application/json',
-            responseSchema: blueprintSchema
+            maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,
+            responseMimeType: 'application/json'
+            // Removed responseSchema - causes truncation with complex blueprints
           }
-        })
-      );
+        });
 
-      // Track token usage
-      if (result.response.usageMetadata) {
-        this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
-        this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
-      }
+        // Track token usage
+        if (result.response.usageMetadata) {
+          this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
+          this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
+        }
 
-      const text = result.response.text();
-      return this.parseJsonResponse(text, 'blueprint');
+        const text = result.response.text();
+        
+        // Log response length for debugging
+        if (text.length < 1000) {
+          console.warn(`⚠ Short blueprint response: ${text.length} chars (may be truncated)`);
+        }
+        
+        return this.parseJsonResponse(text, 'blueprint');
+      });
+
+      return blueprint;
     } catch (error) {
       throw new Error(`Blueprint generation failed: ${error.message}`);
     }
@@ -103,26 +118,30 @@ export class GeminiClient {
     const prompt = repairPrompt(blueprint, errors, designPlan, allowlist, qualityScore);
     
     try {
-      const result = await this.requestWithRetry('repair', () =>
-        this.model.generateContent({
+      // Include JSON parsing in retry scope so malformed responses trigger retry
+      const repairedBlueprint = await this.requestWithRetry('repair', async () => {
+        // NOTE: We intentionally don't use responseSchema for the same reason as blueprints
+        const result = await this.model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 4096,
-            responseMimeType: 'application/json',
-            responseSchema: blueprintSchema
+            maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,
+            responseMimeType: 'application/json'
+            // Removed responseSchema - causes truncation with complex blueprints
           }
-        })
-      );
+        });
 
-      // Track token usage
-      if (result.response.usageMetadata) {
-        this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
-        this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
-      }
+        // Track token usage
+        if (result.response.usageMetadata) {
+          this.tokenUsage.totalPromptTokens += result.response.usageMetadata.promptTokenCount || 0;
+          this.tokenUsage.totalResponseTokens += result.response.usageMetadata.candidatesTokenCount || 0;
+        }
 
-      const text = result.response.text();
-      return this.parseJsonResponse(text, 'repair');
+        const text = result.response.text();
+        return this.parseJsonResponse(text, 'repair');
+      });
+
+      return repairedBlueprint;
     } catch (error) {
       throw new Error(`Blueprint repair failed: ${error.message}`);
     }
@@ -164,8 +183,10 @@ export class GeminiClient {
         if (!shouldRetry || attempt === SAFETY_LIMITS.llmMaxRetries - 1) {
           break;
         }
-        console.warn(`⚠ ${label} request failed, retrying (${attempt + 1}/${SAFETY_LIMITS.llmMaxRetries})`);
-        await this.sleep(SAFETY_LIMITS.llmRetryDelayMs);
+        // Exponential backoff: 1s, 2s, 4s...
+        const delay = SAFETY_LIMITS.llmRetryDelayMs * Math.pow(2, attempt);
+        console.warn(`⚠ ${label} request failed, retrying in ${delay}ms (${attempt + 1}/${SAFETY_LIMITS.llmMaxRetries})`);
+        await this.sleep(delay);
       }
     }
 
@@ -209,26 +230,135 @@ export class GeminiClient {
   }
 
   parseJsonResponse(text, label) {
+    // Step 1: Try direct parse
     try {
       return JSON.parse(text);
-    } catch (error) {
-      const cleaned = text
-        .replace(/```json/gi, '```')
-        .replace(/```/g, '')
-        .trim();
-
-      const firstBrace = cleaned.indexOf('{');
-      const lastBrace = cleaned.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        const candidate = cleaned.slice(firstBrace, lastBrace + 1);
-        try {
-          return JSON.parse(candidate);
-        } catch (innerError) {
-          throw new Error(`${label} JSON parse failed after extraction: ${innerError.message}`);
-        }
-      }
-
-      throw new Error(`${label} JSON parse failed: ${error.message}`);
+    } catch (directError) {
+      // Continue to cleaning steps
     }
+
+    // Step 2: Strip markdown code blocks and whitespace
+    let cleaned = text
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
+    // Step 3: Extract JSON object between first { and last }
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      this.logJsonDebug(label, text, null, 'No valid JSON object found (missing braces)');
+      throw new Error(`${label} JSON parse failed: no valid JSON object found`);
+    }
+
+    let candidate = cleaned.slice(firstBrace, lastBrace + 1);
+
+    // Step 4: Try parsing the extracted candidate
+    try {
+      return JSON.parse(candidate);
+    } catch (extractError) {
+      // Continue to repair attempts
+    }
+
+    // Step 5: Attempt common JSON repairs
+    const originalCandidate = candidate;
+    candidate = this.repairJson(candidate);
+
+    try {
+      return JSON.parse(candidate);
+    } catch (repairError) {
+      this.logJsonDebug(label, originalCandidate, repairError, 'JSON repair failed');
+      throw new Error(`${label} JSON parse failed after repair: ${repairError.message}`);
+    }
+  }
+
+  /**
+   * Log detailed debug info for JSON parse failures
+   */
+  logJsonDebug(label, json, error, reason) {
+    console.warn(`\n┌─────────────────────────────────────────────────────────`);
+    console.warn(`│ ⚠ ${label.toUpperCase()} JSON PARSE ERROR`);
+    console.warn(`├─────────────────────────────────────────────────────────`);
+    console.warn(`│ Reason: ${reason}`);
+    console.warn(`│ Response length: ${json?.length || 0} characters`);
+
+    if (error?.message) {
+      console.warn(`│ Error: ${error.message}`);
+      
+      // Try to extract position from error message
+      const posMatch = error.message.match(/position\s+(\d+)/i);
+      if (posMatch && json) {
+        const pos = parseInt(posMatch[1], 10);
+        const contextStart = Math.max(0, pos - 40);
+        const contextEnd = Math.min(json.length, pos + 40);
+        const before = json.slice(contextStart, pos);
+        const after = json.slice(pos, contextEnd);
+        const pointer = ' '.repeat(Math.min(40, pos - contextStart)) + '▲';
+        
+        console.warn(`│ Position: ${pos}`);
+        console.warn(`├─────────────────────────────────────────────────────────`);
+        console.warn(`│ Context around error:`);
+        console.warn(`│   ...${before}${after}...`);
+        console.warn(`│      ${pointer}`);
+      }
+    }
+
+    // Show start and end of the response
+    if (json && json.length > 0) {
+      console.warn(`├─────────────────────────────────────────────────────────`);
+      const startPreview = json.slice(0, 80).replace(/\n/g, '\\n');
+      const endPreview = json.slice(-80).replace(/\n/g, '\\n');
+      console.warn(`│ Start: ${startPreview}${json.length > 80 ? '...' : ''}`);
+      if (json.length > 160) {
+        console.warn(`│ End:   ...${endPreview}`);
+      }
+    }
+
+    console.warn(`└─────────────────────────────────────────────────────────\n`);
+  }
+
+  /**
+   * Attempt to repair common JSON malformations from LLM output
+   * @param {string} json - Potentially malformed JSON string
+   * @returns {string} - Repaired JSON string
+   */
+  repairJson(json) {
+    let repaired = json;
+
+    // Remove trailing commas before } or ]
+    repaired = repaired.replace(/,\s*([\]}])/g, '$1');
+
+    // Fix missing commas between properties: }" or ]" patterns
+    repaired = repaired.replace(/}(\s*)"(\w)/g, '},$1"$2');
+    repaired = repaired.replace(/](\s*)"(\w)/g, '],$1"$2');
+
+    // Fix unescaped newlines in strings (replace with space)
+    repaired = repaired.replace(/([^\\])\\n/g, '$1 ');
+
+    // Try to balance braces if truncated
+    const openBraces = (repaired.match(/{/g) || []).length;
+    const closeBraces = (repaired.match(/}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/]/g) || []).length;
+
+    // If more opens than closes, try to close them
+    if (openBrackets > closeBrackets) {
+      // Check if we're in the middle of an array - try to close it
+      const lastChar = repaired.trim().slice(-1);
+      if (lastChar !== ']' && lastChar !== '}') {
+        // Might be truncated mid-value, try to close gracefully
+        // Remove partial last element if it looks incomplete
+        repaired = repaired.replace(/,\s*"[^"]*$/, ''); // Remove incomplete string
+        repaired = repaired.replace(/,\s*{[^}]*$/, ''); // Remove incomplete object
+      }
+      repaired += ']'.repeat(openBrackets - closeBrackets);
+    }
+
+    if (openBraces > closeBraces) {
+      repaired += '}'.repeat(openBraces - closeBraces);
+    }
+
+    return repaired;
   }
 }

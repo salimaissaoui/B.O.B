@@ -20,6 +20,9 @@ export class WorldEditExecutor {
     // P0 Fix: Pending response handlers for command acknowledgment
     this.pendingResponse = null;
 
+    // Track unconfirmed operations (no acknowledgment received)
+    this.unconfirmedOps = [];
+
     // Listen for chat messages (spam warnings + command responses)
     if (bot && typeof bot.on === 'function') {
       bot.on('message', (message) => {
@@ -194,18 +197,27 @@ export class WorldEditExecutor {
       responsePromise = this.waitForResponse(
         (text) => {
           const lower = text.toLowerCase();
-          // WorldEdit block change responses:
+          // WorldEdit/FAWE block change responses:
           // "X blocks have been changed"
           // "X block(s) changed"
+          // "0 blocks changed" (FAWE)
+          // "No blocks in region"
           // "Operation completed"
-          // Error patterns: "Unknown command", "No permission"
+          // Error patterns: "Unknown command", "No permission", "Selection too large"
           return /\d+\s*block/.test(lower) ||
                  lower.includes('changed') ||
+                 lower.includes('affected') ||
                  lower.includes('operation complete') ||
+                 lower.includes('no blocks') ||
                  lower.includes('unknown command') ||
                  lower.includes('no permission') ||
+                 lower.includes('don\'t have permission') ||
+                 lower.includes('not permitted') ||
+                 lower.includes('selection too large') ||
+                 lower.includes('maximum') ||
                  lower.includes('error') ||
-                 lower.includes('cannot');
+                 lower.includes('cannot') ||
+                 lower.includes('failed');
         },
         options.acknowledgmentTimeout || 5000
       );
@@ -232,18 +244,28 @@ export class WorldEditExecutor {
       if (response) {
         const lower = response.toLowerCase();
 
-        // Check for error responses
-        if (lower.includes('unknown command') ||
-            lower.includes('no permission') ||
-            lower.includes('cannot')) {
-          const error = new Error(`WorldEdit command failed: ${response}`);
+        // Classify and handle error responses
+        const errorInfo = this.classifyError(response, command);
+        if (errorInfo) {
+          const error = new Error(errorInfo.message);
           error.isWorldEditError = true;
+          error.errorType = errorInfo.type;
+          error.suggestedFix = errorInfo.suggestedFix;
+          error.command = command;
+          console.error(`    ✗ WorldEdit error: ${errorInfo.type}`);
+          console.error(`      Command: ${command}`);
+          console.error(`      Suggestion: ${errorInfo.suggestedFix}`);
           throw error;
         }
 
-        // Parse block count if available
+        // Check for "0 blocks changed" or "No blocks in region" (not an error, but worth noting)
         const blockMatch = response.match(/(\d+)\s*block/i);
         const blocksChanged = blockMatch ? parseInt(blockMatch[1], 10) : null;
+
+        if (blocksChanged === 0 || lower.includes('no blocks')) {
+          console.warn(`    ⚠ Operation completed but changed 0 blocks: ${command}`);
+          console.warn(`      This may indicate selection issues or empty region`);
+        }
 
         console.log(`    → ${response.substring(0, 50)}${response.length > 50 ? '...' : ''}`);
 
@@ -251,11 +273,19 @@ export class WorldEditExecutor {
           success: true,
           command,
           response,
-          blocksChanged
+          blocksChanged,
+          confirmed: true
         };
       } else {
         // No response - command may have worked but no feedback
         console.warn(`    ⚠ No acknowledgment received for: ${command}`);
+        console.warn(`      This could indicate: plugin lag, chat spam filter, or command failure`);
+
+        // Track unconfirmed operation
+        this.unconfirmedOps.push({
+          command,
+          timestamp: Date.now()
+        });
 
         // Don't fail, but flag as unconfirmed
         return {
@@ -272,6 +302,55 @@ export class WorldEditExecutor {
     await this.sleep(executionDelay);
 
     return { success: true, command, confirmed: true };
+  }
+
+  /**
+   * Classify error response and provide suggested fix
+   */
+  classifyError(response, command) {
+    const lower = response.toLowerCase();
+
+    // Permission errors
+    if (lower.includes('no permission') ||
+        lower.includes('don\'t have permission') ||
+        lower.includes('not permitted')) {
+      return {
+        type: 'PERMISSION_DENIED',
+        message: `WorldEdit permission denied: ${response}`,
+        suggestedFix: 'Grant WorldEdit permissions to the bot user. Required: worldedit.selection.*, worldedit.region.*, worldedit.generation.*'
+      };
+    }
+
+    // Unknown command (plugin not installed or command not available)
+    if (lower.includes('unknown command')) {
+      return {
+        type: 'PLUGIN_NOT_FOUND',
+        message: `WorldEdit command not recognized: ${response}`,
+        suggestedFix: 'Ensure WorldEdit/FAWE plugin is installed and loaded. Check //version command.'
+      };
+    }
+
+    // Selection too large
+    if (lower.includes('selection too large') ||
+        lower.includes('maximum') ||
+        lower.includes('exceeds limit')) {
+      return {
+        type: 'SELECTION_TOO_LARGE',
+        message: `WorldEdit selection exceeds server limits: ${response}`,
+        suggestedFix: 'Reduce selection size or increase server WorldEdit limits. Current B.O.B limits: 50k blocks, 50x50x50 dimensions.'
+      };
+    }
+
+    // Generic errors
+    if (lower.includes('error') || lower.includes('failed') || lower.includes('cannot')) {
+      return {
+        type: 'COMMAND_FAILED',
+        message: `WorldEdit command failed: ${response}`,
+        suggestedFix: 'Check command syntax, selection state, and server logs for details.'
+      };
+    }
+
+    return null; // No error detected
   }
 
   /**
@@ -443,6 +522,8 @@ export class WorldEditExecutor {
     this.backoffMultiplier = 1.0;
     // P0 Fix: Clear command history for new build
     this.commandHistory = [];
+    // Clear unconfirmed operations
+    this.unconfirmedOps = [];
   }
 
   /**
@@ -463,7 +544,9 @@ export class WorldEditExecutor {
       spamDetected: this.spamDetected,
       backoffMultiplier: this.backoffMultiplier,
       // P0 Fix: Include command history count
-      commandHistoryCount: this.commandHistory.length
+      commandHistoryCount: this.commandHistory.length,
+      // Track unconfirmed operations
+      unconfirmedOps: this.unconfirmedOps.length
     };
   }
 

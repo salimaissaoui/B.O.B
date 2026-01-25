@@ -8,8 +8,9 @@ export const SAFETY_LIMITS = {
   buildRateLimit: 50,
   maxRetries: 3,
   llmTimeoutMs: 120000,
-  llmMaxRetries: 3,
-  llmRetryDelayMs: 750,
+  llmMaxRetries: 5,
+  llmRetryDelayMs: 1000,
+  llmMaxOutputTokens: 8192,
   chatCommandMinDelayMs: 500,
   dayDuration: 600,  // seconds (30 in-game minutes)
   nightDuration: 90,

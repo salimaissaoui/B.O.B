@@ -145,7 +145,7 @@ describe('WorldEditExecutor P0 Fixes', () => {
 
       await expect(
         executor.executeCommand('//set stone', { skipValidation: true })
-      ).rejects.toThrow(/command failed/i);
+      ).rejects.toThrow(/permission denied/i);
     });
 
     test('should throw on "unknown command" response', async () => {
@@ -159,7 +159,7 @@ describe('WorldEditExecutor P0 Fixes', () => {
 
       await expect(
         executor.executeCommand('//set stone', { skipValidation: true })
-      ).rejects.toThrow(/command failed/i);
+      ).rejects.toThrow(/not recognized/i);
     });
 
     test('should return unconfirmed when no response received', async () => {
