@@ -6,7 +6,7 @@ export class GeminiClient {
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is required');
     }
-    
+
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
       model: 'gemini-2.0-flash'
@@ -67,6 +67,64 @@ export class GeminiClient {
       return content;
     } catch (error) {
       throw new Error(`Content generation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Stream content generation with progress callback
+   * @param {Object} options - Generation options
+   * @param {string} options.prompt - The prompt to send to the LLM
+   * @param {number} options.temperature - Temperature setting (0.0 to 1.0)
+   * @param {Function} options.onProgress - Callback for progress updates (optional)
+   * @returns {Promise<Object>} - Generated content
+   */
+  async streamContent(options) {
+    const {
+      prompt,
+      temperature = 0.5,
+      onProgress = null
+    } = options;
+
+    try {
+      let fullText = '';
+      let chunkCount = 0;
+
+      const result = await this.model.generateContentStream({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature,
+          maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,
+          responseMimeType: 'application/json'
+        }
+      });
+
+      // Process stream chunks
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        chunkCount++;
+
+        // Call progress callback if provided
+        if (onProgress && chunkCount % 5 === 0) {
+          onProgress({
+            chunksReceived: chunkCount,
+            bytesReceived: fullText.length,
+            partial: fullText
+          });
+        }
+      }
+
+      // Get final response for token tracking
+      const response = await result.response;
+      if (response.usageMetadata) {
+        this.tokenUsage.totalPromptTokens += response.usageMetadata.promptTokenCount || 0;
+        this.tokenUsage.totalResponseTokens += response.usageMetadata.candidatesTokenCount || 0;
+      }
+
+      // Parse final JSON
+      return this.parseJsonResponse(fullText, 'streaming generation');
+    } catch (error) {
+      throw new Error(`Streaming generation failed: ${error.message}`);
     }
   }
 
@@ -251,7 +309,7 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
     // Step 3: Extract JSON object between first { and last }
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
-    
+
     if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
       this.logJsonDebug(label, text, null, 'No valid JSON object found (missing braces)');
       throw new Error(`${label} JSON parse failed: no valid JSON object found`);
@@ -290,7 +348,7 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
 
     if (error?.message) {
       console.warn(`│ Error: ${error.message}`);
-      
+
       // Try to extract position from error message
       const posMatch = error.message.match(/position\s+(\d+)/i);
       if (posMatch && json) {
@@ -300,7 +358,7 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
         const before = json.slice(contextStart, pos);
         const after = json.slice(pos, contextEnd);
         const pointer = ' '.repeat(Math.min(40, pos - contextStart)) + '▲';
-        
+
         console.warn(`│ Position: ${pos}`);
         console.warn(`├─────────────────────────────────────────────────────────`);
         console.warn(`│ Context around error:`);

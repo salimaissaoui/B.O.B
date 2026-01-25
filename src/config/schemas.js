@@ -86,10 +86,19 @@ export const blueprintSchema = {
               // Detail operations (new)
               "stairs", "slab", "fence_connect", "door",
               // Complex operations (new)
-              "spiral_staircase", "balcony", "roof_hip"
+              "spiral_staircase", "balcony", "roof_hip", "pixel_art",
+              // System operations
+              "site_prep", "clear_area"
             ]
           },
           block: { type: "string" },
+          grid: {
+            type: "array",
+            items: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
           from: {
             type: "object",
             properties: {
@@ -182,7 +191,7 @@ export const blueprintSchema = {
             }
           }
         },
-        required: ["op", "block"]
+        required: ["op"]
       }
     }
   },

@@ -222,7 +222,9 @@ ${getOperationReference()}
 CRITICAL RULES:
 - Coordinates are relative (start at 0,0,0)
 - Include ALL required features: ${hints.features.join(', ')}
-- Minimum ${creativeBuild ? '8' : '10'} steps for quality builds
+- Minimum ${creativeBuild ? '15' : '20'} steps for quality builds (prefer more details)
+- LAYER YOUR BUILDS: Base shape -> Secondary shapes -> Details/Trim -> Interior
+- AVOID flat walls: Use depth, pillars, and window sills to add texture
 - Output ONLY valid JSON (no markdown, no explanations)
 - Complete the entire JSON (don't truncate)
 

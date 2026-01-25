@@ -1,5 +1,6 @@
 import { GeminiClient } from '../llm/gemini-client.js';
 import { unifiedBlueprintPrompt } from '../llm/prompts/unified-blueprint.js';
+import { optimizeBlueprint } from './optimization/layering.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
@@ -40,13 +41,23 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     // Generate unified prompt (design + blueprint in one)
     const prompt = unifiedBlueprintPrompt(analysis, worldEditAvailable);
 
-    // Call LLM with unified prompt
+    // Call LLM with streaming for real-time feedback
     const client = new GeminiClient(apiKey);
-    const blueprint = await client.generateContent({
+    console.log('🤖 Generating blueprint (streaming)...');
+
+    let progressDots = 0;
+    let blueprint = await client.streamContent({
       prompt,
       temperature: 0.5,
-      responseFormat: 'json'
+      onProgress: (progress) => {
+        progressDots++;
+        // Show live progress every few chunks
+        process.stdout.write(`\r  Thinking... ${'.'.repeat(progressDots % 10 + 1).padEnd(10)} (${Math.round(progress.bytesReceived / 1024)}KB)`);
+      }
     });
+
+    // Clear progress line
+    process.stdout.write('\r' + ' '.repeat(60) + '\r');
 
     // Basic structure validation
     if (!blueprint.size || !blueprint.palette || !blueprint.steps) {
@@ -61,6 +72,16 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     blueprint.generationMethod = 'unified_llm';
     blueprint.buildType = buildType;
     blueprint.theme = analysis.theme?.theme || 'default';
+
+    // OPTIMIZATION: Reorder steps for structural integrity (bottom-up)
+    blueprint = optimizeBlueprint(blueprint);
+
+    // FEATURE: Always add site prep as first step
+    if (blueprint.steps[0].op !== 'site_prep') {
+      blueprint.steps.unshift({
+        op: 'site_prep'
+      });
+    }
 
     if (DEBUG) {
       console.log('\n┌─────────────────────────────────────────────────────────');

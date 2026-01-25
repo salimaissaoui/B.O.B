@@ -68,6 +68,15 @@ export const OPERATIONS_REGISTRY = {
     description: 'Creates a flat roof'
   },
 
+  site_prep: {
+    handler: 'clear-area',
+    type: 'system',
+    avgBlocksPerOp: 0,
+    complexity: 1,
+    requiredParams: [],
+    description: 'Clears the build area before starting'
+  },
+
   // WorldEdit operations (new)
   we_fill: {
     handler: 'we-fill',
@@ -202,6 +211,15 @@ export const OPERATIONS_REGISTRY = {
     complexity: 4,
     requiredParams: ['block', 'from', 'to'],
     description: 'Creates a four-sided hip roof'
+  },
+
+  pixel_art: {
+    handler: 'pixel-art',
+    type: 'vanilla',
+    avgBlocksPerOp: 100,
+    complexity: 3,
+    requiredParams: ['base', 'grid'],
+    description: 'Creates 2D pixel art from a grid'
   }
 };
 

@@ -107,7 +107,7 @@ describe('Schema Validation', () => {
     });
 
     test('should accept all valid operations', () => {
-      const operations = ['fill', 'hollow_box', 'set', 'line', 'window_strip', 'roof_gable', 'roof_flat'];
+      const operations = ['fill', 'hollow_box', 'set', 'line', 'window_strip', 'roof_gable', 'roof_flat', 'pixel_art'];
 
       operations.forEach(op => {
         const blueprint = {

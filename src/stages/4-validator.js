@@ -11,7 +11,7 @@ const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
 // Creative build types where allowlist is optional (LLM picks blocks freely)
 const CREATIVE_BUILD_TYPES = [
-  'pixel_art', 'statue', 'character', 'art', 'logo', 
+  'pixel_art', 'statue', 'character', 'art', 'logo',
   'design', 'custom', 'sculpture', 'monument', 'figure'
 ];
 
@@ -99,7 +99,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
         console.log(`  WorldEdit blocks: ${weValidation.stats.worldEditBlocks}`);
       }
       console.log(`  Total operations: ${currentBlueprint.steps.length}`);
-      
+
       if (DEBUG) {
         console.log('\n┌─────────────────────────────────────────────────────────');
         console.log('│ DEBUG: Validation PASSED');
@@ -109,7 +109,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
         console.log(`│ Quality bonuses: ${qualityScore.bonuses?.join(', ') || 'none'}`);
         console.log('└─────────────────────────────────────────────────────────\n');
       }
-      
+
       return {
         valid: true,
         blueprint: currentBlueprint,
@@ -118,11 +118,10 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
         worldedit: weValidation.stats
       };
     }
-    
-    // If errors and retries available, attempt repair
+
     if (retries < SAFETY_LIMITS.maxRetries - 1) {
       console.log(`⚠ Validation failed (attempt ${retries + 1}/${SAFETY_LIMITS.maxRetries})`);
-      console.log(`  Errors: ${errors.length} issues found`);
+      errors.forEach(err => console.log(`   - ${err}`));
       if (qualityScore) {
         console.log(`  Quality score: ${(qualityScore.score * 100).toFixed(1)}%`);
       }
@@ -156,7 +155,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
           qualityScore
         );
         retries++;
-        
+
         if (DEBUG) {
           console.log('\n┌─────────────────────────────────────────────────────────');
           console.log('│ DEBUG: Repair Response Received');
@@ -180,7 +179,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       break;
     }
   }
-  
+
   // Final validation failed
   const finalErrors = [];
   if (!validateBlueprintSchema(currentBlueprint)) {
@@ -197,14 +196,16 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
   finalErrors.push(...validateCoordinateBounds(currentBlueprint, analysis));
   finalErrors.push(...validateFeatures(currentBlueprint, analysis));
   finalErrors.push(...validateLimits(currentBlueprint));
-  
+
   console.error('✗ Blueprint validation failed after all retries');
-  console.error(`  Final errors: ${finalErrors.join(', ')}`);
-  
-  return { 
-    valid: false, 
-    blueprint: currentBlueprint, 
-    errors: finalErrors 
+  console.error('✗ Blueprint validation failed after all retries');
+  console.error('  Final errors:');
+  finalErrors.forEach(err => console.error(`   - ${err}`));
+
+  return {
+    valid: false,
+    blueprint: currentBlueprint,
+    errors: finalErrors
   };
 }
 
@@ -271,14 +272,14 @@ function validateStepParams(step, meta, label) {
  */
 function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
   const invalidBlocks = [];
-  
+
   // Check palette
   for (const block of blueprint.palette || []) {
     if (!isValidBlock(block, minecraftVersion)) {
       invalidBlocks.push(block);
     }
   }
-  
+
   // Check steps
   for (const step of blueprint.steps || []) {
     if (step.block && !isValidBlock(step.block, minecraftVersion)) {
@@ -287,7 +288,7 @@ function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
       }
     }
   }
-  
+
   return invalidBlocks;
 }
 
@@ -397,8 +398,8 @@ function validateCoordinateBounds(blueprint, analysis) {
  */
 function isWithinBounds(coord, width, height, depth) {
   return coord.x >= 0 && coord.x < width &&
-         coord.y >= 0 && coord.y < height &&
-         coord.z >= 0 && coord.z < depth;
+    coord.y >= 0 && coord.y < height &&
+    coord.z >= 0 && coord.z < depth;
 }
 
 /**
@@ -428,7 +429,7 @@ function validateFeatures(blueprint, analysis) {
   // Check for windows (should have window_strip or set operations)
   if (requiredFeatures.includes('windows')) {
     const hasWindows = stepOps.includes('window_strip') ||
-                       stepOps.filter(op => op === 'set').length > 1;
+      stepOps.filter(op => op === 'set').length > 1;
     if (!hasWindows) {
       errors.push('Missing windows feature');
     }
@@ -437,8 +438,8 @@ function validateFeatures(blueprint, analysis) {
   // Check for roof
   if (requiredFeatures.includes('roof')) {
     const hasRoof = stepOps.includes('roof_gable') ||
-                    stepOps.includes('roof_hip') ||
-                    stepOps.includes('roof_flat');
+      stepOps.includes('roof_hip') ||
+      stepOps.includes('roof_flat');
     if (!hasRoof) {
       errors.push('Missing roof feature');
     }
@@ -452,12 +453,12 @@ function validateFeatures(blueprint, analysis) {
  */
 function validateLimits(blueprint) {
   const errors = [];
-  
+
   // Check step count (rough proxy for complexity)
   if ((blueprint.steps || []).length > SAFETY_LIMITS.maxSteps) {
     errors.push(`Too many steps (>${SAFETY_LIMITS.maxSteps})`);
   }
-  
+
   // Check total volume
   const { width, height, depth } = blueprint.size || {};
   if (width && height && depth) {
@@ -477,11 +478,11 @@ function validateLimits(blueprint) {
   if (height && height > SAFETY_LIMITS.maxHeight) {
     errors.push(`Height exceeds limit (${height} > ${SAFETY_LIMITS.maxHeight})`);
   }
-  
+
   // Check palette size
   if ((blueprint.palette || []).length > SAFETY_LIMITS.maxUniqueBlocks) {
     errors.push(`Too many unique blocks in palette (${blueprint.palette.length} > ${SAFETY_LIMITS.maxUniqueBlocks})`);
   }
-  
+
   return errors;
 }

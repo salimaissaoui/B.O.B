@@ -169,6 +169,33 @@ export class Builder {
         const step = blueprint.steps[i];
         console.log(`  Step ${i + 1}/${blueprint.steps.length}: ${step.op}`);
 
+        if (step.op === 'site_prep' || step.op === 'clear_area') {
+          console.log('  → Clearing build area...');
+          try {
+            // Use WorldEdit if available for fast clearing
+            if (this.worldEditEnabled) {
+              const border = 1; // Clear 1 block wider border
+              const width = blueprint.size?.width || 10;
+              const height = blueprint.size?.height || 10;
+              const depth = blueprint.size?.depth || 10;
+
+              // Clear from slightly below start up to full height
+              const from = { x: startPos.x - border, y: startPos.y, z: startPos.z - border };
+              const to = { x: startPos.x + width + border, y: startPos.y + height, z: startPos.z + depth + border };
+
+              await this.worldEdit.createSelection(from, to);
+              await this.worldEdit.fillSelection('air');
+              await this.worldEdit.clearSelection();
+              console.log('    ✓ Area cleared (WorldEdit)');
+            } else {
+              console.log('    ⚠ Site prep skipped (WorldEdit disabled - manual clearing recommended)');
+            }
+          } catch (e) {
+            console.warn(`    ⚠ Site prep failed: ${e.message}`);
+          }
+          continue; // Skip vanilla execution logic
+        }
+
         // Check if this is a WorldEdit operation
         if (isWorldEditOperation(step.op)) {
           try {
@@ -506,6 +533,52 @@ export class Builder {
       return;
     }
 
+    // OPTIMIZATION: Auto-Batching for WorldEdit
+    // Detects continuous runs of blocks and uses WorldEdit to place them instantly
+    if (this.worldEditEnabled && blocks.length > 5) {
+      try {
+        const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(blocks, startPos);
+
+        if (weOperations.length > 0) {
+          console.log(`    → Optimized: Batching ${blocks.length - remainingBlocks.length} blocks into ${weOperations.length} WorldEdit ops`);
+
+          for (const op of weOperations) {
+            if (!this.building) break;
+
+            // Execute WE op (selection + set)
+            // Coordinates are already absolute in the op
+            const from = op.from;
+            const to = op.to;
+
+            await this.worldEdit.createSelection(from, to);
+            await this.worldEdit.fillSelection(op.block);
+
+            // Track stats
+            this.currentBuild.blocksPlaced += op.count;
+            this.currentBuild.worldEditOpsExecuted++;
+
+            // Add to WE history
+            this.worldEditHistory.push({
+              step: { op: 'we_fill', block: op.block, ...op }, // Mock step for history
+              startPos: { x: 0, y: 0, z: 0 }, // Relative to 0 since ops are absolute
+              timestamp: Date.now()
+            });
+
+            // Rate limiting: Delay between batches to prevent server kick (ECONNRESET)
+            // 200ms was too fast for some servers.
+            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 500);
+          }
+
+          // Continue with only the non-batched blocks
+          blocks = remainingBlocks;
+          await this.worldEdit.clearSelection();
+        }
+      } catch (batchError) {
+        console.warn(`    ⚠ Batching optimization failed, falling back to single blocks: ${batchError.message}`);
+        // Fallback: blocks array remains unchanged, process singly
+      }
+    }
+
     // Execute block placements with rate limiting
     if (this.currentBuild.blocksPlaced + blocks.length > SAFETY_LIMITS.maxBlocks) {
       throw new Error(`Build exceeds max block limit (${SAFETY_LIMITS.maxBlocks})`);
@@ -539,6 +612,200 @@ export class Builder {
         console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z}: ${placeError.message}`);
       }
     }
+  }
+
+  /**
+  * Advanced Batching: Decomposes point clouds into Maximal 3D/2D Rectangles
+  * Transforms thousands of single blocks into a few WorldEdit region operations.
+  */
+  batchBlocksToWorldEdit(blocks, startPos) {
+    const weOperations = [];
+    const usedIndices = new Set();
+    const MIN_BATCH_SIZE = 6; // Only batch if rectangle > 6 blocks (avoids tiny regions overhead)
+
+    // 1. Group by Block Type
+    const blocksByType = {};
+    blocks.forEach((b, i) => {
+      if (!blocksByType[b.block]) blocksByType[b.block] = [];
+      blocksByType[b.block].push({ ...b, index: i });
+    });
+
+    // 2. Process each block type
+    for (const [blockType, typeBlocks] of Object.entries(blocksByType)) {
+      // We try to find rects in 3 primary planes: XY (vertical-Z), YZ (vertical-X), XZ (horizontal)
+      // This covers walls and floors efficiently.
+
+      // Group by Plane Z (XY plane slices)
+      const zSlices = this.groupByPlane(typeBlocks, 'z');
+      this.processSlices(zSlices, 'xy', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
+
+      // Group remaining by Plane X (YZ plane slices) -> e.g. Side walls
+      const remainingX = typeBlocks.filter(b => !usedIndices.has(b.index));
+      const xSlices = this.groupByPlane(remainingX, 'x');
+      this.processSlices(xSlices, 'yz', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
+
+      // Group remaining by Plane Y (XZ plane slices) -> e.g. Floors
+      const remainingY = typeBlocks.filter(b => !usedIndices.has(b.index));
+      const ySlices = this.groupByPlane(remainingY, 'y');
+      this.processSlices(ySlices, 'xz', blockType, startPos, weOperations, usedIndices, MIN_BATCH_SIZE);
+    }
+
+    const remainingBlocks = blocks.filter((_, i) => !usedIndices.has(i));
+    return { weOperations, remainingBlocks };
+  }
+
+  groupByPlane(blocks, constantAxis) {
+    const groups = {};
+    for (const b of blocks) {
+      const key = b[constantAxis];
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(b);
+    }
+    return groups;
+  }
+
+  processSlices(slices, planeType, blockType, startPos, weOps, usedIndices, minSize) {
+    for (const [level, points] of Object.entries(slices)) {
+      // Map to 2D grid points
+      const gridPoints = points.map(p => {
+        let u, v;
+        if (planeType === 'xy') { u = p.x; v = p.y; }
+        else if (planeType === 'yz') { u = p.z; v = p.y; }
+        else { u = p.x; v = p.z; } // xz
+        return { u, v, index: p.index };
+      });
+
+      // Find maximal rectangles in this 2D slice
+      const rects = this.findMaximalRectangles(gridPoints);
+
+      for (const rect of rects) {
+        if (rect.count >= minSize) {
+          // Convert back to 3D coords
+          let from, to;
+          const lvl = parseInt(level);
+
+          if (planeType === 'xy') {
+            from = { x: rect.u, y: rect.v, z: lvl };
+            to = { x: rect.u + rect.w - 1, y: rect.v + rect.h - 1, z: lvl };
+          } else if (planeType === 'yz') {
+            from = { x: lvl, y: rect.v, z: rect.u };
+            to = { x: lvl, y: rect.v + rect.h - 1, z: rect.u + rect.w - 1 };
+          } else { // xz
+            from = { x: rect.u, y: lvl, z: rect.v };
+            to = { x: rect.u + rect.w - 1, y: lvl, z: rect.v + rect.h - 1 };
+          }
+
+          // Adjust to absolute coordinates
+          weOps.push({
+            from: { x: startPos.x + from.x, y: startPos.y + from.y, z: startPos.z + from.z },
+            to: { x: startPos.x + to.x, y: startPos.y + to.y, z: startPos.z + to.z },
+            block: blockType,
+            count: rect.count
+          });
+
+          // Mark used
+          rect.indices.forEach(idx => usedIndices.add(idx));
+        }
+      }
+    }
+  }
+
+  /**
+   * Greedy algorithm to decompose a 2D point cloud into rectangles
+   */
+  findMaximalRectangles(points) {
+    // 1. Build a sparse grid map
+    const grid = {};
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+
+    for (const p of points) {
+      if (!grid[p.v]) grid[p.v] = {};
+      grid[p.v][p.u] = p.index;
+      minU = Math.min(minU, p.u);
+      maxU = Math.max(maxU, p.u);
+      minV = Math.min(minV, p.v);
+      maxV = Math.max(maxV, p.v);
+    }
+
+    const rects = [];
+
+    // 2. Iterate through grid to find rects
+    // Simple greedy approach: find first point, expand width, expand height, consume.
+    // Repeat until no points left.
+    // Ideally we want to find largest rects first, but simple iteration works well for pixel art.
+
+    // Sort rows for consistency
+    const rows = Object.keys(grid).map(Number).sort((a, b) => a - b);
+
+    for (const v of rows) {
+      if (!grid[v]) continue;
+      const cols = Object.keys(grid[v]).map(Number).sort((a, b) => a - b);
+
+      for (const u of cols) {
+        if (grid[v] && grid[v][u] !== undefined) {
+          // Found a start point. Attempt to expand.
+          const indices = [grid[v][u]];
+          let width = 1;
+          let height = 1;
+
+          // Expand Right (Width)
+          while (grid[v][u + width] !== undefined) {
+            indices.push(grid[v][u + width]);
+            width++;
+          }
+
+          // Expand Down (Height)
+          // Check if the entire row of width 'width' exists below
+          let canExpand = true;
+          while (canExpand) {
+            const checkV = v + height;
+            if (!grid[checkV]) { canExpand = false; break; }
+
+            const rowIndices = [];
+            for (let w = 0; w < width; w++) {
+              if (grid[checkV][u + w] === undefined) {
+                canExpand = false;
+                break;
+              }
+              rowIndices.push(grid[checkV][u + w]);
+            }
+
+            if (canExpand) {
+              indices.push(...rowIndices);
+              height++;
+            }
+          }
+
+          // Save Rect
+          rects.push({ u, v, w: width, h: height, count: indices.length, indices });
+
+          // "Consume" points from grid so they aren't used again
+          for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+              delete grid[v + h][u + w];
+            }
+          }
+        }
+      }
+    }
+
+    return rects;
+  }
+
+  createRunOp(run, blockType, startPos, weOperations, usedIndices) {
+    const start = run[0];
+    const end = run[run.length - 1];
+
+    // Mark indices as used
+    run.forEach(b => usedIndices.add(b.index));
+
+    // Create absolute coord op
+    weOperations.push({
+      from: { x: startPos.x + start.x, y: startPos.y + start.y, z: startPos.z + start.z },
+      to: { x: startPos.x + end.x, y: startPos.y + end.y, z: startPos.z + end.z },
+      block: blockType,
+      count: run.length
+    });
   }
 
   /**
