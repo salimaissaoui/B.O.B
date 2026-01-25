@@ -17,8 +17,13 @@ export function createBot(config) {
     hideErrors: false
   });
 
-  // Load pathfinder plugin
-  bot.loadPlugin(pathfinder);
+  // Load pathfinder plugin with error handling
+  try {
+    bot.loadPlugin(pathfinder);
+  } catch (err) {
+    console.warn('⚠ Failed to load pathfinder plugin:', err.message);
+    console.warn('  Bot will function without pathfinding capabilities');
+  }
 
   bot.on('login', () => {
     console.log('✓ B.O.B connected to Minecraft!');

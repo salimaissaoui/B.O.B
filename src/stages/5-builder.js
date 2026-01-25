@@ -319,7 +319,11 @@ export class Builder {
         await this.sleep(50); // Small delay for block update
         const placedBlock = this.bot.blockAt(new Vec3(pos.x, pos.y, pos.z));
         
-        if (placedBlock && placedBlock.name === blockType) {
+        // Handle block states - compare base block name (before '[' if present)
+        const expectedBlockName = blockType.split('[')[0];
+        const actualBlockName = placedBlock ? placedBlock.name : 'air';
+        
+        if (actualBlockName === expectedBlockName || actualBlockName === blockType) {
           return true; // Success
         }
         
@@ -777,6 +781,8 @@ export class Builder {
       const rate = this.currentBuild.blocksPlaced / elapsed || 0;
       
       // Estimate remaining time (rough estimate)
+      // Note: ETA doesn't account for WorldEdit operations which are typically much faster
+      // than individual block placement. Actual completion may be faster than estimated.
       const estimatedTotal = this.currentBuild.blueprint?.steps?.length || totalBlocks;
       const remaining = Math.max(0, estimatedTotal - totalBlocks);
       const eta = remaining > 0 && rate > 0 ? remaining / rate : 0;

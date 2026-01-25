@@ -44,7 +44,9 @@ export function calculateMaterialRequirements(blueprint) {
       if (blueprint.palette && blueprint.palette[key]) {
         return blueprint.palette[key];
       }
-      return 'stone'; // Fallback
+      // Fallback if palette key missing - log warning and use stone as safe default
+      console.warn(`Missing palette variable: ${key}, using 'stone' as fallback`);
+      return 'stone';
     }
     return blockName;
   };
