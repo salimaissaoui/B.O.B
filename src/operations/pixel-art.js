@@ -87,24 +87,93 @@ export function pixelArt(step) {
     console.warn('⚠ Pixel art uses compressed format but no legend provided, blocks may not render');
   }
 
+  // Auto-Frame logic: If frame requested, pad grid with border blocks
+  if (step.frame) {
+    const frameBlock = step.frameBlock || 'black_wool';
+    const newWidth = width + 2;
+
+    // Add Top Border
+    const borderRow = isStringGrid ? frameBlock[0].repeat(newWidth) : Array(newWidth).fill(frameBlock);
+
+    // Modify existing rows
+    for (let i = 0; i < grid.length; i++) {
+      if (isStringGrid) {
+        grid[i] = frameBlock[0] + grid[i] + frameBlock[0];
+      } else {
+        grid[i].unshift(frameBlock);
+        grid[i].push(frameBlock);
+      }
+    }
+
+    // Add Top/Bottom
+    // Wait, adding rows to grid array logic needs care if string vs array
+    // Actually, simpler to just add frame blocks directly to `blocks` list by iterating -1 to width
+    // But that requires knowing the coordinate math.
+    // Let's stick to the grid manipulation if possible, or just post-processing.
+
+    // Actually, just let's add a "Background/Frame" pass.
+    // Iterate -1 to Width, -1 to Height. If it's a border coordinate, place frame block.
+  }
+
+  // Pre-calculate frame bounds if needed
+  const frameBlock = step.frame || 'black_wool'; // Default frame
+  const useFrame = step.addFrame === true;
+
   console.log(`  Pixel art grid: ${width}x${height}, legend: ${legend ? 'yes' : 'no'}`);
 
   // Direction mappings... (omitted)
 
-  for (let row = 0; row < height; row++) {
-    const gridRow = grid[row];
-    // Handle row being string or array
+  for (let row = -1; row <= height; row++) {
+    for (let col = -1; col <= width; col++) {
+      // ... (logic below)
+    }
+  }
+  // Wait, I should not rewrite the whole loop structure inside a replace.
+  // I will append a "Frame Pass" AFTER the main loop.
+
+  // ... (Existing Loop) ...
+
+  // POST-LOOP: Frame Generation
+  if (step.useFrame) {
+    const frameMat = step.frameBlock || 'black_wool';
+    // Generate border rect
+    // Top/Bottom rows
+    for (let c = -1; c <= width; c++) {
+      // Top (row -1)
+      // Bottom (row height)
+      // Need to calculate absolute coordinates using same logic as main loop
+      // ...
+    }
+  }
+
+  // If framing, expand iteration bounds by 1 in all directions
+  const rowStart = useFrame ? -1 : 0;
+  const rowEnd = useFrame ? height : height - 1;
+  const colStart = useFrame ? -1 : 0;
+  const colEnd = useFrame ? width : width - 1;
+
+  for (let row = rowStart; row <= rowEnd; row++) {
+    const isFrameRow = row < 0 || row >= height;
+    const gridRow = !isFrameRow ? grid[row] : null;
     const isStringRow = typeof gridRow === 'string';
 
-    for (let col = 0; col < width; col++) {
-      let rawSymbol = isStringRow ? gridRow[col] : gridRow[col];
-
-      // If we have a legend, resolve the symbol to a block name
+    for (let col = colStart; col <= colEnd; col++) {
+      const isFrameCol = col < 0 || col >= width;
       let block;
-      if (legend && rawSymbol) {
-        block = legend[rawSymbol] || 'air'; // Default to air if not in legend
+
+      if (isFrameRow || isFrameCol) {
+        // Frame Logic: Only place frame if it borders a non-empty pixel?
+        // Or simple bounding box? User asked for "frame", typically a bounding box.
+        // Let's do a simple bounding box for now.
+        block = frameBlock;
       } else {
-        block = rawSymbol; // Legacy mode: symbol IS the block name
+        // Normal Logic
+        let rawSymbol = isStringRow ? gridRow[col] : gridRow[col];
+        if (legend && rawSymbol) {
+          block = legend[rawSymbol] || 'air';
+        } else {
+          block = rawSymbol;
+        }
       }
 
       // Defensive trimming

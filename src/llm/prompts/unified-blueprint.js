@@ -233,7 +233,7 @@ ${getWorldEditGuidance(worldEditAvailable)}
 - cursor_reset: Reset cursor to origin.
 
 === SPECIALIST OPERATIONS ===
-- pixel_art: 2D sprite. Params: grid (array of strings), legend, facing
+- pixel_art: 2D sprite. Params: grid (array of strings), legend, facing, frame (boolean), frameBlock (string)
 - spiral_staircase: Params: block, height, radius
 - window_strip: Params: block, spacing
 
