@@ -490,9 +490,9 @@ export const BUILD_TYPES = {
   // =====================
   tree: {
     name: 'Tree/Organic',
-    keywords: ['tree', 'oak', 'birch', 'spruce', 'willow', 'cherry', 'bonsai', 'giant tree', 'world tree'],
-    description: 'Natural tree structure with trunk and canopy',
-    primaryOperations: ['we_cylinder', 'we_sphere', 'fill', 'set'],
+    keywords: ['tree', 'oak', 'birch', 'spruce', 'willow', 'cherry', 'bonsai', 'giant tree', 'world tree', 'jungle tree', 'dark oak'],
+    description: 'Natural tree structure with trunk and canopy - supports multiple tree types',
+    primaryOperations: ['we_fill', 'fill', 'line', 'set'],  // REMOVED: we_cylinder, we_sphere (unnatural)
     dimensions: {
       small: { width: 7, height: 10, depth: 7 },
       medium: { width: 15, height: 25, depth: 15 },
@@ -504,16 +504,65 @@ export const BUILD_TYPES = {
         spruce: { trunk: 'spruce_log', leaves: 'spruce_leaves' },
         birch: { trunk: 'birch_log', leaves: 'birch_leaves' },
         cherry: { trunk: 'cherry_log', leaves: 'cherry_leaves' },
-        dark_oak: { trunk: 'dark_oak_log', leaves: 'dark_oak_leaves' }
+        dark_oak: { trunk: 'dark_oak_log', leaves: 'dark_oak_leaves' },
+        jungle: { trunk: 'jungle_log', leaves: 'jungle_leaves' },
+        willow: { trunk: 'oak_log', leaves: 'oak_leaves' }  // Willows use oak materials
       }
     },
-    features: ['trunk', 'branches', 'canopy', 'roots'],
-    buildOrder: ['trunk (cylinder)', 'main_branches', 'canopy (spheres)', 'detail_branches', 'roots'],
+    // Tree subtypes with different characteristics
+    subtypes: {
+      oak: {
+        name: 'Oak Tree',
+        silhouette: 'spreading',
+        heightRange: [15, 25],
+        canopyShape: 'rounded'
+      },
+      birch: {
+        name: 'Birch Tree',
+        silhouette: 'tall_narrow',
+        heightRange: [12, 24],
+        canopyShape: 'columnar'
+      },
+      spruce: {
+        name: 'Spruce/Pine',
+        silhouette: 'conical',
+        heightRange: [20, 40],
+        canopyShape: 'pyramid'
+      },
+      jungle: {
+        name: 'Jungle Tree',
+        silhouette: 'massive',
+        heightRange: [25, 45],
+        canopyShape: 'multi_layer'
+      },
+      willow: {
+        name: 'Willow Tree',
+        silhouette: 'drooping',
+        heightRange: [15, 28],
+        canopyShape: 'weeping'
+      },
+      cherry: {
+        name: 'Cherry Blossom',
+        silhouette: 'delicate',
+        heightRange: [12, 20],
+        canopyShape: 'spreading'
+      },
+      dark_oak: {
+        name: 'Dark Oak',
+        silhouette: 'dense',
+        heightRange: [18, 30],
+        canopyShape: 'thick_rounded'
+      }
+    },
+    features: ['trunk', 'branches', 'canopy', 'asymmetric_shape', 'natural_variation'],
+    buildOrder: ['trunk (tapered)', 'primary_branches', 'secondary_branches', 'main_canopy', 'detail_leaves'],
     tips: [
-      'Use we_cylinder for trunk',
-      'Use we_sphere for leaf clusters',
-      'Add branches at varying heights',
-      'Roots can extend below ground level'
+      'NEVER use we_sphere or we_cylinder - they create unnatural geometric shapes',
+      'Use we_fill for trunk sections and leaf volumes',
+      'Use line for individual branches',
+      'Randomize branch angles and lengths for natural look',
+      'Make canopy asymmetric (offset from center)',
+      'Vary leaf cluster sizes and positions'
     ]
   },
 

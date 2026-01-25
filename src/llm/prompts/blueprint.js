@@ -126,57 +126,185 @@ KEY POINTS:
     }
     
     if (isTree) {
-      return `
-***** TREE/ORGANIC BUILD MODE *****
-Build a NATURAL tree structure - NOT a building!
+      // Get tree-specific metadata from design plan
+      const treeType = designPlan.treeType || 'oak';
+      const detailLevel = designPlan.detailLevel || 'medium';
 
-FORBIDDEN OPERATIONS (DO NOT USE):
-- window_strip: Trees don't have windows!
-- door: Trees don't have doors!
-- hollow_box: Trees are solid, not hollow!
-- roof_gable, roof_hip, roof_flat: Trees don't have roofs!
-- we_walls: Trees are not buildings!
-- we_pyramid: Creates unnatural geometric shapes - DON'T USE for leaves!
+      const weSection = worldEditAvailable ? `
+=== ⚡ WORLDEDIT ENABLED - CRITICAL PERFORMANCE BOOST ⚡ ===
+WorldEdit is AVAILABLE and MUST be used for all volumetric operations!
 
-REQUIRED OPERATIONS (USE THESE):
-- fill: For trunk sections (tapered - thicker at base)
-- line: For branches extending from trunk
-- fill: For leaf clusters (multiple overlapping cubes, NOT pyramids)
-- set: For scattered individual leaves (organic feel)
+MANDATORY OPERATIONS FOR TREES:
+✓ we_fill: For ALL trunk sections (3x3, 2x2, 1x1 blocks)
+✓ we_fill: For EVERY leaf cluster (4x4x4 or larger volumes)
+✓ line: For individual branch lines (1-block thick)
+✓ set: ONLY for scattered single detail leaves
 
-BUILD ORDER (follow exactly):
-1. TRUNK BASE: fill with log block, thick (3x3) at bottom
-   Example: { "op": "fill", "block": "oak_log", "from": {"x": 6, "y": 0, "z": 6}, "to": {"x": 8, "y": 6, "z": 8} }
+WHY THIS MATTERS:
+- we_fill is 10-50x FASTER than vanilla fill
+- A 5x5x5 leaf cluster: we_fill = 1 operation, fill = 125 operations
+- Builder automatically optimizes fill→we_fill when WorldEdit detected
 
-2. TRUNK MIDDLE: fill with log, thinner (2x2 or 1x1)
-   Example: { "op": "fill", "block": "oak_log", "from": {"x": 7, "y": 7, "z": 7}, "to": {"x": 7, "y": 10, "z": 7} }
-
-3. MAIN BRANCHES: line operations going outward AND upward
-   Example: { "op": "line", "block": "oak_log", "from": {"x": 7, "y": 8, "z": 7}, "to": {"x": 3, "y": 10, "z": 7} }
-
-4. DIAGONAL BRANCHES: More line operations at angles
-   Example: { "op": "line", "block": "oak_log", "from": {"x": 7, "y": 9, "z": 7}, "to": {"x": 11, "y": 11, "z": 11} }
-
-5. LEAF CLUSTERS: Multiple overlapping fill cubes (NOT pyramid!)
-   - Main canopy around top of trunk
-   - Smaller clusters at branch ends
-   - Clusters should OVERLAP for natural look
-   Example: { "op": "fill", "block": "oak_leaves", "from": {"x": 4, "y": 10, "z": 4}, "to": {"x": 10, "y": 14, "z": 10} }
-
-6. ADDITIONAL LEAF CLUSTERS: Add 3-5 more at different heights/positions
-   Example: { "op": "fill", "block": "oak_leaves", "from": {"x": 1, "y": 9, "z": 5}, "to": {"x": 4, "y": 12, "z": 8} }
-
-7. DETAIL LEAVES: Scattered set operations for organic edges
-   Example: { "op": "set", "block": "oak_leaves", "pos": {"x": 0, "y": 11, "z": 7} }
-
-KEY TECHNIQUES:
-- Trunk TAPERS: 3x3 at base → 2x2 middle → 1x1 at top
-- Branches go OUTWARD and UPWARD (not horizontal)
-- Leaf clusters are OVERLAPPING CUBES (not geometric shapes)
-- Add 4-6 branches minimum for realistic look
-- Leave small gaps in leaves for organic feel
-- Total should be 15-25 steps for a quality tree
+EXAMPLE OPERATIONS:
+{ "op": "we_fill", "block": "oak_log", "from": {"x": 6, "y": 0, "z": 6}, "to": {"x": 8, "y": 5, "z": 8} }
+{ "op": "we_fill", "block": "oak_leaves", "from": {"x": 3, "y": 12, "z": 3}, "to": {"x": 11, "y": 18, "z": 11} }
+{ "op": "line", "block": "oak_log", "from": {"x": 7, "y": 8, "z": 7}, "to": {"x": 3, "y": 11, "z": 3} }
+` : `
+=== VANILLA MODE (No WorldEdit) ===
+Use fill for trunk sections and leaf volumes.
+Line for branches. Set for details.
 `;
+
+      return `
+***** 🌳 TREE GENERATION - ${treeType.toUpperCase()} *****
+Build a natural ${treeType} tree with organic variation.
+${weSection}
+=== ❌ FORBIDDEN (Creates geometric shapes) ===
+NEVER: we_sphere, we_cylinder, hollow_box, we_walls, window_strip, door, roof_*, we_pyramid
+
+=== ✅ ALLOWED OPERATIONS ===
+- ${worldEditAvailable ? 'we_fill: Trunk + leaf volumes (REQUIRED!)' : 'fill: Trunk + leaf volumes'}
+- line: Branches (1-block thick)
+- set: Detail leaves only
+
+=== 🎲 RANDOMIZATION (CRITICAL!) ===
+1. TRUNK: ±20% height, irregular taper, offset sections ±1 block
+2. BRANCHES: ${treeType === 'oak' ? '6-10' : treeType === 'spruce' ? '8-14' : '6-12'} count, ±15-20° angles, varied lengths/heights
+3. CANOPY: NEVER center perfectly, offset 1-3 blocks, varied cluster sizes, asymmetric layers
+4. DETAIL: simple=10-15 ops, standard=15-20 ops, beautiful/detailed=20-30 ops
+
+=== 🌲 ${treeType.toUpperCase()} TREE CHARACTERISTICS ===
+${getTreeCharacteristics(treeType, detailLevel, worldEditAvailable)}
+
+=== 📐 BUILD ORDER ===
+1. TRUNK (${worldEditAvailable ? 'we_fill' : 'fill'}): Bottom→Middle→Top (tapered), offset ±1 for natural look
+2. PRIMARY BRANCHES (line): 4-8 main branches, angle=${getBranchAngleDescription(treeType)}, varied heights
+3. SECONDARY BRANCHES (line): Thinner offshoots from primaries
+4. MAIN CANOPY (${worldEditAvailable ? 'we_fill' : 'fill'}): Multiple clusters, OFFSET from center
+5. DETAIL LEAVES (set): Scattered singles for irregular edges
+
+=== ✅ CHECKLIST ===
+${worldEditAvailable ? '✓ Trunk/leaves use we_fill' : ''}
+✓ Tapered trunk, ${getMinBranchCount(treeType)} branches, ${getMinLeafClusters(treeType)} leaf clusters
+✓ ASYMMETRIC canopy, ${getOperationRange(detailLevel)} ops total
+✓ NO we_sphere/we_cylinder
+`;
+    }
+
+    // Helper functions for tree characteristics
+    function getTreeCharacteristics(type, detail, worldEdit) {
+      const fillOp = worldEdit ? 'we_fill' : 'fill';
+      const characteristics = {
+        oak: `
+• SILHOUETTE: Wide, spreading canopy (round/dome shape)
+• TRUNK: Thick (3x3 base), tapers to 2x2 then 1x1
+• HEIGHT: ${detail === 'simple' ? '12-15' : detail === 'detailed' ? '20-25' : '15-20'} blocks
+• BRANCHES: Horizontal to slightly upward (6-10 branches)
+• CANOPY: Multiple rounded clusters, spread wide
+• MATERIALS: oak_log, oak_leaves
+
+EXAMPLE TRUNK:
+{ "op": "${fillOp}", "block": "oak_log", "from": {"x": 6, "y": 0, "z": 6}, "to": {"x": 8, "y": 4, "z": 8} }
+{ "op": "${fillOp}", "block": "oak_log", "from": {"x": 6, "y": 5, "z": 6}, "to": {"x": 7, "y": 9, "z": 7} }
+{ "op": "${fillOp}", "block": "oak_log", "from": {"x": 7, "y": 10, "z": 7}, "to": {"x": 7, "y": 13, "z": 7} }`,
+
+        birch: `
+• SILHOUETTE: Tall, narrow (columnar shape)
+• TRUNK: Thin (1x1 or 2x2), very straight
+• HEIGHT: ${detail === 'simple' ? '12-16' : detail === 'detailed' ? '20-24' : '16-20'} blocks
+• BRANCHES: Upward angling, shorter (4-7 branches)
+• CANOPY: Narrow, clustered near top
+• MATERIALS: birch_log, birch_leaves
+
+EXAMPLE TRUNK:
+{ "op": "${fillOp}", "block": "birch_log", "from": {"x": 7, "y": 0, "z": 7}, "to": {"x": 7, "y": 15, "z": 7} }`,
+
+        spruce: `
+• SILHOUETTE: Conical/pyramid (Christmas tree shape)
+• TRUNK: Medium (2x2), straight
+• HEIGHT: ${detail === 'simple' ? '18-22' : detail === 'detailed' ? '30-40' : '24-30'} blocks
+• BRANCHES: Downward angling (8-14 branches)
+• CANOPY: Layered cone, wider at bottom
+• MATERIALS: spruce_log, spruce_leaves
+
+EXAMPLE TRUNK:
+{ "op": "${fillOp}", "block": "spruce_log", "from": {"x": 7, "y": 0, "z": 7}, "to": {"x": 8, "y": 20, "z": 8} }`,
+
+        jungle: `
+• SILHOUETTE: Massive, irregular (multi-layer)
+• TRUNK: Very thick (4x4 base), complex
+• HEIGHT: ${detail === 'simple' ? '20-25' : detail === 'detailed' ? '35-45' : '25-35'} blocks
+• BRANCHES: Many varied angles (10-16 branches)
+• CANOPY: Multiple distinct layers, very wide
+• MATERIALS: jungle_log, jungle_leaves, vines
+
+EXAMPLE TRUNK:
+{ "op": "${fillOp}", "block": "jungle_log", "from": {"x": 6, "y": 0, "z": 6}, "to": {"x": 9, "y": 8, "z": 9} }
+{ "op": "${fillOp}", "block": "jungle_log", "from": {"x": 6, "y": 9, "z": 6}, "to": {"x": 8, "y": 18, "z": 8} }`,
+
+        willow: `
+• SILHOUETTE: Wide canopy with drooping edges
+• TRUNK: Medium-thick (3x3 base)
+• HEIGHT: ${detail === 'simple' ? '12-15' : detail === 'detailed' ? '20-25' : '15-22'} blocks
+• BRANCHES: Strongly downward, long (8-12 branches)
+• CANOPY: Wide, hangs down toward ground
+• MATERIALS: oak_log, oak_leaves (or birch variants)`,
+
+        cherry: `
+• SILHOUETTE: Delicate, spreading
+• TRUNK: Medium (2x2)
+• HEIGHT: ${detail === 'simple' ? '10-12' : detail === 'detailed' ? '16-20' : '12-16'} blocks
+• BRANCHES: Horizontal, elegant (6-10 branches)
+• CANOPY: Light, airy, pink blossoms
+• MATERIALS: cherry_log, cherry_leaves`
+      };
+
+      return characteristics[type] || characteristics.oak;
+    }
+
+    function getBranchAngleDescription(type) {
+      const angles = {
+        oak: 'Horizontal to slightly upward',
+        birch: 'Upward angling (45-60°)',
+        spruce: 'Downward angling (drooping)',
+        jungle: 'Mixed angles (varied)',
+        willow: 'Strongly downward (drooping)',
+        cherry: 'Horizontal with slight upward curve'
+      };
+      return angles[type] || 'Horizontal';
+    }
+
+    function getMinBranchCount(type) {
+      const counts = {
+        oak: '6-10',
+        birch: '4-7',
+        spruce: '8-14',
+        jungle: '10-16',
+        willow: '8-12',
+        cherry: '6-10'
+      };
+      return counts[type] || '6-10';
+    }
+
+    function getMinLeafClusters(type) {
+      const clusters = {
+        oak: '6-10',
+        birch: '4-6',
+        spruce: '8-12',
+        jungle: '10-15',
+        willow: '8-12',
+        cherry: '6-8'
+      };
+      return clusters[type] || '6-10';
+    }
+
+    function getOperationRange(detail) {
+      const ranges = {
+        simple: '10-15',
+        medium: '15-25',
+        detailed: '25-35'
+      };
+      return ranges[detail] || '15-25';
     }
     
     if (isShip) {

@@ -2,6 +2,7 @@ import { GeminiClient } from '../llm/gemini-client.js';
 import { validateDesignPlan, getValidationErrors } from '../config/schemas.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { analyzePrompt } from '../config/build-types.js';
+import { detectTreeType, detectDetailLevel } from '../config/tree-types.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
@@ -14,7 +15,11 @@ const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
  */
 export async function generateDesignPlan(userPrompt, apiKey) {
   if (!userPrompt || typeof userPrompt !== 'string') {
-    throw new Error('Invalid user prompt');
+    throw new Error('Invalid user prompt: must be a non-empty string');
+  }
+
+  if (!apiKey || typeof apiKey !== 'string') {
+    throw new Error('Invalid API key: Gemini API key required');
   }
 
   // Comprehensive prompt analysis
@@ -52,6 +57,28 @@ export async function generateDesignPlan(userPrompt, apiKey) {
   
   try {
     const designPlan = await client.generateDesignPlan(userPrompt);
+
+    // Fill in missing required fields from analysis if LLM didn't provide them
+    ensureRequiredFields(designPlan, analysis);
+
+    // For tree builds, detect tree type and detail level
+    if (analysis.type?.type === 'tree') {
+      designPlan.treeType = detectTreeType(userPrompt);
+      designPlan.detailLevel = detectDetailLevel(userPrompt);
+
+      if (DEBUG) {
+        console.log('\n┌─────────────────────────────────────────────────────────');
+        console.log('│ DEBUG: Tree Type Detection');
+        console.log('├─────────────────────────────────────────────────────────');
+        console.log(`│ Tree Type: ${designPlan.treeType}`);
+        console.log(`│ Detail Level: ${designPlan.detailLevel}`);
+        console.log('└─────────────────────────────────────────────────────────\n');
+      }
+
+      console.log(`  Tree Type: ${designPlan.treeType}`);
+      console.log(`  Detail Level: ${designPlan.detailLevel}`);
+    }
+    
     clampDesignPlanDimensions(designPlan);
     
     // Validate against schema
@@ -98,6 +125,51 @@ export async function generateDesignPlan(userPrompt, apiKey) {
       console.log('└─────────────────────────────────────────────────────────\n');
     }
     throw new Error(`Design planning failed: ${error.message}`);
+  }
+}
+
+/**
+ * Ensure all required schema fields are present, filling from analysis if missing
+ * This handles cases where the LLM returns incomplete responses
+ */
+function ensureRequiredFields(designPlan, analysis) {
+  // Ensure dimensions
+  if (!designPlan.dimensions) {
+    designPlan.dimensions = analysis.dimensions;
+    console.warn('⚠ LLM missing dimensions, using analyzed defaults');
+  }
+  
+  // Ensure style
+  if (!designPlan.style) {
+    designPlan.style = analysis.theme?.name || analysis.typeInfo?.name || 'default';
+    console.warn(`⚠ LLM missing style, using: ${designPlan.style}`);
+  }
+  
+  // Ensure materials
+  if (!designPlan.materials) {
+    designPlan.materials = {
+      primary: analysis.materials?.primary || 'oak_planks',
+      secondary: analysis.materials?.secondary || 'oak_log',
+      accent: analysis.materials?.accent || 'stripped_oak_log',
+      roof: analysis.materials?.roof || 'oak_stairs',
+      windows: analysis.materials?.windows || 'glass_pane',
+      door: analysis.materials?.door || 'oak_door'
+    };
+    console.warn('⚠ LLM missing materials, using analyzed defaults');
+  } else if (!designPlan.materials.primary) {
+    // Materials object exists but is missing primary
+    designPlan.materials.primary = analysis.materials?.primary || 'oak_planks';
+  }
+  
+  // Ensure features
+  if (!designPlan.features || !Array.isArray(designPlan.features) || designPlan.features.length === 0) {
+    designPlan.features = analysis.features || ['walls', 'roof', 'door'];
+    console.warn(`⚠ LLM missing features, using: ${designPlan.features.join(', ')}`);
+  }
+  
+  // Also ensure buildType for downstream processing
+  if (!designPlan.buildType) {
+    designPlan.buildType = analysis.type?.type || 'house';
   }
 }
 

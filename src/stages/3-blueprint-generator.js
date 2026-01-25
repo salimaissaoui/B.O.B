@@ -14,8 +14,16 @@ const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
  * @returns {Promise<Object>} - Blueprint object
  */
 export async function generateBlueprint(designPlan, allowlist, apiKey, worldEditAvailable = false) {
-  if (!designPlan || !allowlist || allowlist.length === 0) {
-    throw new Error('Invalid design plan or allowlist');
+  if (!designPlan || typeof designPlan !== 'object') {
+    throw new Error('Invalid design plan: must be an object');
+  }
+
+  if (!allowlist || !Array.isArray(allowlist) || allowlist.length === 0) {
+    throw new Error('Invalid allowlist: must be a non-empty array');
+  }
+
+  if (!apiKey || typeof apiKey !== 'string') {
+    throw new Error('Invalid API key: Gemini API key required');
   }
 
   const buildType = designPlan.buildType || 'house';

@@ -148,6 +148,14 @@ export class Builder {
 
       const buildHistory = [];
 
+      // Optimize blueprint to use WorldEdit when available
+      if (this.worldEditEnabled) {
+        console.log('  → Running WorldEdit optimization...');
+        this.optimizeBlueprintForWorldEdit(blueprint);
+      } else {
+        console.log('  → WorldEdit not available, using vanilla operations');
+      }
+
       console.log('Starting build execution...');
       console.log(`  Location: ${startPos.x}, ${startPos.y}, ${startPos.z}`);
       console.log(`  Total steps: ${blueprint.steps.length}`);
@@ -537,6 +545,181 @@ export class Builder {
         console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z}: ${placeError.message}`);
       }
     }
+  }
+
+  /**
+   * Optimize blueprint to use WorldEdit operations for faster building
+   * Converts vanilla operations to WorldEdit equivalents when beneficial
+   */
+  optimizeBlueprintForWorldEdit(blueprint) {
+    if (!blueprint.steps || blueprint.steps.length === 0) {
+      console.warn('⚠ Empty blueprint provided to optimizer');
+      return;
+    }
+
+    let optimized = 0;
+    const VOLUME_THRESHOLD = 4; // Use WorldEdit for volumes >= 4 blocks
+    const buildType = blueprint.buildType || 'unknown';
+    const isTree = buildType === 'tree';
+
+    console.log(`  → Optimizing blueprint for WorldEdit (buildType: ${buildType}, ${blueprint.steps.length} steps)`);
+
+    for (let i = 0; i < blueprint.steps.length; i++) {
+      const step = blueprint.steps[i];
+
+      // CRITICAL: Force ALL fill operations to we_fill for trees
+      if (isTree && step.op === 'fill') {
+        if (!step.from || !step.to) {
+          console.warn(`    ⚠ Skipping invalid fill operation at step ${i}`);
+          continue;
+        }
+        const fallback = { ...step };
+        step.op = 'we_fill';
+        step.fallback = fallback;
+        optimized++;
+        continue;
+      }
+
+      // Convert fill → we_fill for large volumes
+      if (step.op === 'fill' && step.from && step.to) {
+        const volume = this.calculateVolume(step.from, step.to);
+        if (volume >= VOLUME_THRESHOLD) {
+          console.log(`    → Converting fill to we_fill (volume: ${volume})`);
+          // Store original as fallback
+          const fallback = { ...step };
+          step.op = 'we_fill';
+          step.fallback = fallback;
+          optimized++;
+        }
+      }
+
+      // Convert hollow_box → we_walls for large boxes
+      if (step.op === 'hollow_box' && step.from && step.to) {
+        const volume = this.calculateVolume(step.from, step.to);
+        if (volume >= VOLUME_THRESHOLD * 2) {
+          console.log(`    → Converting hollow_box to we_walls (volume: ${volume})`);
+          const fallback = { ...step };
+          step.op = 'we_walls';
+          step.fallback = fallback;
+          optimized++;
+        }
+      }
+
+      // Convert line to we_fill if it's a thick line (same start/end on 2 axes)
+      if (step.op === 'line' && step.from && step.to) {
+        const dx = Math.abs(step.to.x - step.from.x);
+        const dy = Math.abs(step.to.y - step.from.y);
+        const dz = Math.abs(step.to.z - step.from.z);
+        const length = Math.max(dx, dy, dz);
+
+        // Long lines benefit from WorldEdit
+        if (length >= 10) {
+          console.log(`    → Converting line to we_fill (length: ${length})`);
+          const fallback = { ...step };
+          step.op = 'we_fill';
+          step.fallback = fallback;
+          optimized++;
+        }
+      }
+    }
+
+    // Batch consecutive set operations into we_fill regions
+    blueprint.steps = this.batchSetOperations(blueprint.steps);
+
+    if (optimized > 0) {
+      console.log(`  ✓ Optimized ${optimized} operations for WorldEdit`);
+    } else {
+      console.log(`  → No optimizations applied`);
+    }
+  }
+
+  /**
+   * Batch consecutive set operations with same block into fill regions
+   */
+  batchSetOperations(steps) {
+    const result = [];
+    let currentBatch = null;
+
+    for (const step of steps) {
+      if (step.op === 'set' && step.pos && step.block) {
+        if (!currentBatch || currentBatch.block !== step.block) {
+          // Start new batch
+          if (currentBatch && currentBatch.positions.length >= 4) {
+            result.push(this.createBatchedFill(currentBatch));
+          } else if (currentBatch) {
+            // Too few, keep as individual sets
+            currentBatch.positions.forEach(pos => {
+              result.push({ op: 'set', pos, block: currentBatch.block });
+            });
+          }
+          currentBatch = { block: step.block, positions: [step.pos] };
+        } else {
+          currentBatch.positions.push(step.pos);
+        }
+      } else {
+        // Flush current batch
+        if (currentBatch) {
+          if (currentBatch.positions.length >= 4) {
+            result.push(this.createBatchedFill(currentBatch));
+          } else {
+            currentBatch.positions.forEach(pos => {
+              result.push({ op: 'set', pos, block: currentBatch.block });
+            });
+          }
+          currentBatch = null;
+        }
+        result.push(step);
+      }
+    }
+
+    // Flush remaining batch
+    if (currentBatch) {
+      if (currentBatch.positions.length >= 4) {
+        result.push(this.createBatchedFill(currentBatch));
+      } else {
+        currentBatch.positions.forEach(pos => {
+          result.push({ op: 'set', pos, block: currentBatch.block });
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Create a we_fill operation from a batch of positions
+   */
+  createBatchedFill(batch) {
+    const positions = batch.positions;
+    const minX = Math.min(...positions.map(p => p.x));
+    const maxX = Math.max(...positions.map(p => p.x));
+    const minY = Math.min(...positions.map(p => p.y));
+    const maxY = Math.max(...positions.map(p => p.y));
+    const minZ = Math.min(...positions.map(p => p.z));
+    const maxZ = Math.max(...positions.map(p => p.z));
+
+    return {
+      op: 'we_fill',
+      block: batch.block,
+      from: { x: minX, y: minY, z: minZ },
+      to: { x: maxX, y: maxY, z: maxZ },
+      fallback: {
+        op: 'fill',
+        block: batch.block,
+        from: { x: minX, y: minY, z: minZ },
+        to: { x: maxX, y: maxY, z: maxZ }
+      }
+    };
+  }
+
+  /**
+   * Calculate volume of a region
+   */
+  calculateVolume(from, to) {
+    const dx = Math.abs(to.x - from.x) + 1;
+    const dy = Math.abs(to.y - from.y) + 1;
+    const dz = Math.abs(to.z - from.z) + 1;
+    return dx * dy * dz;
   }
 
   /**

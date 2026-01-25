@@ -113,7 +113,7 @@ export const BUILD_EXAMPLES = {
           // Side walls
           { op: "hollow_box", block: "white_terracotta", from: { x: 0, y: 2, z: 0 }, to: { x: 10, y: 4, z: 8 } },
           // Floor
-          { op: "fill", block: "dark_oak_planks", from: { x: 1, y: 1, z: 1 }, to: { x: 9, y: 1, z: 7 } },
+          { op: "fill", block: "oak_planks", from: { x: 1, y: 1, z: 1 }, to: { x: 9, y: 1, z: 7 } },
           // Door
           { op: "door", block: "dark_oak_door", pos: { x: 5, y: 1, z: 0 }, facing: "south" },
           // Windows
@@ -258,12 +258,13 @@ export const BUILD_EXAMPLES = {
   },
   
   // =====================================================
-  // TREES - CRITICAL: No windows, doors, roofs, or pyramids!
+  // TREES - Uses Minecraft Big Oak Algorithm
+  // CRITICAL: No windows, doors, roofs, or pyramids!
   // =====================================================
   tree: {
     giant_oak: {
-      name: "Giant Oak Tree",
-      description: "A large oak tree with sprawling branches - uses ONLY fill, line, and set",
+      name: "Giant Oak Tree (Big Oak Algorithm)",
+      description: "A sprawling oak using Minecraft's authentic tree algorithm - heightAttenuation: 0.618, branchSlope: 0.381",
       designPlan: {
         buildType: "tree",
         dimensions: { width: 15, height: 20, depth: 15 },
@@ -271,68 +272,198 @@ export const BUILD_EXAMPLES = {
           primary: "oak_log",
           secondary: "oak_leaves"
         },
-        features: ["trunk", "branches", "canopy"]
+        features: ["tapered_trunk", "cardinal_branches", "diagonal_branches", "overlapping_leaf_spheres"]
       },
       blueprint: {
         size: { width: 15, height: 20, depth: 15 },
         palette: ["oak_log", "oak_leaves"],
         steps: [
-          // STEP 1-2: TRUNK (tapered - thick at base, thin at top)
-          { op: "fill", block: "oak_log", from: { x: 6, y: 0, z: 6 }, to: { x: 8, y: 8, z: 8 } },
-          { op: "fill", block: "oak_log", from: { x: 7, y: 9, z: 7 }, to: { x: 7, y: 12, z: 7 } },
-          // STEP 3-8: BRANCHES (line operations going outward AND upward)
-          { op: "line", block: "oak_log", from: { x: 6, y: 8, z: 7 }, to: { x: 2, y: 10, z: 7 } },
-          { op: "line", block: "oak_log", from: { x: 8, y: 8, z: 7 }, to: { x: 12, y: 10, z: 7 } },
-          { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 6 }, to: { x: 7, y: 10, z: 2 } },
-          { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 8 }, to: { x: 7, y: 10, z: 12 } },
-          { op: "line", block: "oak_log", from: { x: 6, y: 9, z: 6 }, to: { x: 3, y: 11, z: 3 } },
-          { op: "line", block: "oak_log", from: { x: 8, y: 9, z: 8 }, to: { x: 11, y: 11, z: 11 } },
-          // STEP 9-16: LEAF CLUSTERS (overlapping fill cubes - NOT pyramids!)
-          { op: "fill", block: "oak_leaves", from: { x: 3, y: 10, z: 3 }, to: { x: 11, y: 14, z: 11 } },
-          { op: "fill", block: "oak_leaves", from: { x: 5, y: 15, z: 5 }, to: { x: 9, y: 17, z: 9 } },
-          { op: "fill", block: "oak_leaves", from: { x: 0, y: 9, z: 5 }, to: { x: 4, y: 12, z: 9 } },
-          { op: "fill", block: "oak_leaves", from: { x: 10, y: 9, z: 5 }, to: { x: 14, y: 12, z: 9 } },
-          { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 0 }, to: { x: 9, y: 12, z: 4 } },
-          { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 10 }, to: { x: 9, y: 12, z: 14 } },
-          { op: "fill", block: "oak_leaves", from: { x: 1, y: 10, z: 1 }, to: { x: 5, y: 13, z: 5 } },
-          { op: "fill", block: "oak_leaves", from: { x: 9, y: 10, z: 9 }, to: { x: 13, y: 13, z: 13 } }
+          // === TRUNK (tapered: 3x3 → 2x2 → 1x1) ===
+          { op: "fill", block: "oak_log", from: { x: 6, y: 0, z: 6 }, to: { x: 8, y: 5, z: 8 } },
+          { op: "fill", block: "oak_log", from: { x: 6, y: 6, z: 6 }, to: { x: 7, y: 9, z: 7 } },
+          { op: "fill", block: "oak_log", from: { x: 7, y: 10, z: 7 }, to: { x: 7, y: 13, z: 7 } },
+          
+          // === PRIMARY BRANCHES (4 cardinal, slope upward) ===
+          { op: "line", block: "oak_log", from: { x: 6, y: 8, z: 7 }, to: { x: 1, y: 10, z: 7 } },
+          { op: "line", block: "oak_log", from: { x: 8, y: 8, z: 7 }, to: { x: 13, y: 10, z: 7 } },
+          { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 6 }, to: { x: 7, y: 10, z: 1 } },
+          { op: "line", block: "oak_log", from: { x: 7, y: 8, z: 8 }, to: { x: 7, y: 10, z: 13 } },
+          
+          // === DIAGONAL BRANCHES (4 corners) ===
+          { op: "line", block: "oak_log", from: { x: 6, y: 9, z: 6 }, to: { x: 2, y: 11, z: 2 } },
+          { op: "line", block: "oak_log", from: { x: 8, y: 9, z: 6 }, to: { x: 12, y: 11, z: 2 } },
+          { op: "line", block: "oak_log", from: { x: 6, y: 9, z: 8 }, to: { x: 2, y: 11, z: 12 } },
+          { op: "line", block: "oak_log", from: { x: 8, y: 9, z: 8 }, to: { x: 12, y: 11, z: 12 } },
+          
+          // === SECONDARY BRANCHES (offshoots) ===
+          { op: "line", block: "oak_log", from: { x: 2, y: 10, z: 7 }, to: { x: 0, y: 11, z: 5 } },
+          { op: "line", block: "oak_log", from: { x: 12, y: 10, z: 7 }, to: { x: 14, y: 11, z: 9 } },
+          { op: "line", block: "oak_log", from: { x: 7, y: 10, z: 2 }, to: { x: 5, y: 11, z: 0 } },
+          { op: "line", block: "oak_log", from: { x: 7, y: 10, z: 12 }, to: { x: 9, y: 11, z: 14 } },
+          
+          // === MAIN CANOPY (center, largest) ===
+          { op: "fill", block: "oak_leaves", from: { x: 4, y: 11, z: 4 }, to: { x: 10, y: 15, z: 10 } },
+          { op: "fill", block: "oak_leaves", from: { x: 5, y: 16, z: 5 }, to: { x: 9, y: 18, z: 9 } },
+          { op: "fill", block: "oak_leaves", from: { x: 6, y: 19, z: 6 }, to: { x: 8, y: 19, z: 8 } },
+          
+          // === CARDINAL LEAF CLUSTERS (at branch ends) ===
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 9, z: 5 }, to: { x: 4, y: 13, z: 9 } },
+          { op: "fill", block: "oak_leaves", from: { x: 10, y: 9, z: 5 }, to: { x: 14, y: 13, z: 9 } },
+          { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 0 }, to: { x: 9, y: 13, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 5, y: 9, z: 10 }, to: { x: 9, y: 13, z: 14 } },
+          
+          // === CORNER LEAF CLUSTERS (diagonal branch ends) ===
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 10, z: 0 }, to: { x: 4, y: 13, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 10, y: 10, z: 0 }, to: { x: 14, y: 13, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 10, z: 10 }, to: { x: 4, y: 13, z: 14 } },
+          { op: "fill", block: "oak_leaves", from: { x: 10, y: 10, z: 10 }, to: { x: 14, y: 13, z: 14 } },
+          
+          // === ORGANIC EDGE DETAILS (scattered singles) ===
+          { op: "set", block: "oak_leaves", pos: { x: 0, y: 11, z: 7 } },
+          { op: "set", block: "oak_leaves", pos: { x: 14, y: 11, z: 7 } },
+          { op: "set", block: "oak_leaves", pos: { x: 7, y: 11, z: 0 } },
+          { op: "set", block: "oak_leaves", pos: { x: 7, y: 11, z: 14 } },
+          { op: "set", block: "oak_leaves", pos: { x: 7, y: 20, z: 7 } }
+        ]
+      }
+    },
+    
+    spreading_oak: {
+      name: "Wide Spreading Oak",
+      description: "A shorter, wider oak with horizontal spreading branches",
+      designPlan: {
+        buildType: "tree",
+        dimensions: { width: 17, height: 14, depth: 17 },
+        materials: {
+          primary: "oak_log",
+          secondary: "oak_leaves"
+        },
+        features: ["wide_trunk", "horizontal_branches", "dense_canopy"]
+      },
+      blueprint: {
+        size: { width: 17, height: 14, depth: 17 },
+        palette: ["oak_log", "oak_leaves"],
+        steps: [
+          // Thick trunk (3x3 base tapering to 1x1)
+          { op: "fill", block: "oak_log", from: { x: 7, y: 0, z: 7 }, to: { x: 9, y: 6, z: 9 } },
+          { op: "fill", block: "oak_log", from: { x: 8, y: 7, z: 8 }, to: { x: 8, y: 8, z: 8 } },
+          
+          // Long horizontal branches
+          { op: "line", block: "oak_log", from: { x: 7, y: 5, z: 8 }, to: { x: 1, y: 6, z: 8 } },
+          { op: "line", block: "oak_log", from: { x: 9, y: 5, z: 8 }, to: { x: 15, y: 6, z: 8 } },
+          { op: "line", block: "oak_log", from: { x: 8, y: 5, z: 7 }, to: { x: 8, y: 6, z: 1 } },
+          { op: "line", block: "oak_log", from: { x: 8, y: 5, z: 9 }, to: { x: 8, y: 6, z: 15 } },
+          
+          // Diagonal spreads
+          { op: "line", block: "oak_log", from: { x: 7, y: 6, z: 7 }, to: { x: 2, y: 7, z: 2 } },
+          { op: "line", block: "oak_log", from: { x: 9, y: 6, z: 7 }, to: { x: 14, y: 7, z: 2 } },
+          { op: "line", block: "oak_log", from: { x: 7, y: 6, z: 9 }, to: { x: 2, y: 7, z: 14 } },
+          { op: "line", block: "oak_log", from: { x: 9, y: 6, z: 9 }, to: { x: 14, y: 7, z: 14 } },
+          
+          // Dense overlapping canopy
+          { op: "fill", block: "oak_leaves", from: { x: 5, y: 7, z: 5 }, to: { x: 11, y: 11, z: 11 } },
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 5, z: 6 }, to: { x: 4, y: 9, z: 10 } },
+          { op: "fill", block: "oak_leaves", from: { x: 12, y: 5, z: 6 }, to: { x: 16, y: 9, z: 10 } },
+          { op: "fill", block: "oak_leaves", from: { x: 6, y: 5, z: 0 }, to: { x: 10, y: 9, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 6, y: 5, z: 12 }, to: { x: 10, y: 9, z: 16 } },
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 6, z: 0 }, to: { x: 4, y: 9, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 12, y: 6, z: 0 }, to: { x: 16, y: 9, z: 4 } },
+          { op: "fill", block: "oak_leaves", from: { x: 0, y: 6, z: 12 }, to: { x: 4, y: 9, z: 16 } },
+          { op: "fill", block: "oak_leaves", from: { x: 12, y: 6, z: 12 }, to: { x: 16, y: 9, z: 16 } },
+          { op: "fill", block: "oak_leaves", from: { x: 7, y: 12, z: 7 }, to: { x: 9, y: 13, z: 9 } }
         ]
       }
     },
     
     spruce_tree: {
       name: "Tall Spruce Tree",
-      description: "A conical spruce tree with layered branches",
+      description: "A conical spruce with alternating layer sizes for natural look",
       designPlan: {
         buildType: "tree",
-        dimensions: { width: 11, height: 18, depth: 11 },
+        dimensions: { width: 11, height: 20, depth: 11 },
         materials: {
           primary: "spruce_log",
           secondary: "spruce_leaves"
         },
-        features: ["trunk", "branches", "conical_canopy"]
+        features: ["tall_trunk", "conical_layers", "drooping_branches"]
       },
       blueprint: {
-        size: { width: 11, height: 18, depth: 11 },
+        size: { width: 11, height: 20, depth: 11 },
         palette: ["spruce_log", "spruce_leaves"],
         steps: [
-          // Trunk - single column
-          { op: "fill", block: "spruce_log", from: { x: 5, y: 0, z: 5 }, to: { x: 5, y: 16, z: 5 } },
-          // Layered leaf rings (largest at bottom, smallest at top)
+          // Tall single trunk
+          { op: "fill", block: "spruce_log", from: { x: 5, y: 0, z: 5 }, to: { x: 5, y: 18, z: 5 } },
+          
+          // Alternating layer sizes (large-small-large pattern)
           { op: "fill", block: "spruce_leaves", from: { x: 2, y: 4, z: 2 }, to: { x: 8, y: 5, z: 8 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 6, z: 3 }, to: { x: 7, y: 7, z: 7 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 2, y: 8, z: 2 }, to: { x: 8, y: 9, z: 8 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 10, z: 3 }, to: { x: 7, y: 11, z: 7 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 4, y: 12, z: 4 }, to: { x: 6, y: 13, z: 6 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 4, y: 14, z: 4 }, to: { x: 6, y: 15, z: 6 } },
-          { op: "fill", block: "spruce_leaves", from: { x: 5, y: 16, z: 5 }, to: { x: 5, y: 17, z: 5 } },
-          // Branch extensions at each layer
-          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 2, y: 5, z: 5 } },
-          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 8, y: 5, z: 5 } },
-          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 5, z: 2 } },
-          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 5, z: 8 } },
-          { op: "line", block: "spruce_log", from: { x: 5, y: 9, z: 5 }, to: { x: 3, y: 9, z: 5 } },
-          { op: "line", block: "spruce_log", from: { x: 5, y: 9, z: 5 }, to: { x: 7, y: 9, z: 5 } }
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 6, z: 3 }, to: { x: 7, y: 6, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 1, y: 7, z: 1 }, to: { x: 9, y: 8, z: 9 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 9, z: 3 }, to: { x: 7, y: 9, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 2, y: 10, z: 2 }, to: { x: 8, y: 11, z: 8 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 12, z: 3 }, to: { x: 7, y: 12, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 3, y: 13, z: 3 }, to: { x: 7, y: 14, z: 7 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 4, y: 15, z: 4 }, to: { x: 6, y: 16, z: 6 } },
+          { op: "fill", block: "spruce_leaves", from: { x: 5, y: 17, z: 5 }, to: { x: 5, y: 19, z: 5 } },
+          
+          // Drooping branch extensions
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 2, y: 4, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 8, y: 4, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 4, z: 2 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 5, z: 5 }, to: { x: 5, y: 4, z: 8 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 8, z: 5 }, to: { x: 2, y: 7, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 8, z: 5 }, to: { x: 8, y: 7, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 11, z: 5 }, to: { x: 3, y: 10, z: 5 } },
+          { op: "line", block: "spruce_log", from: { x: 5, y: 11, z: 5 }, to: { x: 7, y: 10, z: 5 } },
+          
+          // Corner leaf extensions for natural shape
+          { op: "set", block: "spruce_leaves", pos: { x: 1, y: 7, z: 5 } },
+          { op: "set", block: "spruce_leaves", pos: { x: 9, y: 7, z: 5 } },
+          { op: "set", block: "spruce_leaves", pos: { x: 5, y: 7, z: 1 } },
+          { op: "set", block: "spruce_leaves", pos: { x: 5, y: 7, z: 9 } }
+        ]
+      }
+    },
+    
+    birch_tree: {
+      name: "Tall Birch Tree",
+      description: "A slender birch with sparse, airy canopy",
+      designPlan: {
+        buildType: "tree",
+        dimensions: { width: 9, height: 16, depth: 9 },
+        materials: {
+          primary: "birch_log",
+          secondary: "birch_leaves"
+        },
+        features: ["thin_trunk", "sparse_branches", "airy_canopy"]
+      },
+      blueprint: {
+        size: { width: 9, height: 16, depth: 9 },
+        palette: ["birch_log", "birch_leaves"],
+        steps: [
+          // Thin trunk (1x1 all the way)
+          { op: "fill", block: "birch_log", from: { x: 4, y: 0, z: 4 }, to: { x: 4, y: 12, z: 4 } },
+          
+          // Short upward branches
+          { op: "line", block: "birch_log", from: { x: 4, y: 8, z: 4 }, to: { x: 2, y: 10, z: 4 } },
+          { op: "line", block: "birch_log", from: { x: 4, y: 8, z: 4 }, to: { x: 6, y: 10, z: 4 } },
+          { op: "line", block: "birch_log", from: { x: 4, y: 9, z: 4 }, to: { x: 4, y: 11, z: 2 } },
+          { op: "line", block: "birch_log", from: { x: 4, y: 9, z: 4 }, to: { x: 4, y: 11, z: 6 } },
+          
+          // Small scattered leaf clusters
+          { op: "fill", block: "birch_leaves", from: { x: 3, y: 10, z: 3 }, to: { x: 5, y: 13, z: 5 } },
+          { op: "fill", block: "birch_leaves", from: { x: 2, y: 12, z: 3 }, to: { x: 3, y: 14, z: 5 } },
+          { op: "fill", block: "birch_leaves", from: { x: 5, y: 12, z: 3 }, to: { x: 6, y: 14, z: 5 } },
+          { op: "fill", block: "birch_leaves", from: { x: 0, y: 9, z: 3 }, to: { x: 3, y: 12, z: 5 } },
+          { op: "fill", block: "birch_leaves", from: { x: 5, y: 9, z: 3 }, to: { x: 8, y: 12, z: 5 } },
+          { op: "fill", block: "birch_leaves", from: { x: 3, y: 9, z: 0 }, to: { x: 5, y: 12, z: 3 } },
+          { op: "fill", block: "birch_leaves", from: { x: 3, y: 9, z: 5 }, to: { x: 5, y: 12, z: 8 } },
+          { op: "fill", block: "birch_leaves", from: { x: 4, y: 14, z: 4 }, to: { x: 4, y: 15, z: 4 } },
+          
+          // Sparse single leaves
+          { op: "set", block: "birch_leaves", pos: { x: 1, y: 10, z: 4 } },
+          { op: "set", block: "birch_leaves", pos: { x: 7, y: 10, z: 4 } },
+          { op: "set", block: "birch_leaves", pos: { x: 4, y: 10, z: 1 } },
+          { op: "set", block: "birch_leaves", pos: { x: 4, y: 10, z: 7 } }
         ]
       }
     }
