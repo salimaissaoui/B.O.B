@@ -12,7 +12,8 @@
       "Bash(node:*)",
       "Bash(ls:*)",
       "Bash(npm start)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(npm install)"
     ]
   }
 }

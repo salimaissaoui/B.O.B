@@ -22,7 +22,8 @@
     "ajv": "^8.12.0",
     "dotenv": "^16.4.0",
     "mineflayer": "^4.20.0",
-    "mineflayer-pathfinder": "^2.4.4"
+    "mineflayer-pathfinder": "^2.4.4",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",

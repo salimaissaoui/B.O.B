@@ -101,13 +101,35 @@ export async function searchSpriteReference(subject) {
 }
 
 /**
- * Convert an image to a Minecraft pixel art grid using Gemini Vision
+ * Convert an image to a Minecraft pixel art grid using DETERMINISTIC processing
+ * Uses actual RGB color matching instead of AI guessing
  * @param {string} imageUrl - URL of the sprite image
  * @param {string} subject - Subject name for context
- * @param {string} apiKey - Gemini API key
+ * @param {string} apiKey - Gemini API key (unused now, kept for compatibility)
  * @returns {Promise<Object>} - Grid and legend
  */
 export async function imageToPixelGrid(imageUrl, subject, apiKey) {
+    // Try deterministic processing first
+    try {
+        const { processImageUrl } = await import('./sprite-processor.js');
+
+        console.log(`  → Using deterministic pixel processing...`);
+        const result = await processImageUrl(imageUrl, 64, 64);
+
+        return {
+            subject,
+            description: `Pixel art: ${subject}`,
+            width: result.width,
+            height: result.height,
+            legend: result.legend,
+            grid: result.grid
+        };
+    } catch (processorError) {
+        console.warn(`  ⚠ Deterministic processing failed: ${processorError.message}`);
+        console.log(`  → Falling back to AI vision...`);
+    }
+
+    // Fallback to AI vision (original code)
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 

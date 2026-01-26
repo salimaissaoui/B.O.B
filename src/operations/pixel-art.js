@@ -31,6 +31,14 @@ export function pixelArt(step) {
     throw new Error('Pixel art grid cannot be empty');
   }
 
+  // Check for empty rows
+  for (let i = 0; i < grid.length; i++) {
+    const row = grid[i];
+    if (!row || (Array.isArray(row) && row.length === 0) || (typeof row === 'string' && row.length === 0)) {
+      throw new Error('Pixel art grid rows cannot be empty');
+    }
+  }
+
   const blocks = [];
   const height = grid.length;
   // Handle both array-of-strings and array-of-arrays

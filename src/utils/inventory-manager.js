@@ -1,179 +1,164 @@
 /**
- * Inventory Manager
- * Handles inventory validation and material tracking for builds
+ * Inventory Manager - Tracks and validates material availability
+ * 
+ * Helps ensure the bot has required materials before starting a build.
+ * In Creative mode, this always returns valid=true.
+ * In Survival mode, checks actual inventory against blueprint requirements.
  */
 
 export class InventoryManager {
   constructor(bot) {
     this.bot = bot;
+    this.isCreativeMode = true; // Assume creative by default
   }
 
   /**
-   * Validate if bot has required materials for a blueprint
+   * Validate that bot has materials needed for blueprint
    * @param {Object} blueprint - Blueprint to validate
-   * @returns {Object} - Validation result { valid: boolean, missing: Array }
+   * @returns {Object} { valid: boolean, missing: Array, available: Object }
    */
   validateForBlueprint(blueprint) {
-    if (!this.bot || !this.bot.inventory) {
-      // If bot doesn't have inventory access, assume valid
-      return { valid: true, missing: [] };
-    }
-
-    try {
-      // Count required blocks from blueprint steps
-      const requiredBlocks = this.countRequiredBlocks(blueprint);
-
-      // Get available blocks from bot inventory
-      const availableBlocks = this.countAvailableBlocks();
-
-      // Check for missing materials
-      const missing = [];
-
-      for (const [blockType, requiredCount] of Object.entries(requiredBlocks)) {
-        const availableCount = availableBlocks[blockType] || 0;
-
-        if (availableCount < requiredCount) {
-          missing.push({
-            block: blockType,
-            required: requiredCount,
-            available: availableCount,
-            shortage: requiredCount - availableCount
-          });
-        }
-      }
-
+    // In creative mode, always valid
+    if (this.isCreativeMode) {
       return {
-        valid: missing.length === 0,
-        missing,
-        required: requiredBlocks,
-        available: availableBlocks
+        valid: true,
+        missing: [],
+        available: {},
+        mode: 'creative'
       };
-
-    } catch (error) {
-      console.warn(`Inventory validation error: ${error.message}`);
-      // On error, return valid to allow build to proceed
-      return { valid: true, missing: [], error: error.message };
     }
+
+    // Extract required materials from blueprint
+    const required = this.extractRequiredMaterials(blueprint);
+    const available = this.getAvailableMaterials();
+    const missing = [];
+
+    for (const [block, count] of Object.entries(required)) {
+      const availableCount = available[block] || 0;
+      if (availableCount < count) {
+        missing.push({
+          block,
+          needed: count,
+          available: availableCount,
+          shortage: count - availableCount
+        });
+      }
+    }
+
+    return {
+      valid: missing.length === 0,
+      missing,
+      available,
+      required,
+      mode: 'survival'
+    };
   }
 
   /**
-   * Count required blocks from blueprint
-   * @param {Object} blueprint - Blueprint to analyze
-   * @returns {Object} - Block counts { blockType: count }
+   * Extract required materials from blueprint
+   * @param {Object} blueprint - Blueprint object
+   * @returns {Object} Material counts { blockName: count }
    */
-  countRequiredBlocks(blueprint) {
-    const blockCounts = {};
+  extractRequiredMaterials(blueprint) {
+    const materials = {};
 
-    if (!blueprint.steps || !Array.isArray(blueprint.steps)) {
-      return blockCounts;
+    // Count palette materials
+    if (blueprint.palette) {
+      const paletteBlocks = Array.isArray(blueprint.palette)
+        ? blueprint.palette
+        : Object.values(blueprint.palette);
+
+      for (const block of paletteBlocks) {
+        materials[block] = (materials[block] || 0) + 1;
+      }
     }
 
-    for (const step of blueprint.steps) {
-      // Handle different operation types
+    // Estimate from steps (rough approximation)
+    for (const step of blueprint.steps || []) {
       if (step.block) {
-        const blockType = this.resolveBlockName(step.block, blueprint.palette);
-        if (blockType !== 'air') {
-          blockCounts[blockType] = (blockCounts[blockType] || 0) + (step.count || 1);
-        }
-      }
-
-      // For operations that generate blocks
-      if (step.blocks && Array.isArray(step.blocks)) {
-        for (const block of step.blocks) {
-          const blockType = this.resolveBlockName(block.block || block, blueprint.palette);
-          if (blockType !== 'air') {
-            blockCounts[blockType] = (blockCounts[blockType] || 0) + 1;
-          }
-        }
-      }
-
-      // Estimate blocks for volume operations
-      if (step.estimatedBlocks && step.estimatedBlocks > 0) {
-        const blockType = this.resolveBlockName(step.block, blueprint.palette);
-        if (blockType !== 'air') {
-          blockCounts[blockType] = (blockCounts[blockType] || 0) + step.estimatedBlocks;
-        }
+        // Estimate block count based on operation type
+        const estimatedCount = this.estimateBlockCount(step);
+        materials[step.block] = (materials[step.block] || 0) + estimatedCount;
       }
     }
 
-    return blockCounts;
+    return materials;
   }
 
   /**
-   * Resolve block name from palette if needed
-   * @param {string} blockName - Block name or palette reference
-   * @param {Object} palette - Blueprint palette
-   * @returns {string} - Resolved block name
+   * Estimate block count for a step
+   * @param {Object} step - Build step
+   * @returns {number} Estimated block count
    */
-  resolveBlockName(blockName, palette) {
-    if (!blockName) return 'air';
-
-    // Check if it's a palette reference (starts with $)
-    if (blockName.startsWith('$') && palette) {
-      const key = blockName.substring(1);
-      return palette[key] || 'stone';
+  estimateBlockCount(step) {
+    // Simple estimation based on operation type
+    if (step.size) {
+      const { x = 1, y = 1, z = 1 } = step.size;
+      return x * y * z;
     }
 
-    return blockName;
+    if (step.from && step.to) {
+      const dx = Math.abs(step.to.x - step.from.x) + 1;
+      const dy = Math.abs(step.to.y - step.from.y) + 1;
+      const dz = Math.abs(step.to.z - step.from.z) + 1;
+      return dx * dy * dz;
+    }
+
+    // Default estimate
+    return 10;
   }
 
   /**
-   * Count available blocks in bot inventory
-   * @returns {Object} - Block counts { blockType: count }
+   * Get available materials from bot inventory
+   * @returns {Object} Available materials { blockName: count }
    */
-  countAvailableBlocks() {
-    const blockCounts = {};
-
-    if (!this.bot || !this.bot.inventory || typeof this.bot.inventory.items !== 'function') {
-      return blockCounts;
+  getAvailableMaterials() {
+    if (!this.bot || !this.bot.inventory) {
+      return {};
     }
 
-    try {
-      const items = this.bot.inventory.items();
+    const materials = {};
+    const items = this.bot.inventory.items();
 
-      for (const item of items) {
-        if (item && item.name) {
-          blockCounts[item.name] = (blockCounts[item.name] || 0) + item.count;
-        }
+    for (const item of items) {
+      if (item && item.name) {
+        materials[item.name] = (materials[item.name] || 0) + item.count;
       }
-    } catch (error) {
-      console.warn(`Error reading inventory: ${error.message}`);
     }
 
-    return blockCounts;
+    return materials;
   }
 
   /**
-   * Check if bot has enough of a specific block type
-   * @param {string} blockType - Block type to check
-   * @param {number} count - Required count
-   * @returns {boolean} - True if enough blocks available
+   * Check if bot is in creative mode
+   * @returns {boolean} True if creative mode
    */
-  hasEnough(blockType, count) {
-    const available = this.countAvailableBlocks();
-    return (available[blockType] || 0) >= count;
+  checkCreativeMode() {
+    // Check if bot has creative mode indicators
+    if (this.bot && this.bot.game) {
+      this.isCreativeMode = this.bot.game.gameMode === 'creative' || this.bot.game.gameMode === 1;
+    }
+    return this.isCreativeMode;
   }
 }
 
 /**
  * Format validation result for display
- * @param {Object} validation - Validation result from InventoryManager
- * @returns {string} - Formatted message
+ * @param {Object} result - Validation result
+ * @returns {string} Formatted string
  */
-export function formatValidationResult(validation) {
-  if (validation.error) {
-    return `⚠ Inventory check failed: ${validation.error}`;
+export function formatValidationResult(result) {
+  if (result.mode === 'creative') {
+    return '✓ Creative mode - unlimited materials';
   }
 
-  if (validation.valid) {
-    return '✓ All required materials available';
+  if (result.valid) {
+    return `✓ All required materials available (${Object.keys(result.required).length} types)`;
   }
 
-  let message = '⚠ Missing materials:\n';
-
-  for (const item of validation.missing) {
-    message += `  - ${item.block}: need ${item.required}, have ${item.available} (short ${item.shortage})\n`;
+  let output = '⚠ Missing materials:\n';
+  for (const item of result.missing) {
+    output += `  - ${item.block}: need ${item.needed}, have ${item.available} (short ${item.shortage})\n`;
   }
-
-  return message.trim();
+  return output;
 }

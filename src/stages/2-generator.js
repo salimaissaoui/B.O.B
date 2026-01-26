@@ -134,7 +134,10 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
       console.log('│ DEBUG: Blueprint Generated');
       console.log('├─────────────────────────────────────────────────────────');
       console.log(`│ Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
-      console.log(`│ Palette: ${blueprint.palette.length} blocks`);
+      const debugPaletteCount = Array.isArray(blueprint.palette)
+        ? blueprint.palette.length
+        : Object.keys(blueprint.palette || {}).length;
+      console.log(`│ Palette: ${debugPaletteCount} blocks`);
       console.log(`│ Steps: ${blueprint.steps.length} operations`);
       console.log('│ Operations breakdown:');
       const opCounts = {};
@@ -149,7 +152,10 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
 
     console.log('✓ Blueprint generated successfully (unified method)');
     console.log(`  Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
-    console.log(`  Blocks: ${blueprint.palette.length} types`);
+    const paletteCount = Array.isArray(blueprint.palette)
+      ? blueprint.palette.length
+      : Object.keys(blueprint.palette || {}).length;
+    console.log(`  Blocks: ${paletteCount} types`);
     console.log(`  Steps: ${blueprint.steps.length} operations`);
 
     return blueprint;

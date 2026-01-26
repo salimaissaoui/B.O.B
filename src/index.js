@@ -18,7 +18,7 @@ async function main() {
   // Validate environment variables
   const requiredEnvVars = ['GEMINI_API_KEY', 'MINECRAFT_HOST', 'MINECRAFT_PORT', 'MINECRAFT_USERNAME'];
   const missing = requiredEnvVars.filter(v => !process.env[v]);
-  
+
   if (missing.length > 0) {
     console.error('✗ Missing required environment variables:');
     missing.forEach(v => console.error(`  - ${v}`));
@@ -77,8 +77,22 @@ async function main() {
   });
 }
 
-// Run main function
+// Run main function with detailed error handling
 main().catch((error) => {
-  console.error('Fatal error:', error);
+  console.error('\n╔════════════════════════════════════════╗');
+  console.error('║  FATAL ERROR                           ║');
+  console.error('╚════════════════════════════════════════╝\n');
+  console.error('Error:', error.message);
+  console.error('\nStack trace:');
+  console.error(error.stack);
+
+  if (error.code) {
+    console.error('\nError code:', error.code);
+  }
+
+  if (error.cause) {
+    console.error('\nCaused by:', error.cause);
+  }
+
   process.exit(1);
 });

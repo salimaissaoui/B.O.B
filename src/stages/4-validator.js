@@ -192,7 +192,12 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
           console.log('│ DEBUG: Repair Response Received');
           console.log('├─────────────────────────────────────────────────────────');
           console.log(`│ New steps count: ${currentBlueprint.steps?.length || 0}`);
-          console.log(`│ New palette: ${currentBlueprint.palette?.join(', ') || 'none'}`);
+          const paletteInfo = currentBlueprint.palette
+            ? (Array.isArray(currentBlueprint.palette)
+              ? currentBlueprint.palette.join(', ')
+              : `${Object.keys(currentBlueprint.palette).length} types`)
+            : 'none';
+          console.log(`│ New palette: ${paletteInfo}`);
           console.log('└─────────────────────────────────────────────────────────\n');
         }
       } catch (repairError) {
@@ -304,10 +309,16 @@ function validateStepParams(step, meta, label) {
 function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
   const invalidBlocks = [];
 
-  // Check palette
-  for (const block of blueprint.palette || []) {
-    if (!isValidBlock(block, minecraftVersion)) {
-      invalidBlocks.push(block);
+  // Check palette - handle both array and object formats
+  if (blueprint.palette) {
+    const paletteBlocks = Array.isArray(blueprint.palette)
+      ? blueprint.palette
+      : Object.values(blueprint.palette);
+
+    for (const block of paletteBlocks) {
+      if (!isValidBlock(block, minecraftVersion)) {
+        invalidBlocks.push(block);
+      }
     }
   }
 
@@ -510,9 +521,15 @@ function validateLimits(blueprint) {
     errors.push(`Height exceeds limit (${height} > ${SAFETY_LIMITS.maxHeight})`);
   }
 
-  // Check palette size
-  if ((blueprint.palette || []).length > SAFETY_LIMITS.maxUniqueBlocks) {
-    errors.push(`Too many unique blocks in palette (${blueprint.palette.length} > ${SAFETY_LIMITS.maxUniqueBlocks})`);
+  // Check palette size - handle both array and object formats
+  if (blueprint.palette) {
+    const paletteSize = Array.isArray(blueprint.palette)
+      ? blueprint.palette.length
+      : Object.keys(blueprint.palette).length;
+
+    if (paletteSize > SAFETY_LIMITS.maxUniqueBlocks) {
+      errors.push(`Too many unique blocks in palette (${paletteSize} > ${SAFETY_LIMITS.maxUniqueBlocks})`);
+    }
   }
 
   return errors;

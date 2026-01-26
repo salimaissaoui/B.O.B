@@ -51,12 +51,39 @@ function getBuildTypeGuidance(buildType, hints) {
 
     tree: `
 === TREE BUILD ===
-- Use we_fill for trunk sections and leaf volumes
-- Use line for individual branches
-- Make canopy asymmetric (offset from center)
-- Randomize branch angles and lengths
-- NEVER use we_sphere or we_cylinder (too geometric)
+BUILD A BEAUTIFUL ORGANIC TREE with these steps:
+
+1. TRUNK (bottom to top):
+   - Use fill/we_fill for trunk sections
+   - Trunk should be 2-4 blocks wide at base, tapering to 1-2 at top
+   - Oak log for oak trees, spruce log for spruce, etc.
+   - Height: 8-15 blocks for medium tree, 15-25 for large
+
+2. MAIN BRANCHES (from trunk):
+   - Use fill operations angled outward from trunk
+   - 3-5 main branches per tree
+   - Branches should be 1-2 blocks thick
+   - Offset each branch at different Y levels and directions
+
+3. CANOPY (leaves):
+   - Use multiple overlapping fill/we_fill operations
+   - Create 3-4 leaf clusters at different positions
+   - Each cluster: roughly spherical 4-7 blocks diameter
+   - Offset clusters so canopy looks natural, NOT perfectly symmetric
+   - Use oak_leaves, sprrtuce_leaves, etc. matching the wood type
+
+4. ROOTS (optional for large trees):
+   - Use fill for exposed roots at base spreading outward
+
+EXAMPLE OPERATIONS for a "big beautiful oak tree":
+  {"op": "fill", "block": "oak_log", "from": {"x": 4, "y": 0, "z": 4}, "to": {"x": 5, "y": 12, "z": 5}}
+  {"op": "fill", "block": "oak_log", "from": {"x": 5, "y": 8, "z": 5}, "to": {"x": 9, "y": 9, "z": 5}}
+  {"op": "fill", "block": "oak_leaves", "from": {"x": 0, "y": 10, "z": 0}, "to": {"x": 9, "y": 14, "z": 9}}
+  {"op": "fill", "block": "oak_leaves", "from": {"x": 2, "y": 15, "z": 2}, "to": {"x": 7, "y": 17, "z": 7}}
+
+NEVER use we_sphere or we_cylinder for trees - they look too geometric!
 `,
+
 
     house: `
 === HOUSE BUILD ===
