@@ -1,3 +1,27 @@
+/**
+ * Stage 4: Blueprint Validator
+ *
+ * STAGE NUMBERING NOTE:
+ * This file is numbered "4-validator.js" even though it's Stage 3 in the pipeline.
+ * The numbering reflects the historical evolution of the codebase:
+ *
+ * Original pipeline (5 stages):
+ *   1. Analyzer (prompt analysis)
+ *   2. Planner (design planning)
+ *   3. Generator (blueprint generation)
+ *   4. Validator (this file)
+ *   5. Builder (execution)
+ *
+ * Optimized pipeline (3 stages):
+ *   1. Analyzer (prompt analysis)
+ *   2. Generator (unified design + blueprint generation in single LLM call)
+ *   4. Validator (validation + repair) ← kept original numbering
+ *   5. Builder (execution)
+ *
+ * The file is named "4-validator.js" to maintain consistency with existing documentation,
+ * tests, and deployment scripts that reference this stage number.
+ */
+
 import { validateBlueprint as validateBlueprintSchema, getValidationErrors } from '../config/schemas.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { GeminiClient } from '../llm/gemini-client.js';
@@ -17,10 +41,10 @@ const CREATIVE_BUILD_TYPES = [
 ];
 
 /**
- * Stage 3: Validate and repair blueprint
- * @param {Object} blueprint - Generated blueprint
+ * Validate and repair blueprint
+ * @param {Object} blueprint - Generated blueprint from Stage 2
  * @param {Object} analysis - Prompt analysis from Stage 1
- * @param {string} apiKey - Gemini API key
+ * @param {string} apiKey - Gemini API key (for LLM-based repairs)
  * @returns {Promise<Object>} - Validation result with repaired blueprint
  */
 export async function validateBlueprint(blueprint, analysis, apiKey) {

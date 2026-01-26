@@ -50,7 +50,9 @@ export function pixelArt(step) {
 
     if (len < maxW) {
       const padding = maxW - len;
-      // P0 Fix: Center align the row instead of just appending (fixes skewing)
+      // Center-align short rows to prevent skewed/lopsided pixel art
+      // Original bug: Short rows were left-aligned, causing diagonal skew
+      // Fix: Add equal padding to both sides (center alignment)
       const leftPad = Math.floor(padding / 2);
       const rightPad = padding - leftPad;
 

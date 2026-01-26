@@ -1,238 +1,179 @@
 /**
- * Inventory Management System
- * Handles material validation and inventory tracking for builds
+ * Inventory Manager
+ * Handles inventory validation and material tracking for builds
  */
 
-/**
- * Scan bot inventory and count items
- * @param {Object} bot - Mineflayer bot instance
- * @returns {Map} Map of item name to count
- */
-export function scanInventory(bot) {
-  const inventory = new Map();
-  
-  if (!bot || !bot.inventory || !bot.inventory.items) {
-    return inventory;
-  }
-
-  for (const item of bot.inventory.items()) {
-    const itemName = item.name;
-    const currentCount = inventory.get(itemName) || 0;
-    inventory.set(itemName, currentCount + item.count);
-  }
-
-  return inventory;
-}
-
-/**
- * Calculate required materials from a blueprint
- * @param {Object} blueprint - Validated blueprint
- * @returns {Map} Map of block type to required count
- */
-export function calculateMaterialRequirements(blueprint) {
-  const requirements = new Map();
-
-  if (!blueprint || !blueprint.steps) {
-    return requirements;
-  }
-
-  // Helper to resolve palette variables
-  const resolveBlock = (blockName) => {
-    if (!blockName) return 'air';
-    if (blockName.startsWith('$')) {
-      const key = blockName.substring(1);
-      if (blueprint.palette && blueprint.palette[key]) {
-        return blueprint.palette[key];
-      }
-      // Fallback if palette key missing - log warning and use stone as safe default
-      console.warn(`Missing palette variable: ${key}, using 'stone' as fallback`);
-      return 'stone';
-    }
-    return blockName;
-  };
-
-  // Count blocks from steps
-  for (const step of blueprint.steps) {
-    // Skip non-placement operations
-    if (['move', 'cursor_reset', 'site_prep', 'clear_area'].includes(step.op)) {
-      continue;
-    }
-
-    // Handle direct block placement
-    if (step.block && !step.size) {
-      const blockType = resolveBlock(step.block);
-      if (blockType !== 'air') {
-        const current = requirements.get(blockType) || 0;
-        requirements.set(blockType, current + 1);
-      }
-    }
-
-    // Handle volume-based operations
-    if (step.size) {
-      const volume = (step.size.width || 1) * (step.size.height || 1) * (step.size.depth || 1);
-      const blockType = resolveBlock(step.block || step.material);
-      if (blockType !== 'air') {
-        const current = requirements.get(blockType) || 0;
-        requirements.set(blockType, current + volume);
-      }
-    }
-
-    // Handle blocks array (for operations that specify multiple blocks)
-    if (step.blocks && Array.isArray(step.blocks)) {
-      for (const blockSpec of step.blocks) {
-        const blockType = resolveBlock(blockSpec.block || blockSpec);
-        if (blockType !== 'air') {
-          const current = requirements.get(blockType) || 0;
-          requirements.set(blockType, current + 1);
-        }
-      }
-    }
-  }
-
-  return requirements;
-}
-
-/**
- * Check if required materials are available for a blueprint
- * @param {Object} bot - Mineflayer bot instance
- * @param {Object} blueprint - Validated blueprint
- * @returns {Object} Validation result with detailed info
- */
-export function validateMaterials(bot, blueprint) {
-  const inventory = scanInventory(bot);
-  const requirements = calculateMaterialRequirements(blueprint);
-  
-  const missing = new Map();
-  const available = new Map();
-  
-  // If bot has no inventory system (e.g., in tests or when using WorldEdit exclusively),
-  // assume all materials are available
-  const hasInventory = !!(bot && bot.inventory && typeof bot.inventory.items === 'function');
-  
-  for (const [blockType, required] of requirements) {
-    const inInventory = inventory.get(blockType) || 0;
-    available.set(blockType, inInventory);
-    
-    // Only check for missing materials if bot has inventory system
-    if (hasInventory && inInventory < required) {
-      missing.set(blockType, required - inInventory);
-    }
-  }
-
-  const hasMissingMaterials = missing.size > 0;
-
-  return {
-    valid: !hasMissingMaterials,
-    requirements,
-    available,
-    missing,
-    hasInventory,
-    summary: {
-      totalRequired: Array.from(requirements.values()).reduce((sum, count) => sum + count, 0),
-      totalAvailable: Array.from(available.values()).reduce((sum, count) => sum + count, 0),
-      uniqueBlockTypes: requirements.size,
-      missingBlockTypes: missing.size
-    }
-  };
-}
-
-/**
- * Format material requirements for display
- * @param {Map} requirements - Material requirements map
- * @returns {string} Formatted string
- */
-export function formatMaterialList(requirements) {
-  if (requirements.size === 0) {
-    return 'No materials required';
-  }
-
-  const lines = [];
-  for (const [blockType, count] of requirements) {
-    lines.push(`  - ${blockType}: ${count}`);
-  }
-  return lines.join('\n');
-}
-
-/**
- * Format validation result for display
- * @param {Object} validation - Validation result from validateMaterials()
- * @returns {string} Formatted string
- */
-export function formatValidationResult(validation) {
-  const lines = [
-    '┌─────────────────────────────────────────────────────────',
-    '│ MATERIAL VALIDATION'
-  ];
-
-  if (validation.valid) {
-    lines.push('├─────────────────────────────────────────────────────────');
-    lines.push('│ Status: ✓ All materials available');
-    lines.push(`│ Total blocks: ${validation.summary.totalRequired}`);
-    lines.push(`│ Block types: ${validation.summary.uniqueBlockTypes}`);
-  } else if (!validation.hasInventory) {
-    lines.push('├─────────────────────────────────────────────────────────');
-    lines.push('│ Status: ℹ No inventory system (using chat commands)');
-    lines.push(`│ Total blocks: ${validation.summary.totalRequired}`);
-    lines.push(`│ Block types: ${validation.summary.uniqueBlockTypes}`);
-  } else {
-    lines.push('├─────────────────────────────────────────────────────────');
-    lines.push('│ Status: ⚠ Missing materials');
-    lines.push(`│ Missing types: ${validation.summary.missingBlockTypes}`);
-    lines.push('│');
-    lines.push('│ Missing materials:');
-    for (const [blockType, count] of validation.missing) {
-      const available = validation.available.get(blockType) || 0;
-      const required = validation.requirements.get(blockType) || 0;
-      lines.push(`│   ${blockType}: ${available}/${required} (need ${count} more)`);
-    }
-  }
-
-  lines.push('└─────────────────────────────────────────────────────────');
-  return lines.join('\n');
-}
-
-/**
- * InventoryManager class for centralized inventory operations
- */
 export class InventoryManager {
   constructor(bot) {
     this.bot = bot;
   }
 
   /**
-   * Scan current inventory
-   * @returns {Map} Inventory map
-   */
-  scan() {
-    return scanInventory(this.bot);
-  }
-
-  /**
-   * Check if materials are available for blueprint
+   * Validate if bot has required materials for a blueprint
    * @param {Object} blueprint - Blueprint to validate
-   * @returns {Object} Validation result
+   * @returns {Object} - Validation result { valid: boolean, missing: Array }
    */
   validateForBlueprint(blueprint) {
-    return validateMaterials(this.bot, blueprint);
+    if (!this.bot || !this.bot.inventory) {
+      // If bot doesn't have inventory access, assume valid
+      return { valid: true, missing: [] };
+    }
+
+    try {
+      // Count required blocks from blueprint steps
+      const requiredBlocks = this.countRequiredBlocks(blueprint);
+
+      // Get available blocks from bot inventory
+      const availableBlocks = this.countAvailableBlocks();
+
+      // Check for missing materials
+      const missing = [];
+
+      for (const [blockType, requiredCount] of Object.entries(requiredBlocks)) {
+        const availableCount = availableBlocks[blockType] || 0;
+
+        if (availableCount < requiredCount) {
+          missing.push({
+            block: blockType,
+            required: requiredCount,
+            available: availableCount,
+            shortage: requiredCount - availableCount
+          });
+        }
+      }
+
+      return {
+        valid: missing.length === 0,
+        missing,
+        required: requiredBlocks,
+        available: availableBlocks
+      };
+
+    } catch (error) {
+      console.warn(`Inventory validation error: ${error.message}`);
+      // On error, return valid to allow build to proceed
+      return { valid: true, missing: [], error: error.message };
+    }
   }
 
   /**
-   * Get count of a specific item
-   * @param {string} itemName - Item name
-   * @returns {number} Count
+   * Count required blocks from blueprint
+   * @param {Object} blueprint - Blueprint to analyze
+   * @returns {Object} - Block counts { blockType: count }
    */
-  getItemCount(itemName) {
-    const inventory = this.scan();
-    return inventory.get(itemName) || 0;
+  countRequiredBlocks(blueprint) {
+    const blockCounts = {};
+
+    if (!blueprint.steps || !Array.isArray(blueprint.steps)) {
+      return blockCounts;
+    }
+
+    for (const step of blueprint.steps) {
+      // Handle different operation types
+      if (step.block) {
+        const blockType = this.resolveBlockName(step.block, blueprint.palette);
+        if (blockType !== 'air') {
+          blockCounts[blockType] = (blockCounts[blockType] || 0) + (step.count || 1);
+        }
+      }
+
+      // For operations that generate blocks
+      if (step.blocks && Array.isArray(step.blocks)) {
+        for (const block of step.blocks) {
+          const blockType = this.resolveBlockName(block.block || block, blueprint.palette);
+          if (blockType !== 'air') {
+            blockCounts[blockType] = (blockCounts[blockType] || 0) + 1;
+          }
+        }
+      }
+
+      // Estimate blocks for volume operations
+      if (step.estimatedBlocks && step.estimatedBlocks > 0) {
+        const blockType = this.resolveBlockName(step.block, blueprint.palette);
+        if (blockType !== 'air') {
+          blockCounts[blockType] = (blockCounts[blockType] || 0) + step.estimatedBlocks;
+        }
+      }
+    }
+
+    return blockCounts;
   }
 
   /**
-   * Check if bot has at least N of an item
-   * @param {string} itemName - Item name
+   * Resolve block name from palette if needed
+   * @param {string} blockName - Block name or palette reference
+   * @param {Object} palette - Blueprint palette
+   * @returns {string} - Resolved block name
+   */
+  resolveBlockName(blockName, palette) {
+    if (!blockName) return 'air';
+
+    // Check if it's a palette reference (starts with $)
+    if (blockName.startsWith('$') && palette) {
+      const key = blockName.substring(1);
+      return palette[key] || 'stone';
+    }
+
+    return blockName;
+  }
+
+  /**
+   * Count available blocks in bot inventory
+   * @returns {Object} - Block counts { blockType: count }
+   */
+  countAvailableBlocks() {
+    const blockCounts = {};
+
+    if (!this.bot || !this.bot.inventory || typeof this.bot.inventory.items !== 'function') {
+      return blockCounts;
+    }
+
+    try {
+      const items = this.bot.inventory.items();
+
+      for (const item of items) {
+        if (item && item.name) {
+          blockCounts[item.name] = (blockCounts[item.name] || 0) + item.count;
+        }
+      }
+    } catch (error) {
+      console.warn(`Error reading inventory: ${error.message}`);
+    }
+
+    return blockCounts;
+  }
+
+  /**
+   * Check if bot has enough of a specific block type
+   * @param {string} blockType - Block type to check
    * @param {number} count - Required count
-   * @returns {boolean} True if has enough
+   * @returns {boolean} - True if enough blocks available
    */
-  hasItem(itemName, count = 1) {
-    return this.getItemCount(itemName) >= count;
+  hasEnough(blockType, count) {
+    const available = this.countAvailableBlocks();
+    return (available[blockType] || 0) >= count;
   }
+}
+
+/**
+ * Format validation result for display
+ * @param {Object} validation - Validation result from InventoryManager
+ * @returns {string} - Formatted message
+ */
+export function formatValidationResult(validation) {
+  if (validation.error) {
+    return `⚠ Inventory check failed: ${validation.error}`;
+  }
+
+  if (validation.valid) {
+    return '✓ All required materials available';
+  }
+
+  let message = '⚠ Missing materials:\n';
+
+  for (const item of validation.missing) {
+    message += `  - ${item.block}: need ${item.required}, have ${item.available} (short ${item.shortage})\n`;
+  }
+
+  return message.trim();
 }

@@ -35,7 +35,15 @@ import { InventoryManager, formatValidationResult } from '../utils/inventory-man
 import { PathfindingHelper, calculateDistance } from '../utils/pathfinding-helper.js';
 
 /**
- * P0 Fix: Simple async mutex to prevent concurrent builds
+ * Build Mutex - Prevents Concurrent Build Race Conditions
+ *
+ * Original bug: Multiple build requests could execute simultaneously, causing:
+ * - Overlapping block placements (builds interfering with each other)
+ * - Corrupted build state (blocksPlaced counter incorrect)
+ * - Server overload from doubled command rate
+ *
+ * Fix: Async mutex ensures only one build executes at a time.
+ * Subsequent builds queue and wait for current build to complete.
  */
 class BuildMutex {
   constructor() {
@@ -113,13 +121,17 @@ export class Builder {
     this.worldEdit = new WorldEditExecutor(bot);
     this.worldEditEnabled = false;
 
-    // P0 Fix: Mutex to prevent concurrent builds
+    // Build concurrency control
+    // Prevents race conditions when multiple build requests arrive simultaneously
     this.buildMutex = new BuildMutex();
 
-    // P0 Fix: Track WorldEdit operations separately for undo
+    // WorldEdit Undo Tracking
+    // Original bug: Vanilla undo worked, but WorldEdit operations were permanent
+    // Fix: Track WorldEdit commands separately so //undo can reverse them
     this.worldEditHistory = [];
 
-    // P0 Fix: Reliability Queue
+    // Action Queue for Reliability
+    // Manages sequential execution of critical building operations
     this.actionQueue = new ActionQueue();
 
     // Inventory and pathfinding helpers
@@ -352,10 +364,12 @@ export class Builder {
    * Execute a blueprint at the given starting position
    * @param {Object} blueprint - Validated blueprint
    * @param {Object} startPos - Starting position {x, y, z}
-   * P0 Fix: Uses mutex to prevent concurrent builds
+   *
+   * Uses mutex to ensure only one build executes at a time (prevents race conditions)
    */
   async executeBlueprint(blueprint, startPos) {
-    // P0 Fix: Acquire mutex before checking/setting building flag
+    // Acquire mutex lock - blocks if another build is in progress
+    // Released in finally block to ensure cleanup on error
     await this.buildMutex.acquire();
 
     try {

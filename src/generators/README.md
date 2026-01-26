@@ -1,27 +1,33 @@
-# Algorithmic Blueprint Generators
+# Blueprint Generators
 
-This directory contains deterministic blueprint generators that create Minecraft builds without requiring LLM API calls. This provides:
+This directory contains both the **active LLM-based generator** and **archived algorithmic generators** for future use.
 
-- **🚀 Speed**: Instant generation vs 2-10 second LLM calls
+## Current Architecture (Active)
+
+The main pipeline (`src/stages/2-generator.js`) uses:
+
+1. **Unified LLM Generation** - Single Gemini API call generates complete blueprints
+2. **Sprite Generation** - Dedicated pixel art generation via external sprite APIs
+3. **Direct to Execution** - No hybrid selection logic
+
+## Future/Archived Architecture (Inactive)
+
+The files in this directory include an **enhanced hybrid system** that is NOT currently integrated but preserved for future offline/fallback modes:
+
+### Enhanced Hybrid Generator (`enhanced-hybrid.js`)
+Intelligent selection between:
+1. **Template Generation** (instant, highest quality) - Uses proven blueprint templates
+2. **Template + LLM Enhancement** (fast, customized) - Enhances templates with AI
+3. **Algorithmic Generation** (instant, deterministic) - Mathematical generation
+4. **Pure LLM Generation** (flexible, creative) - Full AI generation
+
+### Benefits of Hybrid Approach
+- **🚀 Speed**: Instant generation for common builds (no API calls)
 - **✅ Reliability**: No JSON parsing errors or API timeouts
-- **💰 Cost**: No API token usage
-- **🔄 Consistency**: Same input always produces same output
+- **💰 Cost**: Zero API usage for template/algorithmic builds
+- **🔄 Consistency**: Deterministic output for testing
 
-## Architecture
-
-The hybrid generation system intelligently chooses between:
-
-1. **Algorithmic Generation** (fast, deterministic)
-   - Used for common build types with standard features
-   - Generates blueprints using mathematical algorithms
-   - No external dependencies
-
-2. **LLM Generation** (flexible, creative)
-   - Used for custom/complex builds
-   - Leverages Gemini AI for creative designs
-   - Fallback for unsupported algorithmic builds
-
-## Supported Algorithmic Builds
+## Archived Algorithmic Builds (Future Use)
 
 ### House Builder (`house-builder.js`)
 Generates simple houses with:
@@ -78,11 +84,13 @@ To add support for a new build type:
      };
    }
    ```
-3. Update `hybrid-generator.js`:
+3. Update `enhanced-hybrid.js`:
    - Import your generator
    - Add condition to `shouldUseAlgorithmic()`
    - Add case to `generateAlgorithmic()`
-   - Document in `getSupportedAlgorithmicBuilds()`
+4. Integrate hybrid generator in pipeline:
+   - Modify `src/stages/2-generator.js` to use `generateBlueprintEnhanced()`
+   - Add configuration option for generation strategy priority
 
 ## Performance Comparison
 

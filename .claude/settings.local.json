@@ -11,7 +11,8 @@
       "Bash(node test-enhanced-system.js)",
       "Bash(node:*)",
       "Bash(ls:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(test:*)"
     ]
   }
 }

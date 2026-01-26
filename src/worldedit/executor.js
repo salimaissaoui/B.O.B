@@ -14,10 +14,14 @@ export class WorldEditExecutor {
     this.spamDetected = false;
     this.backoffMultiplier = 1.0;
 
-    // P0 Fix: Track executed commands for undo support
+    // Command History Tracking
+    // Original bug: No undo support - builds were permanent
+    // Fix: Track all executed commands so they can be reversed with //undo
     this.commandHistory = [];
 
-    // P0 Fix: Pending response handlers for command acknowledgment
+    // Response Handler for Command Verification
+    // Original bug: Commands assumed successful without verification, leading to silent failures
+    // Fix: Wait for and parse server responses to confirm command execution
     this.pendingResponse = null;
 
     // Track unconfirmed operations (no acknowledgment received)
@@ -84,7 +88,12 @@ export class WorldEditExecutor {
 
   /**
    * Detect if WorldEdit is available by testing a safe command
-   * P0 Fix: Actually parse the response instead of assuming success
+   *
+   * Original bug: Detection assumed WorldEdit was available without verification,
+   * causing all WorldEdit operations to silently fail on servers without the plugin.
+   *
+   * Fix: Send //version command and parse response to confirm WorldEdit is installed.
+   * Returns false if response indicates "Unknown command" or timeout.
    */
   async detectWorldEdit() {
     if (!SAFETY_LIMITS.worldEdit.enabled) {
@@ -162,7 +171,13 @@ export class WorldEditExecutor {
 
   /**
    * Execute a WorldEdit command with rate limiting and validation
-   * P0 Fix: Verify command success via response parsing
+   *
+   * Original bug: Commands sent without waiting for confirmation, leading to:
+   * - Race conditions (next command sent before previous completed)
+   * - Silent failures (no error detection)
+   * - Command queue overflow (server kicks bot)
+   *
+   * Fix: Wait for server response, parse for errors, apply rate limiting.
    */
   async executeCommand(command, options = {}) {
     // Rate limiting with backoff

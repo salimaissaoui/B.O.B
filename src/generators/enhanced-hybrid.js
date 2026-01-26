@@ -1,10 +1,18 @@
 /**
  * Enhanced Hybrid Generator
+ *
+ * NOTE: This generator is NOT currently used in the main pipeline.
+ * The current system (src/stages/2-generator.js) uses direct LLM generation.
+ * This file is preserved for future offline/fallback modes.
+ *
  * Intelligent blueprint generation with quality priority:
  * 1. Template (proven designs, instant, highest quality)
  * 2. Template + LLM Enhancement (customized quality, fast)
  * 3. Algorithmic (procedural, instant, basic quality)
  * 4. Pure LLM (most flexible, slower, variable quality)
+ *
+ * To integrate this generator, modify src/stages/2-generator.js to import and use
+ * generateBlueprintEnhanced() instead of the current unified LLM approach.
  */
 
 import { generateFromTemplate, getAvailableTemplates } from './template-builder.js';
