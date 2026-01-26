@@ -5,6 +5,7 @@ AI-powered Minecraft building assistant that safely converts natural language in
 ## Features
 
 - ✅ Natural language building commands
+- ✅ Automated Pixel Art generation (deterministic RGB-to-block mapping)
 - ✅ Multi-stage LLM planning with safety validation
 - ✅ Schema-constrained generation (no hallucinated blocks)
 - ✅ WorldEdit integration for 50-100x faster large builds
@@ -31,6 +32,7 @@ B.O.B uses a streamlined three-stage safety pipeline for reliable and efficient 
 - Node.js v18 or higher
 - A Minecraft server (1.20.1 recommended)
 - Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- `sharp` library (for high-quality pixel art processing)
 
 ### Installation
 
@@ -44,6 +46,7 @@ B.O.B uses a streamlined three-stage safety pipeline for reliable and efficient 
    ```bash
    npm install
    ```
+   *Note: This will install `sharp`, which requires a compatible binary for your OS.*
 
 3. Configure environment:
    ```bash

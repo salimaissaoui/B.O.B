@@ -199,7 +199,7 @@ REPAIR INSTRUCTIONS:
 2. Ensure ALL required features are present in the blueprint
 3. Verify structural integrity (foundation, walls, roof)
 4. Check that dimensions match requirements (within 20% tolerance)
-5.- Minimum ${['pixel_art', 'statue'].includes(blueprint.buildType) ? '1' : '15'} steps
+5. Minimum ${['pixel_art', 'statue'].includes(blueprint.buildType) ? '1' : '15'} steps
 - Use appropriate operations for each feature type
 
 Remember:

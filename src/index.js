@@ -41,9 +41,46 @@ async function main() {
     version: process.env.MINECRAFT_VERSION || '1.20.1'
   });
 
-  // Wait for bot to be ready
-  await new Promise((resolve) => {
-    bot.once('spawn', resolve);
+  // Wait for bot to be ready with error handling
+  console.log('Waiting for bot to spawn...');
+  await new Promise((resolve, reject) => {
+    const cleanup = () => {
+      bot.removeListener('spawn', onSpawn);
+      bot.removeListener('kicked', onKicked);
+      bot.removeListener('error', onError);
+      bot.removeListener('end', onEnd);
+    };
+
+    const onSpawn = () => {
+      cleanup();
+      resolve();
+    };
+
+    const onKicked = (reason) => {
+      cleanup();
+      reject(new Error(`Bot kicked during startup: ${reason}`));
+    };
+
+    const onError = (err) => {
+      cleanup();
+      reject(new Error(`Bot error during startup: ${err.message}`));
+    };
+
+    const onEnd = () => {
+      cleanup();
+      reject(new Error('Bot disconnected during startup'));
+    };
+
+    bot.once('spawn', onSpawn);
+    bot.once('kicked', onKicked);
+    bot.once('error', onError);
+    bot.once('end', onEnd);
+
+    // Timeout safety
+    setTimeout(() => {
+      cleanup();
+      reject(new Error('Connection timed out (30s) - Verify server is running on ' + port));
+    }, 30000);
   });
 
   // Create builder

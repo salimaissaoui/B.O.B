@@ -1,0 +1,4838 @@
+﻿
+> build-orchestrating-bot@0.1.0 test
+> cross-env NODE_OPTIONS=--experimental-vm-modules jest
+
+npm : (node:27524) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+At line:1 char:1
++ npm test 2>&1 | 
+Out-File -FilePath 
+test-output-10.txt 
+-Encoding utf8
++ ~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: ((  
+  node:27524) Ex...nge    
+ at any time:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+(node:26836) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/operations/pixe
+l-art-edge-cases.test.js
+  ΓùÅ Console
+
+    console.log
+        Pixel art grid: 
+32x32, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+          Autofixed row 
+1: centered with 0L/1R 
+padding
+
+      at pixelArt (src/ope
+rations/pixel-art.js:75:15
+)
+
+    console.log
+        Pixel art grid: 
+2x2, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+1x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+1x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+1x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+1x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+(node:37552) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/operations/pixe
+l-art.test.js (5.284 s)
+  ΓùÅ Console
+
+    console.log
+        Pixel art grid: 
+2x2, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+3x3, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+2x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+2x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+2x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+1x1, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+    console.log
+        Pixel art grid: 
+8x8, legend: no
+
+      at pixelArt (src/ope
+rations/pixel-art.js:133:1
+1)
+
+(node:43608) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+(node:35608) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/stages/allowlis
+t.test.js
+(node:42712) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/utils/inventory
+-manager.test.js (5.251 s)
+(node:41080) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/utils/pathfindi
+ng-helper.test.js
+(node:3952) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+(node:12376) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/operations/fill
+.test.js (5.408 s)
+PASS tests/bugfixes/pixel-
+art-regression.test.js 
+(5.524 s)
+(node:46284) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/config/build-ty
+pes.test.js (5.63 s)
+(node:49708) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/stages/validato
+r.test.js (6.058 s)
+(node:35196) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/schemas/validat
+or.test.js (5.81 s)
+(node:48148) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/quality-control
+.test.js (6.208 s)
+(node:50704) 
+ExperimentalWarning: VM 
+Modules is an 
+experimental feature and 
+might change at any time
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)
+PASS tests/integration/pip
+eline.test.js (6.412 s)
+FAIL tests/stages/builder.
+test.js (8.964 s)
+  ΓùÅ Console
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+
+    console.log
+        Step 1/1: set
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.log
+      Γ£ô Build completed 
+in 0.1s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+          at async 
+Promise.all (index 0)
+
+    console.log
+        Blocks placed: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+          at async 
+Promise.all (index 0)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Build Time: 0.1s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé   Vanilla: 1 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé   Total: 1 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Size: 2x2x2
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Duration: 0.1s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Blocks: 1 
+(10.0/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+          at async 
+Promise.all (index 0)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        Location: 10, 64, 
+10
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        Total steps: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+          at async 
+Promise.all (index 1)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        Step 1/1: set
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        Blocks placed: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé   Vanilla: 1 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé   Total: 1 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Size: 2x2x2
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Blocks: 1 
+(Infinity/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+          at async 
+Promise.all (index 1)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+          at async 
+Promise.all (index 1)
+
+    console.error
+      Build execution 
+failed: Build already in 
+progress
+
+    [0m [90m 609 |[39m
+     [90m 610 |[39m     
+} [36mcatch[39m (error) 
+{
+    
+[31m[1m>[22m[39m[90m 
+611 |[39m       console[
+33m.[39merror([32m`Build
+ execution failed: ${error
+.message}`[39m)[33m;[39
+m
+     [90m     |[39m     
+          
+[31m[1m^[22m[39m
+     [90m 612 |[39m     
+  [36mthrow[39m 
+error[33m;[39m
+     [90m 613 |[39m     
+} [36mfinally[39m {
+     [90m 614 |[39m     
+  [36mthis[39m[33m.[39
+mbuilding [33m=[39m [36
+mfalse[39m[33m;[39m[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:61
+1:15)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:116
+:7)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+
+    console.log
+        Blocks placed: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+
+    console.log
+      Γöé   Vanilla: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+
+    console.log
+      Γöé   Total: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+
+    console.log
+      Γöé Size: 2x2x2
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+
+    console.log
+      Γöé Blocks: 0 
+(0.0/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+
+    console.log
+        Step 1/1: 
+nonexistent_op
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.error
+      Unknown operation: 
+nonexistent_op
+
+    [0m [90m 1023 
+|[39m     
+[36mconst[39m operation 
+[33m=[39m [33mOPERATION
+_MAP[39m[step[33m.[39mo
+p][33m;[39m
+     [90m 1024 |[39m    
+ [36mif[39m 
+([33m![39moperation) {
+    
+[31m[1m>[22m[39m[90m 
+1025 |[39m       console
+[33m.[39merror([32m`Unkn
+own operation: ${step.op}`
+[39m)[33m;[39m
+     [90m      |[39m    
+           
+[31m[1m^[22m[39m
+     [90m 1026 |[39m    
+   [36mreturn[39m[33m;
+[39m
+     [90m 1027 |[39m    
+ }
+     [90m 1028 |[39m[0m
+
+      at Builder.executeVa
+nillaOperation (src/stages
+/5-builder.js:1025:15)
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:56
+3:22)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:149
+:9)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+
+    console.log
+        Blocks placed: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+
+    console.log
+      Γöé   Vanilla: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+
+    console.log
+      Γöé   Total: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+
+    console.log
+      Γöé Size: 2x2x2
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+
+    console.log
+      Γöé Blocks: 0 
+(0.0/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+
+    console.log
+          ΓåÆ Teleporting 
+to target (distance 141.5)
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:8
+91:13)
+
+    console.log
+          ΓåÆ Teleported 
+to 100, 70, 100
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:9
+11:17)
+
+    console.log
+          ΓåÆ Teleporting 
+to target (distance 141.5)
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:8
+91:13)
+
+    console.warn
+          ΓÜá Teleport 
+may have failed (no 
+position change detected)
+
+    [0m [90m 919 |[39m
+     [90m 920 |[39m     
+[36mif[39m 
+([33m![39mmoved) {
+    
+[31m[1m>[22m[39m[90m 
+921 |[39m       console[
+33m.[39mwarn([32m`    
+ΓÜá Teleport may have 
+failed (no position 
+change detected)`[39m)[3
+3m;[39m
+     [90m     |[39m     
+          
+[31m[1m^[22m[39m
+     [90m 922 |[39m     
+  console[33m.[39mwarn(
+[32m`    ΓÜá Expected: 
+${targetPos.x}, 
+${targetPos.y}, ${targetPo
+s.z}`[39m)[33m;[39m
+     [90m 923 |[39m     
+  console[33m.[39mwarn(
+[32m`    ΓÜá Current: ${cu
+rrentPos.x.toFixed(1)}, ${
+currentPos.y.toFixed(1)}, 
+${currentPos.z.toFixed(1)}
+`[39m)[33m;[39m
+     [90m 924 |[39m     
+  [36mreturn[39m [36mfa
+lse[39m[33m;[39m[0m
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:9
+21:15)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:178
+:22)
+
+    console.warn
+          ΓÜá Expected: 
+100, 70, 100
+
+    [0m [90m 920 |[39m 
+    [36mif[39m 
+([33m![39mmoved) {
+     [90m 921 |[39m     
+  console[33m.[39mwarn(
+[32m`    ΓÜá Teleport may 
+have failed (no position 
+change detected)`[39m)[3
+3m;[39m
+    
+[31m[1m>[22m[39m[90m 
+922 |[39m       console[
+33m.[39mwarn([32m`    
+ΓÜá Expected: 
+${targetPos.x}, 
+${targetPos.y}, ${targetPo
+s.z}`[39m)[33m;[39m
+     [90m     |[39m     
+          
+[31m[1m^[22m[39m
+     [90m 923 |[39m     
+  console[33m.[39mwarn(
+[32m`    ΓÜá Current: ${cu
+rrentPos.x.toFixed(1)}, ${
+currentPos.y.toFixed(1)}, 
+${currentPos.z.toFixed(1)}
+`[39m)[33m;[39m
+     [90m 924 |[39m     
+  [36mreturn[39m 
+[36mfalse[39m[33m;[39m
+     [90m 925 |[39m     
+}[0m
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:9
+22:15)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:178
+:22)
+
+    console.warn
+          ΓÜá Current: 
+0.0, 64.0, 0.0
+
+    [0m [90m 921 |[39m 
+      console[33m.[39mwa
+rn([32m`    ΓÜá Teleport 
+may have failed (no 
+position change detected)`
+[39m)[33m;[39m
+     [90m 922 |[39m     
+  console[33m.[39mwarn(
+[32m`    ΓÜá Expected: 
+${targetPos.x}, 
+${targetPos.y}, ${targetPo
+s.z}`[39m)[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+923 |[39m       console[
+33m.[39mwarn([32m`    
+ΓÜá Current: ${currentPos.
+x.toFixed(1)}, ${currentPo
+s.y.toFixed(1)}, ${current
+Pos.z.toFixed(1)}`[39m)[
+33m;[39m
+     [90m     |[39m     
+          
+[31m[1m^[22m[39m
+     [90m 924 |[39m     
+  [36mreturn[39m 
+[36mfalse[39m[33m;[39m
+     [90m 925 |[39m     
+}
+     [90m 926 |[39m[0m
+
+      at 
+Builder.teleportAndVerify 
+(src/stages/5-builder.js:9
+23:15)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:178
+:22)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: ENABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          Γ£ô Site 
+cleared (WorldEdit)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:196:1
+7)
+
+    console.log
+        Step 1/1: we_fill
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.log
+          ΓåÆ Using 
+WorldEdit (estimated: 25 
+blocks)
+
+      at Builder.executeWo
+rldEditOperation (src/stag
+es/5-builder.js:684:13)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+
+    console.log
+        Blocks placed: 25
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+
+    console.log
+        WorldEdit ops: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+
+    console.log
+      Γöé   Vanilla: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+
+    console.log
+      Γöé   Total: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+
+    console.log
+      Γöé Size: 5x3x5
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+
+    console.log
+      Γöé Blocks: 25 
+(Infinity/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+
+    console.log
+        Blocks placed: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+
+    console.log
+      Γöé   Vanilla: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+
+    console.log
+      Γöé   Total: 0 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+
+    console.log
+      Γöé Size: 2x2x2
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+
+    console.log
+      Γöé Blocks: 0 
+(0.0/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+
+    console.log
+      Undoing 1 WorldEdit 
+operations...
+
+      at Builder.undo (src
+/stages/5-builder.js:1213:
+15)
+
+    console.log
+        WorldEdit: 2 
+undone, 0 failed
+
+      at Builder.undo (src
+/stages/5-builder.js:1217:
+17)
+
+    console.log
+      Undoing vanilla 
+blocks (1 blocks)...
+
+      at Builder.undo (src
+/stages/5-builder.js:1229:
+15)
+
+    console.log
+      Γ£ô Undo completed
+
+      at Builder.undo (src
+/stages/5-builder.js:1241:
+13)
+
+    console.warn
+      Build interrupted: 
+bot disconnected
+
+    [0m [90m 147 |[39m 
+      [36mthis[39m[33m.
+[39mbot[33m.[39mon([32
+m'end'[39m[33m,[39m () 
+[33m=>[39m {
+     [90m 148 |[39m     
+    [36mif[39m ([36mthi
+s[39m[33m.[39mbuilding)
+ {
+    
+[31m[1m>[22m[39m[90m 
+149 |[39m           conso
+le[33m.[39mwarn([32m'Bu
+ild interrupted: bot disco
+nnected'[39m)[33m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 150 |[39m     
+      [36mthis[39m[33m.
+[39mbuilding [33m=[39m 
+[36mfalse[39m[33m;[39m
+     [90m 151 |[39m     
+      [36mthis[39m[33m.
+[39mbuildMutex[33m.[39m
+release()[33m;[39m
+     [90m 152 |[39m     
+    }[0m
+
+      at src/stages/5-buil
+der.js:149:19
+      at tests/stages/buil
+der.test.js:62:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/stages/builder.test.js:6
+2:32)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:340
+:15)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 1
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: ENABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.warn
+          ΓÜá Auto-clear 
+failed: WE failed
+
+    [0m [90m 196 |[39m 
+        console[33m.[39m
+log([32m'    Γ£ô Site 
+cleared (WorldEdit)'[39m)
+[33m;[39m
+     [90m 197 |[39m     
+  } [36mcatch[39m (e) {
+    
+[31m[1m>[22m[39m[90m 
+198 |[39m         console
+[33m.[39mwarn([32m`    
+ΓÜá Auto-clear failed: ${e
+.message}`[39m)[33m;[39
+m
+     [90m     |[39m     
+            
+[31m[1m^[22m[39m
+     [90m 199 |[39m     
+  }
+     [90m 200 |[39m     
+} [36melse[39m {
+     [90m 201 |[39m     
+  console[33m.[39mlog([
+32m'    ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)'[39m)[33m;[39
+m[0m
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:198:1
+7)
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:43
+7:7)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.log
+        Step 1/1: we_fill
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.log
+          ΓåÆ Using 
+WorldEdit (estimated: 25 
+blocks)
+
+      at Builder.executeWo
+rldEditOperation (src/stag
+es/5-builder.js:684:13)
+
+    console.warn
+      ΓÜá WorldEdit 
+operation failed: we_fill
+
+    [0m [90m 535 |[39m 
+            
+[36mconst[39m 
+suggestedFix [33m=[39m w
+eError[33m.[39msuggested
+Fix [33m||[39m 
+[32m'Check server 
+logs'[39m[33m;[39m
+     [90m 536 |[39m
+    
+[31m[1m>[22m[39m[90m 
+537 |[39m             con
+sole[33m.[39mwarn([32m`
+ΓÜá WorldEdit operation 
+failed: ${step.op}`[39m)
+[33m;[39m
+     [90m     |[39m     
+                
+[31m[1m^[22m[39m
+     [90m 538 |[39m     
+        console[33m.[39m
+warn([32m`  Error type: $
+{errorType}`[39m)[33m;[
+39m
+     [90m 539 |[39m     
+        console[33m.[39m
+warn([32m`  Message: ${we
+Error.message}`[39m)[33m
+;[39m
+     [90m 540 |[39m     
+        console[33m.[39m
+warn([32m`  Suggested 
+fix: ${suggestedFix}`[39m
+)[33m;[39m[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:53
+7:21)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.warn
+        Error type: 
+UNKNOWN
+
+    [0m [90m 536 |[39m
+     [90m 537 |[39m     
+        console[33m.[39m
+warn([32m`ΓÜá WorldEdit 
+operation failed: ${step.o
+p}`[39m)[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+538 |[39m             con
+sole[33m.[39mwarn([32m`
+  Error type: ${errorType}
+`[39m)[33m;[39m
+     [90m     |[39m     
+                
+[31m[1m^[22m[39m
+     [90m 539 |[39m     
+        console[33m.[39m
+warn([32m`  Message: ${we
+Error.message}`[39m)[33m
+;[39m
+     [90m 540 |[39m     
+        console[33m.[39m
+warn([32m`  Suggested 
+fix: ${suggestedFix}`[39m
+)[33m;[39m
+     [90m 541 |[39m[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:53
+8:21)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.warn
+        Message: WE failed
+
+    [0m [90m 537 |[39m 
+            console[33m.
+[39mwarn([32m`ΓÜá 
+WorldEdit operation 
+failed: ${step.op}`[39m)
+[33m;[39m
+     [90m 538 |[39m     
+        console[33m.[39m
+warn([32m`  Error type: $
+{errorType}`[39m)[33m;[
+39m
+    
+[31m[1m>[22m[39m[90m 
+539 |[39m             con
+sole[33m.[39mwarn([32m`
+  Message: ${weError.messa
+ge}`[39m)[33m;[39m
+     [90m     |[39m     
+                
+[31m[1m^[22m[39m
+     [90m 540 |[39m     
+        console[33m.[39m
+warn([32m`  Suggested 
+fix: ${suggestedFix}`[39m
+)[33m;[39m
+     [90m 541 |[39m
+     [90m 542 |[39m     
+        [90m// Track 
+warning[39m[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:53
+9:21)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.warn
+        Suggested fix: 
+Check server logs
+
+    [0m [90m 538 |[39m 
+            console[33m.
+[39mwarn([32m`  Error 
+type: ${errorType}`[39m)
+[33m;[39m
+     [90m 539 |[39m     
+        console[33m.[39m
+warn([32m`  Message: ${we
+Error.message}`[39m)[33m
+;[39m
+    
+[31m[1m>[22m[39m[90m 
+540 |[39m             con
+sole[33m.[39mwarn([32m`
+  Suggested fix: ${suggest
+edFix}`[39m)[33m;[39m
+     [90m     |[39m     
+                
+[31m[1m^[22m[39m
+     [90m 541 |[39m
+     [90m 542 |[39m     
+        [90m// Track 
+warning[39m
+     [90m 543 |[39m     
+        [36mthis[39m[33
+m.[39mcurrentBuild[33m.
+[39mwarnings[33m.[39mpus
+h({[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:54
+0:21)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.log
+        ΓåÆ Falling back 
+to vanilla operation: fill
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:55
+3:23)
+
+    console.error
+      Build execution 
+failed: blocks is not 
+iterable
+
+    [0m [90m 609 |[39m
+     [90m 610 |[39m     
+} [36mcatch[39m (error) 
+{
+    
+[31m[1m>[22m[39m[90m 
+611 |[39m       console[
+33m.[39merror([32m`Build
+ execution failed: ${error
+.message}`[39m)[33m;[39
+m
+     [90m     |[39m     
+          
+[31m[1m^[22m[39m
+     [90m 612 |[39m     
+  [36mthrow[39m 
+error[33m;[39m
+     [90m 613 |[39m     
+} [36mfinally[39m {
+     [90m 614 |[39m     
+  [36mthis[39m[33m.[39
+mbuilding [33m=[39m [36
+mfalse[39m[33m;[39m[0m
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:61
+1:15)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+    console.log
+      Starting build 
+execution...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+7:15)
+
+    console.log
+        Location: 0, 64, 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+8:15)
+
+    console.log
+        Total steps: 2
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:40
+9:15)
+
+    console.log
+        WorldEdit: 
+DISABLED
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+0:15)
+
+    console.log
+      
+      ΓåÆ Validating 
+materials...
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+3:15)
+
+    console.log
+      Γ£ô Creative mode - 
+unlimited materials
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:41
+5:15)
+
+    console.log
+        ΓåÆ Auto-clearing 
+build site...
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:175:1
+3)
+
+    console.log
+          ΓÜá Auto-clear 
+skipped (Vanilla clearing 
+too slow)
+
+      at 
+Builder.autoClearArea (src
+/stages/5-builder.js:201:1
+5)
+
+    console.log
+        Step 1/2: set
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.log
+        Step 2/2: set
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:47
+8:17)
+
+    console.log
+      Γ£ô Build completed 
+in 0.0s
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+5:15)
+
+    console.log
+        Blocks placed: 2
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:58
+6:15)
+
+    console.log
+        WorldEdit ops: 0
+
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:59
+3:15)
+
+    console.log
+      
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:79:
+13)
+
+    console.log
+      Γöé ≡ƒôè BUILD 
+PERFORMANCE METRICS
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:80:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:81:
+13)
+
+    console.log
+      Γöé Total Blocks: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:82:
+13)
+
+    console.log
+      Γöé Build Time: 0.0s
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:83:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:84:
+13)
+
+    console.log
+      Γöé Operations:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:85:
+13)
+
+    console.log
+      Γöé   WorldEdit: 0 
+ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:86:
+13)
+
+    console.log
+      Γöé   Vanilla: 2 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:87:
+13)
+
+    console.log
+      Γöé   Total: 2 ops
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:88:
+13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:89:
+13)
+
+    console.log
+      Γöé Batching 
+Optimization:
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:90:
+13)
+
+    console.log
+      Γöé   Blocks 
+Batched: 0 (0%)
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:91:
+13)
+
+    console.log
+      Γöé   Operations 
+Saved: 0
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:92:
+13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at PerformanceMetric
+s.printSummary (src/utils/
+performance-metrics.js:99:
+13)
+
+    console.log
+      ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:651:13)
+
+    console.log
+      Γöé BUILD REPORT
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:652:13)
+
+    console.log
+      Γö£ΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:653:13)
+
+    console.log
+      Γöé Type: undefined
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:654:13)
+
+    console.log
+      Γöé Size: 10x10x10
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:655:13)
+
+    console.log
+      Γöé Duration: 0s
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:656:13)
+
+    console.log
+      Γöé Blocks: 2 
+(Infinity/s)
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:657:13)
+
+    console.log
+      Γöé Success: Γ£ô
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:658:13)
+
+    console.log
+      ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓ
+öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+      at Builder.generateB
+uildReport (src/stages/5-b
+uilder.js:659:13)
+
+  ΓùÅ Builder P0 Fixes 
+ΓÇ║ Fallback Tracking ΓÇ║ 
+should not add WE to 
+history when fallback is 
+used
+
+    TypeError: blocks is 
+not iterable
+
+    [0m [90m 1093 
+|[39m     }
+     [90m 1094 |[39m
+    
+[31m[1m>[22m[39m[90m 
+1095 |[39m     
+[36mfor[39m 
+([36mconst[39m 
+blockPlacement 
+[36mof[39m blocks) {
+     [90m      |[39m    
+                          
+    [31m[1m^[22m[39m
+     [90m 1096 |[39m    
+   [36mif[39m ([33m![3
+9m[36mthis[39m[33m.[39
+mbuilding) 
+[36mbreak[39m[33m;[39m
+     [90m 1097 |[39m
+     [90m 1098 |[39m    
+   [36mconst[39m 
+worldPos [33m=[39m {[0m
+
+      at Builder.executeVa
+nillaOperation (src/stages
+/5-builder.js:1095:34)
+      at 
+Builder.executeBlueprint (
+src/stages/5-builder.js:55
+5:26)
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:371
+:7)
+
+  ΓùÅ Builder P0 Fixes 
+ΓÇ║ Fallback Tracking ΓÇ║ 
+Pathfinding Edge Cases 
+ΓÇ║ handles unreachable 
+positions gracefully
+
+    expect(received).toBeG
+reaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+    [0m [90m 400 |[39m
+     [90m 401 |[39m     
+    expect(builder[33m.[
+39mcurrentBuild)[33m.[39
+mtoBeNull()[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+402 |[39m         expect(
+builder[33m.[39mlastBuil
+dReport[33m.[39mexecutio
+n[33m.[39mblocksFailed)
+[33m.[39mtoBeGreaterThan(
+[35m0[39m)[33m;[39m
+     [90m     |[39m     
+                          
+                          
+       
+[31m[1m^[22m[39m
+     [90m 403 |[39m     
+  })[33m;[39m
+     [90m 404 |[39m     
+})[33m;[39m
+     [90m 405 |[39m   
+})[33m;[39m[0m
+
+      at 
+Object.<anonymous> (tests/
+stages/builder.test.js:402
+:64)
+
+PASS tests/worldedit/execu
+tor.test.js (17.565 s)
+  ΓùÅ Console
+
+    console.log
+      Detecting WorldEdit 
+plugin...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:112:15)
+
+    console.log
+      Γ£ô WorldEdit 
+detected: WorldEdit 
+version 7.2.15...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:135:17)
+
+    console.log
+      Detecting WorldEdit 
+plugin...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:112:15)
+
+    console.log
+      Γ£ô WorldEdit 
+detected: 
+FastAsyncWorldEdit 
+version 2.5.0...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:135:17)
+
+    console.log
+      Detecting WorldEdit 
+plugin...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:112:15)
+
+    console.log
+        No //version 
+response, trying //sel...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:139:17)
+
+    console.log
+      Γ£ô WorldEdit 
+detected via //sel command
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:156:19)
+
+    console.log
+      Detecting WorldEdit 
+plugin...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:112:15)
+
+    console.log
+        No //version 
+response, trying //sel...
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:139:17)
+
+    console.log
+      Γ£ù WorldEdit not 
+available: no response to 
+commands
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:160:17)
+
+    console.log
+      Γ£ù WorldEdit not 
+available: bot.chat not 
+available
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:106:15)
+
+    console.log
+      WorldEdit disabled 
+in configuration
+
+      at WorldEditExecutor
+.detectWorldEdit (src/worl
+dedit/executor.js:100:15)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+          ΓåÆ 1000 blocks 
+have been changed
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:290:17)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.error
+          Γ£ù WorldEdit 
+error: PERMISSION_DENIED
+
+    [0m [90m 273 |[39m 
+          error[33m.[39m
+suggestedFix [33m=[39m e
+rrorInfo[33m.[39msuggest
+edFix[33m;[39m
+     [90m 274 |[39m     
+      
+error[33m.[39mcommand 
+[33m=[39m 
+command[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+275 |[39m           conso
+le[33m.[39merror([32m` 
+   Γ£ù WorldEdit error: ${
+errorInfo.type}`[39m)[33
+m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 276 |[39m     
+      console[33m.[39mer
+ror([32m`      Command: $
+{command}`[39m)[33m;[39
+m
+     [90m 277 |[39m     
+      console[33m.[39mer
+ror([32m`      
+Suggestion: ${errorInfo.su
+ggestedFix}`[39m)[33m;[
+39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:275:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:146:7)
+
+    console.error
+            Command: 
+//set stone
+
+    [0m [90m 274 |[39m 
+          
+error[33m.[39mcommand 
+[33m=[39m 
+command[33m;[39m
+     [90m 275 |[39m     
+      console[33m.[39mer
+ror([32m`    Γ£ù 
+WorldEdit error: ${errorIn
+fo.type}`[39m)[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+276 |[39m           conso
+le[33m.[39merror([32m` 
+     Command: ${command}`
+[39m)[33m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 277 |[39m     
+      console[33m.[39mer
+ror([32m`      
+Suggestion: ${errorInfo.su
+ggestedFix}`[39m)[33m;[
+39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m
+     [90m 279 |[39m     
+    }[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:276:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:146:7)
+
+    console.error
+            Suggestion: 
+Grant WorldEdit 
+permissions to the bot 
+user. Required: 
+worldedit.selection.*, 
+worldedit.region.*, 
+worldedit.generation.*
+
+    [0m [90m 275 |[39m 
+          console[33m.[3
+9merror([32m`    Γ£ù 
+WorldEdit error: ${errorIn
+fo.type}`[39m)[33m;[39m
+     [90m 276 |[39m     
+      console[33m.[39mer
+ror([32m`      Command: $
+{command}`[39m)[33m;[39
+m
+    
+[31m[1m>[22m[39m[90m 
+277 |[39m           conso
+le[33m.[39merror([32m` 
+     Suggestion: ${errorIn
+fo.suggestedFix}`[39m)[3
+3m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m
+     [90m 279 |[39m     
+    }
+     [90m 280 |[39m[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:277:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:146:7)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.error
+          Γ£ù WorldEdit 
+error: PLUGIN_NOT_FOUND
+
+    [0m [90m 273 |[39m 
+          error[33m.[39m
+suggestedFix [33m=[39m e
+rrorInfo[33m.[39msuggest
+edFix[33m;[39m
+     [90m 274 |[39m     
+      
+error[33m.[39mcommand 
+[33m=[39m 
+command[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+275 |[39m           conso
+le[33m.[39merror([32m` 
+   Γ£ù WorldEdit error: ${
+errorInfo.type}`[39m)[33
+m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 276 |[39m     
+      console[33m.[39mer
+ror([32m`      Command: $
+{command}`[39m)[33m;[39
+m
+     [90m 277 |[39m     
+      console[33m.[39mer
+ror([32m`      
+Suggestion: ${errorInfo.su
+ggestedFix}`[39m)[33m;[
+39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:275:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:160:7)
+
+    console.error
+            Command: 
+//set stone
+
+    [0m [90m 274 |[39m 
+          
+error[33m.[39mcommand 
+[33m=[39m 
+command[33m;[39m
+     [90m 275 |[39m     
+      console[33m.[39mer
+ror([32m`    Γ£ù 
+WorldEdit error: ${errorIn
+fo.type}`[39m)[33m;[39m
+    
+[31m[1m>[22m[39m[90m 
+276 |[39m           conso
+le[33m.[39merror([32m` 
+     Command: ${command}`
+[39m)[33m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 277 |[39m     
+      console[33m.[39mer
+ror([32m`      
+Suggestion: ${errorInfo.su
+ggestedFix}`[39m)[33m;[
+39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m
+     [90m 279 |[39m     
+    }[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:276:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:160:7)
+
+    console.error
+            Suggestion: 
+Ensure WorldEdit/FAWE 
+plugin is installed and 
+loaded. Check //version 
+command.
+
+    [0m [90m 275 |[39m 
+          console[33m.[3
+9merror([32m`    Γ£ù 
+WorldEdit error: ${errorIn
+fo.type}`[39m)[33m;[39m
+     [90m 276 |[39m     
+      console[33m.[39mer
+ror([32m`      Command: $
+{command}`[39m)[33m;[39
+m
+    
+[31m[1m>[22m[39m[90m 
+277 |[39m           conso
+le[33m.[39merror([32m` 
+     Suggestion: ${errorIn
+fo.suggestedFix}`[39m)[3
+3m;[39m
+     [90m     |[39m     
+              
+[31m[1m^[22m[39m
+     [90m 278 |[39m     
+      [36mthrow[39m 
+error[33m;[39m
+     [90m 279 |[39m     
+    }
+     [90m 280 |[39m[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:277:19)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:160:7)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.warn
+          ΓÜá No 
+acknowledgment received 
+for: //set stone
+
+    [0m [90m 299 |[39m 
+      } [36melse[39m {
+     [90m 300 |[39m     
+    [90m// No response - 
+command may have worked 
+but no feedback[39m
+    
+[31m[1m>[22m[39m[90m 
+301 |[39m         console
+[33m.[39mwarn([32m`    
+ΓÜá No acknowledgment 
+received for: ${command}`
+[39m)[33m;[39m
+     [90m     |[39m     
+            
+[31m[1m^[22m[39m
+     [90m 302 |[39m     
+    console[33m.[39mwarn
+([32m`      This could 
+indicate: plugin lag, 
+chat spam filter, or 
+command 
+failure`[39m)[33m;[39m
+     [90m 303 |[39m
+     [90m 304 |[39m     
+    [90m// Track 
+unconfirmed 
+operation[39m[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:301:17)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:170:22)
+
+    console.warn
+            This could 
+indicate: plugin lag, 
+chat spam filter, or 
+command failure
+
+    [0m [90m 300 |[39m 
+        [90m// No 
+response - command may 
+have worked but no 
+feedback[39m
+     [90m 301 |[39m     
+    console[33m.[39mwarn
+([32m`    ΓÜá No 
+acknowledgment received 
+for: ${command}`[39m)[33
+m;[39m
+    
+[31m[1m>[22m[39m[90m 
+302 |[39m         console
+[33m.[39mwarn([32m`    
+  This could indicate: 
+plugin lag, chat spam 
+filter, or command 
+failure`[39m)[33m;[39m
+     [90m     |[39m     
+            
+[31m[1m^[22m[39m
+     [90m 303 |[39m
+     [90m 304 |[39m     
+    [90m// Track 
+unconfirmed operation[39m
+     [90m 305 |[39m     
+    [36mthis[39m[33m.[
+39munconfirmedOps[33m.[3
+9mpush({[0m
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:302:17)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:170:22)
+
+    console.log
+        [WorldEdit] 
+//pos1 10,64,10
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //sel 
+cuboid
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] 
+//pos1 0,0,0
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //sel 
+cuboid
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] 
+//pos1 0,0,0
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] 
+//walls oak_planks
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+      Undoing 2 WorldEdit 
+operations...
+
+      at 
+WorldEditExecutor.undoAll 
+(src/worldedit/executor.js
+:597:13)
+
+    console.log
+        [WorldEdit] //undo
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //undo
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.log
+        [WorldEdit] //set 
+stone
+
+      at WorldEditExecutor
+.executeCommand (src/world
+edit/executor.js:241:13)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:279:15)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:284:15)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+    console.warn
+      ΓÜá Spam warning 
+detected, increasing 
+delays...
+
+    [0m [90m 39 |[39m  
+         textLower[33m.[
+39mincludes([32m'slow 
+down'[39m) [33m||[39m
+     [90m 40 |[39m      
+     textLower[33m.[39mi
+ncludes([32m'wait'[39m))
+ {
+    
+[31m[1m>[22m[39m[90m 
+41 |[39m           consol
+e[33m.[39mwarn([32m'ΓÜá
+ Spam warning detected, 
+increasing delays...'[39m
+)[33m;[39m
+     [90m    |[39m      
+             
+[31m[1m^[22m[39m
+     [90m 42 |[39m      
+     [36mthis[39m[33m.
+[39mspamDetected 
+[33m=[39m 
+[36mtrue[39m[33m;[39m
+     [90m 43 |[39m      
+     [36mthis[39m[33m.
+[39mbackoffMultiplier 
+[33m=[39m [33mMath[39m
+[33m.[39mmin([36mthis[
+39m[33m.[39mbackoffMulti
+plier [33m*[39m 
+[35m2[39m[33m,[39m 
+[35m4.0[39m)[33m;[39m
+     [90m 44 |[39m      
+   }[0m
+
+      at src/worldedit/exe
+cutor.js:41:19
+      at tests/worldedit/e
+xecutor.test.js:21:51
+          at 
+Array.forEach 
+(<anonymous>)
+      at Object.emit (test
+s/worldedit/executor.test.
+js:21:32)
+      at 
+Object.<anonymous> (tests/
+worldedit/executor.test.js
+:294:17)
+
+
+Test Suites: 1 failed, 13 
+passed, 14 total
+Tests:       2 failed, 
+205 passed, 207 total
+Snapshots:   0 total
+Time:        19.585 s, 
+estimated 20 s
+Ran all test suites.

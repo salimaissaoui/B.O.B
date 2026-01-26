@@ -105,33 +105,52 @@ export async function searchSpriteReference(subject) {
  * Uses actual RGB color matching instead of AI guessing
  * @param {string} imageUrl - URL of the sprite image
  * @param {string} subject - Subject name for context
- * @param {string} apiKey - Gemini API key (unused now, kept for compatibility)
+ * @param {string} apiKey - Gemini API key (for fallback AI vision)
+ * @param {Object} options - Processing options
+ * @param {string} options.palette - 'full', 'basic', or 'wool' (default: 'full')
+ * @param {boolean} options.useLab - Use LAB color space (default: true)
+ * @param {boolean} options.preferDeterministic - Try deterministic first (default: true)
  * @returns {Promise<Object>} - Grid and legend
  */
-export async function imageToPixelGrid(imageUrl, subject, apiKey) {
-    // Try deterministic processing first
-    try {
-        const { processImageUrl } = await import('./sprite-processor.js');
+export async function imageToPixelGrid(imageUrl, subject, apiKey, options = {}) {
+    const {
+        palette = 'full',
+        useLab = true,
+        preferDeterministic = true
+    } = options;
 
-        console.log(`  → Using deterministic pixel processing...`);
-        const result = await processImageUrl(imageUrl, 64, 64);
+    // Try deterministic processing first (if preferred)
+    if (preferDeterministic) {
+        try {
+            const { processImageUrl } = await import('./sprite-processor.js');
 
-        return {
-            subject,
-            description: `Pixel art: ${subject}`,
-            width: result.width,
-            height: result.height,
-            legend: result.legend,
-            grid: result.grid
-        };
-    } catch (processorError) {
-        console.warn(`  ⚠ Deterministic processing failed: ${processorError.message}`);
-        console.log(`  → Falling back to AI vision...`);
+            console.log(`  → Using deterministic pixel processing (palette: ${palette})...`);
+            const result = await processImageUrl(imageUrl, 64, 64, { palette, useLab });
+
+            return {
+                subject,
+                description: `Pixel art: ${subject}`,
+                width: result.width,
+                height: result.height,
+                legend: result.legend,
+                grid: result.grid
+            };
+        } catch (processorError) {
+            console.warn(`  ⚠ Deterministic processing failed: ${processorError.message}`);
+            console.log(`  → Falling back to Gemini Vision...`);
+        }
     }
 
-    // Fallback to AI vision (original code)
+    // Fallback to Gemini Vision (AI-powered analysis)
+    console.log(`  → Using Gemini Vision API for image analysis...`);
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-exp',  // Use experimental model for better vision
+        generationConfig: {
+            temperature: 0.2,  // Lower temperature for more consistent output
+            maxOutputTokens: 4096
+        }
+    });
 
     // Fetch the image
     const response = await fetch(imageUrl);
@@ -139,38 +158,57 @@ export async function imageToPixelGrid(imageUrl, subject, apiKey) {
     const base64Image = Buffer.from(imageBuffer).toString('base64');
     const mimeType = response.headers.get('content-type') || 'image/png';
 
-    const prompt = `Analyze this pixel art sprite of "${subject}" and convert it to a Minecraft build grid.
+    const prompt = `Analyze this sprite image of "${subject}" and convert it to a Minecraft pixel art grid.
 
-INSTRUCTIONS:
-1. Identify the main colors in the sprite
-2. Map each color to the closest Minecraft wool block
-3. Output a grid where each cell is a single character representing a block
-4. Include a legend mapping characters to block names
-5. Preserve the sprite's recognizable features
+CRITICAL REQUIREMENTS:
+
+ANALYSIS STEPS:
+1. Identify the EXACT colors in the image (RGB values)
+2. Map each color to the closest Minecraft block:
+   - Wool blocks for softer colors
+   - Concrete blocks for saturated colors
+   - Terracotta for earthy tones
+   - Special blocks (gold_block, diamond_block, etc.) for unique colors
+3. Preserve the sprite's recognizable features and proportions
+4. Remove/ignore white or transparent background
+5. Keep the aspect ratio accurate
+
+GRID REQUIREMENTS:
+- ALL rows must be EXACTLY the same length
+- Row 0 is the TOP of the image
+- Use '.' for transparent/background pixels
+- Use single characters for each color
+- Minimum size: 16x16 pixels
+- Maximum size: 64x64 pixels
+- Choose size based on image complexity and detail level
 
 OUTPUT FORMAT (JSON only):
 {
   "subject": "${subject}",
-  "description": "Brief description of what you see",
+  "description": "Detailed description of what you analyzed",
   "width": <number>,
   "height": <number>,
   "legend": {
     ".": "air",
     "#": "black_wool",
-    "O": "orange_wool"
+    "O": "orange_concrete",
+    "Y": "yellow_wool",
+    "B": "blue_concrete",
+    "G": "gold_block"
   },
   "grid": [
     "...###...",
-    "..#OOO#.."
+    "..#OOO#..",
+    "..#YYY#..",
+    "...###..."
   ]
 }
 
-- Determine the true bounding box of the sprite (ignore empty space)
-- Map pixels to the OPTIMAL RESOLUTION for detail (between 32x32 and 80x80)
-- Do NOT squash the sprite. If it needs to be tall (e.g. 30x60), make it tall.
-- Output ONLY valid JSON
-- Use '.' for transparent/background pixels
-- Use single characters for each color`;
+IMPORTANT:
+- Output ONLY valid JSON (no markdown, no explanation)
+- Every row in grid array must have identical length
+- Width and height must match actual grid dimensions
+- Use appropriate block types (not just wool)`;
 
     const result = await model.generateContent([
         prompt,

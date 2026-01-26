@@ -233,8 +233,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
   finalErrors.push(...validateFeatures(currentBlueprint, analysis));
   finalErrors.push(...validateLimits(currentBlueprint));
 
-  console.error('✗ Blueprint validation failed after all retries');
-  console.error('✗ Blueprint validation failed after all retries');
+  console.error('Blueprint validation failed after all retries');
   console.error('  Final errors:');
   finalErrors.forEach(err => console.error(`   - ${err}`));
 

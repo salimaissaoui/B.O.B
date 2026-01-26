@@ -58,7 +58,7 @@ describe('Quality Control - Phase 1-3', () => {
         expect(meta.handler).toBeDefined();
         expect(meta.type).toBeDefined();
         expect(meta.description).toBeDefined();
-        expect(['vanilla', 'worldedit', 'smart', 'system']).toContain(meta.type);
+        expect(['vanilla', 'worldedit', 'smart', 'system', 'organic', 'universal']).toContain(meta.type);
       }
     });
   });
@@ -196,13 +196,13 @@ describe('Quality Control - Phase 1-3', () => {
         palette: ['stone', 'oak_planks', 'glass', 'brick'],
         steps: [
           { op: 'site_prep' },
-          { op: 'fill', from: {x:0,y:0,z:0}, to: {x:10,y:1,z:10}, block: 'stone' },
-          { op: 'hollow_box', from: {x:0,y:0,z:0}, to: {x:10,y:5,z:10}, block: 'stone' },
-          { op: 'smart_wall', from: {x:0,y:0,z:0}, to: {x:10,y:5,z:0}, palette: ['stone','andesite'], pattern: 'checker' },
-          { op: 'smart_floor', from: {x:0,y:0,z:0}, to: {x:10,y:0,z:10}, palette: ['oak_planks'], pattern: 'parquet' },
-          { op: 'smart_roof', from: {x:0,y:5,z:0}, to: {x:10,y:5,z:10}, block: 'brick', style: 'gable' },
-          { op: 'we_fill', from: {x:0,y:0,z:0}, to: {x:5,y:5,z:5}, block: 'stone' },
-          { op: 'pixel_art', base: {x:0,y:0,z:0}, grid: ['##', '##'], legend: {'#':'stone','.':"air"} }
+          { op: 'fill', from: { x: 0, y: 0, z: 0 }, to: { x: 10, y: 1, z: 10 }, block: 'stone' },
+          { op: 'hollow_box', from: { x: 0, y: 0, z: 0 }, to: { x: 10, y: 5, z: 10 }, block: 'stone' },
+          { op: 'smart_wall', from: { x: 0, y: 0, z: 0 }, to: { x: 10, y: 5, z: 0 }, palette: ['stone', 'andesite'], pattern: 'checker' },
+          { op: 'smart_floor', from: { x: 0, y: 0, z: 0 }, to: { x: 10, y: 0, z: 10 }, palette: ['oak_planks'], pattern: 'parquet' },
+          { op: 'smart_roof', from: { x: 0, y: 5, z: 0 }, to: { x: 10, y: 5, z: 10 }, block: 'brick', style: 'gable' },
+          { op: 'we_fill', from: { x: 0, y: 0, z: 0 }, to: { x: 5, y: 5, z: 5 }, block: 'stone' },
+          { op: 'pixel_art', base: { x: 0, y: 0, z: 0 }, grid: ['##', '##'], legend: { '#': 'stone', '.': "air" } }
         ]
       };
 
@@ -215,7 +215,7 @@ describe('Quality Control - Phase 1-3', () => {
         size: { width: 10, height: 5, depth: 10 },
         palette: ['stone'],
         steps: [
-          { op: 'invalid_operation_name', from: {x:0,y:0,z:0}, to: {x:1,y:1,z:1} }
+          { op: 'invalid_operation_name', from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 } }
         ]
       };
 

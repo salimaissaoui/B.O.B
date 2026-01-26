@@ -140,10 +140,160 @@ export class InventoryManager {
     }
     return this.isCreativeMode;
   }
+
+  /**
+   * Get count of a specific item in inventory
+   * @param {string} itemName - Name of item
+   * @returns {number} Item count
+   */
+  getItemCount(itemName) {
+    const materials = this.getAvailableMaterials();
+    return materials[itemName] || 0;
+  }
+
+  /**
+   * Check if bot has at least a certain amount of an item
+   * @param {string} itemName - Name of item
+   * @param {number} count - Required count
+   * @returns {boolean} True if bot has enough
+   */
+  hasItem(itemName, count = 1) {
+    return this.getItemCount(itemName) >= count;
+  }
 }
 
 /**
- * Format validation result for display
+ * Calculate material requirements from blueprint
+ * @param {Object} blueprint - Blueprint object
+ * @returns {Map<string, number>} Material requirements { blockName: count }
+ */
+export function calculateMaterialRequirements(blueprint) {
+  const requirements = new Map();
+  if (!blueprint || !blueprint.steps) return requirements;
+
+  const resolveBlock = (blockName) => {
+    if (!blockName) return 'air';
+    if (blockName.startsWith('$')) {
+      const key = blockName.substring(1);
+      if (blueprint.palette && blueprint.palette[key]) {
+        return blueprint.palette[key];
+      }
+      return 'stone'; // Default fallback
+    }
+    return blockName;
+  };
+
+  for (const step of blueprint.steps) {
+    if (step.block) {
+      const block = resolveBlock(step.block);
+      if (block === 'air') continue;
+
+      let count = 1;
+      if (step.size) {
+        count = (step.size.width || 1) * (step.size.height || 1) * (step.size.depth || 1);
+      } else if (step.from && step.to) {
+        count = (Math.abs(step.to.x - step.from.x) + 1) *
+          (Math.abs(step.to.y - step.from.y) + 1) *
+          (Math.abs(step.to.z - step.from.z) + 1);
+      }
+
+      requirements.set(block, (requirements.get(block) || 0) + count);
+    }
+  }
+
+  return requirements;
+}
+
+/**
+ * Scan bot inventory and aggregate items
+ * @param {Object} bot - Mineflayer bot
+ * @returns {Map<string, number>} Map of item name to count
+ */
+export function scanInventory(bot) {
+  const inventory = new Map();
+  if (!bot || !bot.inventory) return inventory;
+
+  const items = bot.inventory.items();
+  for (const item of items) {
+    if (item && item.name) {
+      inventory.set(item.name, (inventory.get(item.name) || 0) + item.count);
+    }
+  }
+  return inventory;
+}
+
+/**
+ * Validate that bot has materials needed for blueprint
+ * @param {Object} bot - Mineflayer bot
+ * @param {Object} blueprint - Blueprint to validate
+ * @returns {Object} Validation result
+ */
+export function validateMaterials(bot, blueprint) {
+  const requirements = calculateMaterialRequirements(blueprint);
+  const inventory = scanInventory(bot);
+  const hasInventory = bot && bot.inventory !== undefined;
+
+  const missing = new Map();
+  let totalRequired = 0;
+  let missingBlockTypes = 0;
+
+  if (!hasInventory) {
+    return {
+      valid: true,
+      hasInventory: false,
+      requirements,
+      inventory,
+      missing,
+      summary: {
+        totalRequired: 0,
+        uniqueBlockTypes: requirements.size,
+        missingBlockTypes: 0
+      }
+    };
+  }
+
+  for (const [block, needed] of requirements.entries()) {
+    totalRequired += needed;
+    const available = inventory.get(block) || 0;
+    if (available < needed) {
+      missing.set(block, needed - available);
+      missingBlockTypes++;
+    }
+  }
+
+  return {
+    valid: missing.size === 0,
+    hasInventory,
+    requirements,
+    inventory,
+    missing,
+    summary: {
+      totalRequired,
+      uniqueBlockTypes: requirements.size,
+      missingBlockTypes
+    }
+  };
+}
+
+/**
+ * Format material list for display
+ * @param {Map<string, number>} requirements - Map of materials
+ * @returns {string} Formatted string
+ */
+export function formatMaterialList(requirements) {
+  if (!requirements || requirements.size === 0) {
+    return 'No materials required';
+  }
+
+  const lines = [];
+  for (const [block, count] of requirements.entries()) {
+    lines.push(`${block}: ${count}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Format validation result for display (Legacy support for Builder)
  * @param {Object} result - Validation result
  * @returns {string} Formatted string
  */
@@ -153,12 +303,18 @@ export function formatValidationResult(result) {
   }
 
   if (result.valid) {
-    return `✓ All required materials available (${Object.keys(result.required).length} types)`;
+    return `✓ All required materials available (${result.summary?.uniqueBlockTypes || 0} types)`;
   }
 
   let output = '⚠ Missing materials:\n';
-  for (const item of result.missing) {
-    output += `  - ${item.block}: need ${item.needed}, have ${item.available} (short ${item.shortage})\n`;
+  if (result.missing instanceof Map) {
+    for (const [block, shortage] of result.missing.entries()) {
+      output += `  - ${block}: short ${shortage}\n`;
+    }
+  } else if (Array.isArray(result.missing)) {
+    for (const item of result.missing) {
+      output += `  - ${item.block}: need ${item.needed}, have ${item.available} (short ${item.shortage})\n`;
+    }
   }
   return output;
 }

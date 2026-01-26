@@ -4,6 +4,55 @@
  */
 
 export const OPERATIONS_REGISTRY = {
+  // Universal Operations (New Standard)
+  box: {
+    handler: 'box',
+    type: 'universal',
+    avgBlocksPerOp: 100,
+    complexity: 1,
+    requiredOneOf: [['size', 'from', 'to']],
+    requiredParams: ['block'],
+    description: 'Creates a solid volume (universal optimized)'
+  },
+
+  wall: {
+    handler: 'wall',
+    type: 'universal',
+    avgBlocksPerOp: 80,
+    complexity: 2,
+    requiredOneOf: [['size', 'from', 'to']],
+    requiredParams: ['block'],
+    description: 'Creates hollow walls (universal optimized)'
+  },
+
+  outline: {
+    handler: 'outline',
+    type: 'universal',
+    avgBlocksPerOp: 40,
+    complexity: 2,
+    requiredOneOf: [['size', 'from', 'to']],
+    requiredParams: ['block'],
+    description: 'Creates a wireframe outline'
+  },
+
+  move: {
+    handler: 'move',
+    type: 'universal',
+    avgBlocksPerOp: 0,
+    complexity: 1,
+    requiredParams: ['offset'],
+    description: 'Moves the build cursor'
+  },
+
+  cursor_reset: {
+    handler: 'cursor_reset',
+    type: 'universal',
+    avgBlocksPerOp: 0,
+    complexity: 1,
+    requiredParams: [],
+    description: 'Resets cursor to origin'
+  },
+
   // Vanilla operations (existing)
   fill: {
     handler: 'fill',
@@ -139,6 +188,44 @@ export const OPERATIONS_REGISTRY = {
     fallback: null,
     requiredParams: ['from', 'to', 'fromBlock', 'toBlock'],
     description: 'WorldEdit: Replaces blocks in selection'
+  },
+
+  // New Primitives (FAWE)
+  sphere: {
+    handler: 'sphere',
+    type: 'worldedit',
+    avgBlocksPerOp: 1000,
+    complexity: 2,
+    requiredParams: ['block', 'radius'],
+    description: 'Creates a filled sphere using FAWE async commands'
+  },
+
+  cylinder: {
+    handler: 'cylinder',
+    type: 'worldedit',
+    avgBlocksPerOp: 1500,
+    complexity: 2,
+    requiredParams: ['block', 'radius', 'height'],
+    description: 'Creates a filled cylinder using FAWE async commands'
+  },
+
+  // Organic Operations (VoxelSniper)
+  smooth: {
+    handler: 'smooth',
+    type: 'organic',
+    avgBlocksPerOp: 500,
+    complexity: 1,
+    requiredParams: ['center', 'radius'],
+    description: 'Smooths terrain/structure using VoxelSniper blend ball'
+  },
+
+  grow_tree: {
+    handler: 'grow-tree',
+    type: 'organic',
+    avgBlocksPerOp: 200,
+    complexity: 1,
+    requiredParams: ['pos', 'type'],
+    description: 'Generates a procedural tree using VoxelSniper forest brush'
   },
 
   // Detail operations (new - vanilla)

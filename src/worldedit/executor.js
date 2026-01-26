@@ -477,21 +477,21 @@ export class WorldEditExecutor {
    * Fill selection with block
    */
   async fillSelection(block) {
-    await this.executeCommand(`//set ${block}`, { executionDelay: 500 });
+    await this.executeCommand(`//set -a ${block}`, { executionDelay: 500 });
   }
 
   /**
    * Create walls in selection (hollow)
    */
   async createWalls(block) {
-    await this.executeCommand(`//walls ${block}`, { executionDelay: 500 });
+    await this.executeCommand(`//walls -a ${block}`, { executionDelay: 500 });
   }
 
   /**
    * Replace blocks in selection
    */
   async replaceBlocks(fromBlock, toBlock) {
-    await this.executeCommand(`//replace ${fromBlock} ${toBlock}`, { executionDelay: 500 });
+    await this.executeCommand(`//replace -a ${fromBlock} ${toBlock}`, { executionDelay: 500 });
   }
 
   /**
@@ -507,7 +507,7 @@ export class WorldEditExecutor {
    */
   async createCylinder(block, radius, height, hollow = false) {
     const cmd = hollow ? 'hcyl' : 'cyl';
-    await this.executeCommand(`//${cmd} ${block} ${radius} ${height}`, { executionDelay: 700 });
+    await this.executeCommand(`//${cmd} -a ${block} ${radius} ${height}`, { executionDelay: 700 });
   }
 
   /**
@@ -515,7 +515,7 @@ export class WorldEditExecutor {
    */
   async createSphere(block, radius, hollow = false) {
     const cmd = hollow ? 'hsphere' : 'sphere';
-    await this.executeCommand(`//${cmd} ${block} ${radius}`, { executionDelay: 700 });
+    await this.executeCommand(`//${cmd} -a ${block} ${radius}`, { executionDelay: 700 });
   }
 
   /**

@@ -15,7 +15,7 @@ describe('Integration Tests', () => {
     test('should analyze prompt without LLM', () => {
       // Stage 1: Analyzer - lightweight, no LLM
       const analysis = analyzePrompt('build a small wooden house');
-      
+
       expect(analysis).toBeDefined();
       expect(analysis.buildType).toBe('house');
       expect(analysis.hints).toBeDefined();
@@ -24,40 +24,40 @@ describe('Integration Tests', () => {
       expect(analysis.hints.dimensions.height).toBeGreaterThan(0);
       expect(analysis.hints.dimensions.depth).toBeGreaterThan(0);
     });
-    
+
     test('should detect different build types', () => {
       const houseAnalysis = analyzePrompt('build a house');
       expect(houseAnalysis.buildType).toBe('house');
-      
+
       const towerAnalysis = analyzePrompt('build a tower');
       expect(towerAnalysis.buildType).toBe('tower');
-      
+
       const castleAnalysis = analyzePrompt('build a castle');
       expect(castleAnalysis.buildType).toBe('castle');
-      
+
       const pixelArtAnalysis = analyzePrompt('build pixel art heart');
       expect(pixelArtAnalysis.buildType).toBe('pixel_art');
-      
+
       // Note: Characters like "charizard" are now detected as statue (3D)
       const statueAnalysis = analyzePrompt('build a charizard');
       expect(statueAnalysis.buildType).toBe('statue');
     });
-    
+
     test('should detect themes', () => {
       const gothicAnalysis = analyzePrompt('build a gothic castle');
       expect(gothicAnalysis.theme).not.toBeNull();
       expect(gothicAnalysis.theme.theme).toBe('gothic');
-      
+
       const japaneseAnalysis = analyzePrompt('build a japanese house');
       expect(japaneseAnalysis.theme).not.toBeNull();
       expect(japaneseAnalysis.theme.theme).toBe('japanese');
     });
-    
+
     test('should validate blueprint schema', () => {
       // Simulated blueprint from Stage 2
       const blueprint = {
         size: { width: 10, depth: 10, height: 5 },
-        palette: ['oak_planks', 'oak_log', 'glass_pane', 'oak_door'],
+        palette: { "primary": "oak_planks", "secondary": "oak_log", "window": "glass_pane", "door": "oak_door" },
         steps: [
           {
             op: 'fill',
@@ -83,11 +83,11 @@ describe('Integration Tests', () => {
       // Stage 3: Validate blueprint
       expect(validateBlueprintSchema(blueprint)).toBe(true);
     });
-    
+
     test('should validate blueprint with WorldEdit operations', () => {
       const blueprint = {
         size: { width: 20, depth: 20, height: 10 },
-        palette: ['stone', 'oak_planks'],
+        palette: { "primary": "stone", "secondary": "oak_planks" },
         steps: [
           {
             op: 'we_fill',
@@ -141,7 +141,7 @@ describe('Integration Tests', () => {
 
       const builder = new Builder(mockBot);
       expect(builder.getProgress()).toBeNull();
-      
+
       // Simulate starting a build
       builder.building = true;
       builder.currentBuild = {
@@ -158,7 +158,7 @@ describe('Integration Tests', () => {
       expect(progress.fallbacksUsed).toBe(1);
       expect(progress.isBuilding).toBe(true);
     });
-    
+
     test('should track undo info', () => {
       const mockBot = {
         blockAt: () => null,
@@ -166,7 +166,7 @@ describe('Integration Tests', () => {
       };
 
       const builder = new Builder(mockBot);
-      
+
       // Simulate some history
       builder.history = [[
         { pos: { x: 0, y: 0, z: 0 }, previousBlock: 'air' },
@@ -175,7 +175,7 @@ describe('Integration Tests', () => {
       builder.worldEditHistory = [
         { step: { op: 'we_fill' }, timestamp: Date.now() }
       ];
-      
+
       const undoInfo = builder.getUndoInfo();
       expect(undoInfo.vanillaBuilds).toBe(1);
       expect(undoInfo.vanillaBlocks).toBe(2);

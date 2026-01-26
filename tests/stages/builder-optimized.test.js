@@ -1,0 +1,103 @@
+import { jest, describe, test, expect } from '@jest/globals';
+import { Builder } from '../../src/stages/5-builder.js';
+import { Vec3 } from 'vec3';
+
+jest.setTimeout(20000);
+
+// Mock bot factory
+// Mock bot factory
+function createMockBot(options = {}) {
+    const inventoryItems = options.initialInventory || [];
+    const handlers = {};
+
+    const bot = {
+        chat: jest.fn((msg) => {
+            // Simulate WorldEdit responses
+            if (msg.startsWith('//') || msg.startsWith('/tp')) {
+                setTimeout(() => {
+                    if (handlers['message']) {
+                        handlers['message'].forEach(h => h("Operation completed (100 blocks changed)."));
+                    }
+                }, 10);
+            }
+        }),
+        on: jest.fn((event, handler) => {
+            handlers[event] = handlers[event] || [];
+            handlers[event].push(handler);
+        }),
+        waitForTicks: jest.fn().mockResolvedValue(),
+        lookAt: jest.fn().mockResolvedValue(),
+        activateItem: jest.fn(),
+        equip: jest.fn().mockResolvedValue(),
+        inventory: {
+            findInventoryItem: jest.fn((name) => inventoryItems.find(i => i.name === name) || null)
+        },
+        entity: {
+            position: {
+                x: 0, y: 64, z: 0,
+                clone: () => ({
+                    x: 0, y: 64, z: 0,
+                    distanceTo: () => 100
+                }),
+                distanceTo: () => 100
+            }
+        },
+        blockAt: jest.fn(() => ({ name: 'air' })),
+        ...options
+    };
+    return bot;
+}
+
+describe('Builder Optimized Logic (Task 3 & 4)', () => {
+
+    describe('WorldEdit Async Flags', () => {
+        test('should include -a flag in all major WorldEdit operations', async () => {
+            const bot = createMockBot();
+            const builder = new Builder(bot);
+            builder.worldEditEnabled = true;
+
+            // Test Fill
+            await builder.executeWorldEditFill({ from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, block: 'stone' }, { x: 0, y: 0, z: 0 });
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//set -a stone'));
+
+            // Test Walls
+            await builder.executeWorldEditWalls({ from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, block: 'stone' }, { x: 0, y: 0, z: 0 });
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//walls -a stone'));
+
+            // Test Sphere
+            await builder.executeWorldEditSphere({ center: { x: 0, y: 0, z: 0 }, radius: 5, block: 'stone' }, { x: 0, y: 0, z: 0 });
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//sphere -a stone 5'));
+        });
+    });
+
+    describe('VoxelSniper Tool Safety', () => {
+        test('should verify arrow in inventory before organic operation', async () => {
+            // Setup bot WITHOUT an arrow
+            const botNoArrow = createMockBot({ initialInventory: [] });
+            const builderNo = new Builder(botNoArrow);
+            builderNo.worldEditEnabled = true;
+
+            await builderNo.executeOrganicOperation({ command: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
+            expect(botNoArrow.equip).not.toHaveBeenCalled();
+
+            // Setup bot WITH an arrow
+            const botWithArrow = createMockBot({ initialInventory: [{ name: 'arrow' }] });
+            const builderWith = new Builder(botWithArrow);
+            builderWith.worldEditEnabled = true;
+
+            await builderWith.executeOrganicOperation({ command: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
+            expect(botWithArrow.equip).toHaveBeenCalledWith(expect.objectContaining({ name: 'arrow' }), 'hand');
+            expect(botWithArrow.activateItem).toHaveBeenCalled(); // Triggered the brush
+        });
+    });
+
+    describe('Refined Teleportation', () => {
+        test('should use @s in teleport commands', async () => {
+            const bot = createMockBot();
+            const builder = new Builder(bot);
+
+            await builder.teleportAndVerify({ x: 500, y: 70, z: 500 });
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('/tp @s 500 70 500'));
+        });
+    });
+});

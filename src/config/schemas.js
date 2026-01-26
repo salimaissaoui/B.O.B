@@ -54,8 +54,10 @@ export const blueprintSchema = {
       required: ["width", "depth", "height"]
     },
     palette: {
-      type: "array",
-      items: { type: "string" }
+      anyOf: [
+        { type: "array", items: { type: "string" } },
+        { type: "object", additionalProperties: { type: "string" } }
+      ]
     },
     execution_plan: {
       type: "object",
@@ -79,6 +81,8 @@ export const blueprintSchema = {
           op: {
             type: "string",
             enum: [
+              // Universal Operations (New Standard)
+              "box", "wall", "outline", "move", "cursor_reset",
               // Vanilla operations (existing)
               "fill", "hollow_box", "set", "line", "window_strip", "roof_gable", "roof_flat",
               // WorldEdit operations (new)

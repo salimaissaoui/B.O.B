@@ -1,3 +1,6 @@
+import pathfinderPkg from 'mineflayer-pathfinder';
+const { goals } = pathfinderPkg;
+
 /**
  * Pathfinding Helper - Assists bot movement and range checking
  * 
@@ -24,31 +27,24 @@ export class PathfindingHelper {
    * @returns {boolean} True if pathfinder is loaded
    */
   isAvailable() {
-    return this.pathfinder !== null && this.bot && this.bot.entity;
+    return this.pathfinder !== null;
   }
 
-  /**
-   * Ensure bot is in range of target position
-   * @param {Object} position - Target position {x, y, z}
-   * @param {number} range - Required range (default: 4.5 blocks)
-   * @returns {Promise<boolean>} True if bot reached position or is already in range
-   */
   async ensureInRange(position, range = 4.5) {
     if (!this.isAvailable()) {
       return false;
     }
 
     const botPos = this.bot.entity.position;
-    const distance = calculateDistance(botPos, position);
 
     // Already in range
-    if (distance <= range) {
+    if (this.isInRange(position, range)) {
       return true;
     }
 
     // Try to move closer
     try {
-      const goal = new this.pathfinder.goals.GoalNear(
+      const goal = new goals.GoalNear(
         position.x,
         position.y,
         position.z,
@@ -61,6 +57,31 @@ export class PathfindingHelper {
       console.warn(`Pathfinding failed: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Check if bot is in range of target
+   * @param {Object} targetPos - Target position {x, y, z}
+   * @param {number} range - Range in blocks (default: 4.5)
+   * @returns {boolean} True if in range
+   */
+  isInRange(targetPos, range = 4.5) {
+    if (!this.bot || !this.bot.entity) {
+      return false;
+    }
+    return isInRange(this.bot.entity.position, targetPos, range);
+  }
+
+  /**
+   * Get distance to target
+   * @param {Object} targetPos - Target position {x, y, z}
+   * @returns {number} Distance in blocks
+   */
+  getDistanceToTarget(targetPos) {
+    if (!this.bot || !this.bot.entity) {
+      return Infinity;
+    }
+    return calculateDistance(this.bot.entity.position, targetPos);
   }
 
   /**
@@ -109,6 +130,48 @@ export function calculateDistance(posA, posB) {
   const dy = posA.y - posB.y;
   const dz = posA.z - posB.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Check if position is within range
+ * @param {Object} botPos - Bot position {x, y, z}
+ * @param {Object} targetPos - Target position {x, y, z}
+ * @param {number} range - Range in blocks (default: 4.5)
+ * @returns {boolean} True if within range
+ */
+export function isInRange(botPos, targetPos, range = 4.5) {
+  if (!botPos || !targetPos) return false;
+  return calculateDistance(botPos, targetPos) <= range;
+}
+
+/**
+ * Calculate approach position towards target
+ * @param {Object} targetPos - Target position {x, y, z}
+ * @param {Object} currentPos - Current position {x, y, z}
+ * @param {number} range - Desired range from target (default: 4)
+ * @returns {Object} Approach position {x, y, z}
+ */
+export function calculateApproachPosition(targetPos, currentPos, range = 4) {
+  const distance = calculateDistance(targetPos, currentPos);
+
+  // Already in range or at target
+  if (distance <= range) {
+    return currentPos;
+  }
+
+  // Calculate unit direction vector
+  const direction = {
+    x: (currentPos.x - targetPos.x) / distance,
+    y: (currentPos.y - targetPos.y) / distance,
+    z: (currentPos.z - targetPos.z) / distance
+  };
+
+  // Calculate position at 'range' distance from target
+  return {
+    x: Math.floor(targetPos.x + direction.x * range),
+    y: Math.floor(targetPos.y + direction.y * range),
+    z: Math.floor(targetPos.z + direction.z * range)
+  };
 }
 
 /**

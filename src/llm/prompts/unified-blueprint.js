@@ -42,11 +42,11 @@ function getBuildTypeGuidance(buildType, hints) {
 
     statue: `
 === 3D STATUE BUILD ===
-- Use fill/we_fill for body volumes
-- Use we_sphere for rounded parts (head, joints)
-- Use we_cylinder for limbs
+- Use box for body volumes (solid structures)
+- Use wall for hollow volumes (if needed)
 - Build from bottom up: base → body → limbs → head → details
 - Choose colors that match the character/subject
+- Use move operations to position each part relative to cursor
 `,
 
     tree: `
@@ -54,41 +54,38 @@ function getBuildTypeGuidance(buildType, hints) {
 BUILD A BEAUTIFUL ORGANIC TREE with these steps:
 
 1. TRUNK (bottom to top):
-   - Use fill/we_fill for trunk sections
+   - Use box for trunk sections
    - Trunk should be 2-4 blocks wide at base, tapering to 1-2 at top
    - Oak log for oak trees, spruce log for spruce, etc.
    - Height: 8-15 blocks for medium tree, 15-25 for large
 
 2. MAIN BRANCHES (from trunk):
-   - Use fill operations angled outward from trunk
+   - Use box operations angled outward from trunk
    - 3-5 main branches per tree
    - Branches should be 1-2 blocks thick
    - Offset each branch at different Y levels and directions
 
 3. CANOPY (leaves):
-   - Use multiple overlapping fill/we_fill operations
+   - Use multiple overlapping box operations
    - Create 3-4 leaf clusters at different positions
    - Each cluster: roughly spherical 4-7 blocks diameter
    - Offset clusters so canopy looks natural, NOT perfectly symmetric
-   - Use oak_leaves, sprrtuce_leaves, etc. matching the wood type
+   - Use oak_leaves, spruce_leaves, etc. matching the wood type
 
 4. ROOTS (optional for large trees):
-   - Use fill for exposed roots at base spreading outward
+   - Use box for exposed roots at base spreading outward
 
 EXAMPLE OPERATIONS for a "big beautiful oak tree":
-  {"op": "fill", "block": "oak_log", "from": {"x": 4, "y": 0, "z": 4}, "to": {"x": 5, "y": 12, "z": 5}}
-  {"op": "fill", "block": "oak_log", "from": {"x": 5, "y": 8, "z": 5}, "to": {"x": 9, "y": 9, "z": 5}}
-  {"op": "fill", "block": "oak_leaves", "from": {"x": 0, "y": 10, "z": 0}, "to": {"x": 9, "y": 14, "z": 9}}
-  {"op": "fill", "block": "oak_leaves", "from": {"x": 2, "y": 15, "z": 2}, "to": {"x": 7, "y": 17, "z": 7}}
-
-NEVER use we_sphere or we_cylinder for trees - they look too geometric!
+  {"op": "box", "size": {"x": 2, "y": 12, "z": 2}, "block": "$primary"},
+  {"op": "move", "offset": {"x": 0, "y": 8, "z": 0}},
+  {"op": "box", "size": {"x": 4, "y": 1, "z": 1}, "block": "$primary"},
+  {"op": "box", "size": {"x": 10, "y": 5, "z": 10}, "block": "$secondary"}
 `,
-
 
     house: `
 === HOUSE BUILD ===
-- Foundation: fill/we_fill at y=0
-- Walls: hollow_box/we_walls
+- Foundation: box at ground level
+- Walls: wall operation (hollow box)
 - Door: door operation (auto creates 2-block tall)
 - Windows: window_strip for rows
 - Roof: roof_gable or roof_hip
@@ -97,17 +94,17 @@ NEVER use we_sphere or we_cylinder for trees - they look too geometric!
 
     castle: `
 === CASTLE BUILD ===
-- Outer walls: we_walls or hollow_box
-- Corner towers: we_cylinder or hollow_box
-- Gatehouse: hollow_box + door
+- Outer walls: wall operation or we_walls
+- Corner towers: we_cylinder or wall (hollow box)
+- Gatehouse: wall + door
 - Battlements: alternating blocks on wall tops
 - Keep: central building with roof
 `,
 
     tower: `
 === TOWER BUILD ===
-- Base foundation: fill/we_fill
-- Shaft: we_cylinder (hollow) or hollow_box
+- Base foundation: box
+- Shaft: wall (hollow) or we_cylinder (hollow)
 - Interior: spiral_staircase (REQUIRED)
 - Windows: window_strip at regular intervals
 - Top: roof_gable or battlements
@@ -117,7 +114,8 @@ NEVER use we_sphere or we_cylinder for trees - they look too geometric!
   return guidance[buildType] || `
 === STANDARD BUILD ===
 - Foundation → Walls → Features → Roof → Details
-- Use hollow_box/we_walls for walls
+- Use wall for hollow structures
+- Use box for solid volumes
 - Use door operation for doors
 - Use window_strip for windows
 - Use appropriate roof operation
@@ -131,32 +129,31 @@ function getWorldEditGuidance(worldEditAvailable) {
   if (!worldEditAvailable) {
     return `
 === WORLDEDIT: DISABLED ===
-Use vanilla operations only (fill, hollow_box, line, set, door, window_strip, etc.)
+Use vanilla operations only (box, wall, line, set, door, window_strip, etc.)
 `;
   }
 
   return `
 === WORLDEDIT: ENABLED ===
-Generate WorldEdit operations DIRECTLY in the blueprint:
+WorldEdit operations available for large volumes (auto-used by universal operations).
 
-WORLDEDIT OPERATIONS (use for volumes > 3 blocks):
-- we_fill: Large volumes. Params: block, from {x,y,z}, to {x,y,z}
-  Fallback: {"op": "fill", "block": "...", "from": {...}, "to": {...}}
+WORLDEDIT OPERATIONS (use for volumes > 20 blocks):
+- we_fill: Large solid volumes. Params: block, from {x,y,z}, to {x,y,z}
+  Fallback: {"op": "box", "from": {...}, "to": {...}, "block": "..."}
 
 - we_walls: Hollow structures. Params: block, from {x,y,z}, to {x,y,z}
-  Fallback: {"op": "hollow_box", "block": "...", "from": {...}, "to": {...}}
+  Fallback: {"op": "wall", "from": {...}, "to": {...}, "block": "..."}
 
 - we_sphere: Domes/organic shapes. Params: block, center {x,y,z}, radius, hollow (true/false)
-  Fallback: {"op": "fill", ...approximate with fills...}
+  Fallback: {"op": "box", ...approximate with boxes...}
 
 - we_cylinder: Towers/pillars. Params: block, base {x,y,z}, radius, height, hollow (true/false)
-  Fallback: {"op": "hollow_box", ...approximate...}
+  Fallback: {"op": "wall", ...approximate...}
 
 - we_pyramid: Pyramids. Params: block, base {x,y,z}, height, hollow (true/false)
-  Fallback: {"op": "fill", ...layered fills...}
+  Fallback: {"op": "box", ...layered boxes...}
 
 IMPORTANT:
-- Generate WorldEdit ops natively (don't generate vanilla ops for later conversion)
 - Always include fallback for each WorldEdit operation
 - Use WorldEdit for large volumes, vanilla for details
 `;
@@ -169,27 +166,49 @@ function getOperationReference() {
   return `
 === AVAILABLE OPERATIONS ===
 
-SMART OPERATIONS (PREFER THESE for structures):
+UNIVERSAL OPERATIONS (PREFER THESE - Cursor-aware, auto-optimized):
+- box: Solid volume. Params: size {x,y,z} OR from/to, block
+  Example: {"op": "box", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"}
+
+- wall: Hollow box/walls. Params: size {x,y,z} OR from/to, block
+  Example: {"op": "wall", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"}
+
+- outline: Frame/wireframe. Params: size {x,y,z} OR from/to, block
+  Example: {"op": "outline", "size": {"x": 10, "y": 5, "z": 10}, "block": "$accent"}
+
+- move: Move cursor relative. Params: offset {x,y,z}
+  Example: {"op": "move", "offset": {"x": 0, "y": 5, "z": 0}}
+
+- cursor_reset: Reset cursor to origin.
+  Example: {"op": "cursor_reset"}
+
+SPECIALIST OPERATIONS:
+- pixel_art: 2D sprite. Params: base {x,y,z}, grid (array of strings), legend, facing
+  Example: {"op": "pixel_art", "base": {"x": 0, "y": 0, "z": 0}, "facing": "south", "grid": [...], "legend": {...}}
+
+- spiral_staircase: Spiral stairs. Params: block (*_stairs), base {x,y,z}, height, radius
+  Example: {"op": "spiral_staircase", "block": "oak_stairs", "base": {"x": 5, "y": 0, "z": 5}, "height": 10, "radius": 2}
+
+- window_strip: Windows with spacing. Params: block (*_pane), from {x,y,z}, to {x,y,z}, spacing (default: 2)
+  Example: {"op": "window_strip", "block": "glass_pane", "from": {"x": 1, "y": 2, "z": 0}, "to": {"x": 9, "y": 2, "z": 0}, "spacing": 2}
+
+- door: Door (2 blocks tall). Params: block (*_door), pos {x,y,z}, facing (north/south/east/west)
+  Example: {"op": "door", "block": "oak_door", "pos": {"x": 5, "y": 0, "z": 0}, "facing": "south"}
+
+- roof_gable: Gabled roof. Params: block (*_stairs), from {x,y,z}, to {x,y,z}, direction ("north"/"south"/"east"/"west")
+- roof_hip: Hip roof. Params: block (*_stairs), from {x,y,z}, to {x,y,z}
+- roof_flat: Flat roof. Params: block, from {x,y,z}, to {x,y,z}
+
+SMART OPERATIONS (Procedural generation):
 - smart_wall: Procedural wall. Params: from, to, palette ["primary", ...], pattern ("checker", "striped", "noise", "border")
 - smart_floor: Procedural floor. Params: from, to, palette, pattern ("checker", "tiled", "parquet", "radial")
 - smart_roof: Procedural roof. Params: from, to, block, style ("gable", "dome", "pagoda", "a-frame")
 
-BASIC (vanilla):
-- fill: Solid box. Params: block, from {x,y,z}, to {x,y,z}
-- hollow_box: Hollow box. Params: block, from {x,y,z}, to {x,y,z}
-- set: Single block. Params: block, pos {x,y,z}
-- line: Line of blocks. Params: block, from {x,y,z}, to {x,y,z}
-- door: Door (2 blocks tall). Params: block (*_door), pos {x,y,z}, facing (north/south/east/west)
-- window_strip: Window row with spacing. Params: block, from {x,y,z}, to {x,y,z}, spacing (default: 2)
-- spiral_staircase: Spiral stairs. Params: block (*_stairs), base {x,y,z}, height, radius (default: 2)
-- pixel_art: 2D image. Params: base {x,y,z}, facing (south), grid, legend
-
-WORLDEDIT (fast for large volumes):
-- we_fill: Large fill. Params: block, from, to, fallback
-- we_walls: Hollow structure. Params: block, from, to, fallback
-- we_sphere: Sphere/dome. Params: block, center, radius, hollow, fallback
-- we_cylinder: Cylinder/tower. Params: block, base, radius, height, hollow, fallback
-- we_pyramid: Pyramid. Params: block, base, height, hollow, fallback
+LEGACY OPERATIONS (avoid if possible, use universal ops instead):
+- fill: Use 'box' instead
+- hollow_box: Use 'wall' instead
+- set: Use for single blocks only
+- line: Use for lines only
 `;
 }
 
@@ -252,25 +271,28 @@ Determine the natural size needed for high detail:
 
 ${getWorldEditGuidance(worldEditAvailable)}
 
-=== UNIVERSAL OPERATIONS (PREFER THESE) ===
-- box: Solid volume. Params: size {x,y,z} OR from/to, block
-- wall: Hollow box/walls. Params: size {x,y,z} OR from/to, block
-- outline: Frame/wireframe. Params: size {x,y,z} OR from/to, block
-- move: Move cursor relative. Params: offset {x,y,z}
-- cursor_reset: Reset cursor to origin.
+${getOperationReference()}
 
-=== SPECIALIST OPERATIONS ===
-- pixel_art: 2D sprite. Params: grid (array of strings), legend, facing, frame (boolean), frameBlock (string)
-- spiral_staircase: Params: block, height, radius
-- window_strip: Params: block, spacing
-
-=== VARIABLE MATERIALS ===
+=== VARIABLE MATERIALS (USE THESE) ===
 Use variables in 'block' fields to allow theming:
-- "$primary" (Main walls)
-- "$secondary" (Frames/Pillars)
-- "$accent" (Details)
-- "$roof" (Roofing)
-- "$window" (Glass)
+- "$primary" - Main walls
+- "$secondary" - Frames/Pillars
+- "$accent" - Details/Trim
+- "$roof" - Roofing
+- "$window" - Glass
+
+=== CURSOR-RELATIVE BUILDING ===
+IMPORTANT: All operations are relative to a CURSOR that starts at (0, 0, 0).
+- Use "move" to reposition cursor before each operation
+- Use "cursor_reset" to return to origin
+- Coordinates in operations are relative to CURSOR position
+
+Example structure:
+  {"op": "box", "size": {"x": 10, "y": 1, "z": 10}, "block": "$primary"}, // Foundation at cursor
+  {"op": "move", "offset": {"x": 0, "y": 1, "z": 0}},                    // Move cursor up 1
+  {"op": "wall", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"}, // Walls above foundation
+  {"op": "move", "offset": {"x": 4, "y": 0, "z": 0}},                    // Move cursor to door position
+  {"op": "door", "block": "oak_door", "pos": {"x": 0, "y": 0, "z": 0}, "facing": "south"}
 
 === OUTPUT FORMAT ===
 {
@@ -283,24 +305,24 @@ Use variables in 'block' fields to allow theming:
      "secondary": "oak_log",
      "accent": "cracked_stone_bricks",
      "roof": "spruce_stairs",
-     "window": "glass_pane",
-     // Add others as needed
+     "window": "glass_pane"
   },
   "steps": [
-    {"op": "box", "size": {"x": 10, "y": 1, "z": 10}, "block": "$primary"}, // Foundation
+    {"op": "box", "size": {"x": 10, "y": 1, "z": 10}, "block": "$primary"},
     {"op": "move", "offset": {"x": 0, "y": 1, "z": 0}},
-    {"op": "wall", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"}, // Walls
+    {"op": "wall", "size": {"x": 10, "y": 5, "z": 10}, "block": "$primary"},
     ...
   ]
 }
 
 CRITICAL RULES:
-- Prefer "box", "wall", "outline" for structural elements.
-- USE "pixel_art" operation for 2D sprites/images.
-- Use "$variables" for blocks whenever possible.
-- Coordinates relative to CURSOR (which starts at 0,0,0).
-- Use "move" to stack structures easily.
-- Output ONLY valid JSON.
+- Prefer "box", "wall", "outline" for structural elements
+- USE "pixel_art" operation for 2D sprites/images (MANDATORY for pixel_art buildType)
+- Use "$variables" for blocks whenever possible
+- Use "move" to position cursor before operations
+- All coordinates are relative to CURSOR position
+- Output ONLY valid JSON
+- For pixel_art: ALL rows must have EXACTLY the same length
 `;
 }
 

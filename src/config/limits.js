@@ -102,7 +102,7 @@ export const SAFETY_LIMITS = {
    *
    * Impact: Controls delay between block placements (1000ms / buildRateLimit = delay per block)
    */
-  buildRateLimit: 50,
+  buildRateLimit: 100,
 
   /**
    * Block placement retry attempts (default: 3)
@@ -274,7 +274,7 @@ export const SAFETY_LIMITS = {
      *
      * Impact: Lower values increase build time but improve server stability
      */
-    commandRateLimit: 5,
+    commandRateLimit: 10,
 
     /**
      * Minimum delay between WorldEdit commands (milliseconds) (default: 200)
@@ -294,7 +294,7 @@ export const SAFETY_LIMITS = {
      *
      * Impact: Directly affects build time (N commands * delay = total time)
      */
-    commandMinDelayMs: 200,
+    commandMinDelayMs: 100,
 
     /**
      * Maximum total WorldEdit commands per build (default: 500)

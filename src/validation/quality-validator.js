@@ -307,7 +307,11 @@ export class QualityValidator {
     }
 
     // Check if palette blocks are actually used
-    const paletteBlocks = new Set(blueprint.palette || []);
+    // Palette can be array or object, handle both cases
+    const paletteArray = Array.isArray(blueprint.palette)
+      ? blueprint.palette
+      : Object.values(blueprint.palette || {});
+    const paletteBlocks = new Set(paletteArray);
     const usedBlocks = new Set(Object.keys(blockCounts));
 
     for (const block of paletteBlocks) {

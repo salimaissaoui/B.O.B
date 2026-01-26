@@ -75,6 +75,12 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     // Generate unified prompt (design + blueprint in one)
     const prompt = unifiedBlueprintPrompt(analysis, worldEditAvailable);
 
+    if (DEBUG) {
+      console.log('\n--- FINAL PROMPT SENT TO GEMINI ---');
+      console.log(prompt);
+      console.log('------------------------------------\n');
+    }
+
     // Call LLM with streaming for real-time feedback
     const client = new GeminiClient(apiKey);
     console.log('🤖 Generating blueprint (streaming)...');
@@ -120,7 +126,8 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     }
 
     // OPTIMIZATION: Reorder steps for structural integrity (bottom-up)
-    blueprint = optimizeBuildOrder(blueprint);
+    // DISABLED: Conflicts with Cursor-relative movements
+    // blueprint = optimizeBuildOrder(blueprint);
 
     // FEATURE: Always add site prep as first step
     if (blueprint.steps[0].op !== 'site_prep') {

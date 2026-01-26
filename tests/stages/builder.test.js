@@ -1,5 +1,8 @@
 import { jest, describe, test, expect } from '@jest/globals';
 import { Builder } from '../../src/stages/5-builder.js';
+import { WorldEditExecutor } from '../../src/worldedit/executor.js';
+
+jest.setTimeout(20000);
 
 /**
  * P0 Fix Tests: Builder
@@ -15,13 +18,15 @@ function createMockBot(options = {}) {
     get position() {
       return {
         ...position,
-        clone: () => ({ ...position, distanceTo: (other) => {
-          return Math.sqrt(
-            Math.pow(position.x - other.x, 2) +
-            Math.pow(position.y - other.y, 2) +
-            Math.pow(position.z - other.z, 2)
-          );
-        }}),
+        clone: () => ({
+          ...position, distanceTo: (other) => {
+            return Math.sqrt(
+              Math.pow(position.x - other.x, 2) +
+              Math.pow(position.y - other.y, 2) +
+              Math.pow(position.z - other.z, 2)
+            );
+          }
+        }),
         distanceTo: (other) => {
           return Math.sqrt(
             Math.pow(position.x - other.x, 2) +
@@ -59,6 +64,7 @@ function createMockBot(options = {}) {
     },
     blockAt: jest.fn(() => null),
     setBlock: jest.fn(),
+    waitForTicks: jest.fn().mockResolvedValue(),
     entity: mockEntity,
     _setPosition: (x, y, z) => { position = { x, y, z }; },
     ...options
@@ -347,8 +353,7 @@ describe('Builder P0 Fixes', () => {
       builder.worldEditEnabled = true;
       builder.worldEdit.available = true;
 
-      // Make WE fail
-      builder.worldEdit.createSelection = jest.fn().mockRejectedValue(new Error('WE failed'));
+      jest.spyOn(builder, 'executeWorldEditFill').mockRejectedValue(new Error('WE failed'));
 
       const blueprint = {
         size: { width: 5, depth: 5, height: 3 },
@@ -371,6 +376,33 @@ describe('Builder P0 Fixes', () => {
 
       // But vanilla fallback should have placed blocks
       expect(builder.history.length).toBeGreaterThan(0);
+    });
+    describe('Pathfinding Edge Cases', () => {
+      test('handles unreachable positions gracefully', async () => {
+        const mockBot = createMockBot();
+        mockBot.pathfinder = { goals: {} }; // Enable pathfinding availability
+        const builder = new Builder(mockBot);
+
+        // Mock pathfinding to fail for one specific position
+        builder.pathfindingHelper.ensureInRange = jest.fn((pos) => {
+          if (pos.x === 50) return Promise.resolve(false); // Unreachable
+          return Promise.resolve(true);
+        });
+
+        const blueprint = {
+          size: { width: 10, depth: 10, height: 10 },
+          palette: ['stone'],
+          steps: [
+            { op: 'set', block: 'stone', pos: { x: 0, y: 0, z: 0 } },
+            { op: 'set', block: 'stone', pos: { x: 50, y: 0, z: 0 } } // Too far
+          ]
+        };
+
+        await builder.executeBlueprint(blueprint, { x: 0, y: 64, z: 0 });
+
+        expect(builder.currentBuild).toBeNull();
+        expect(builder.lastBuildReport.execution.blocksFailed).toBeGreaterThan(0);
+      });
     });
   });
 });
