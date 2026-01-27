@@ -302,7 +302,9 @@ export class QualityValidator {
     const blockCounts = {};
     for (const step of blueprint.steps) {
       if (step.block) {
-        blockCounts[step.block] = (blockCounts[step.block] || 0) + 1;
+        // Normalize block name by removing minecraft: prefix
+        const normalizedBlock = step.block.replace(/^minecraft:/, '');
+        blockCounts[normalizedBlock] = (blockCounts[normalizedBlock] || 0) + 1;
       }
     }
 
@@ -311,7 +313,11 @@ export class QualityValidator {
     const paletteArray = Array.isArray(blueprint.palette)
       ? blueprint.palette
       : Object.values(blueprint.palette || {});
-    const paletteBlocks = new Set(paletteArray);
+
+    // Normalize palette blocks
+    const paletteBlocks = new Set(
+      paletteArray.map(b => b.replace(/^minecraft:/, ''))
+    );
     const usedBlocks = new Set(Object.keys(blockCounts));
 
     for (const block of paletteBlocks) {

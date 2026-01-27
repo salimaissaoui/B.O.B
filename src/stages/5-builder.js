@@ -782,6 +782,19 @@ export class Builder {
   }
 
   /**
+   * Helper to send plugin command
+   */
+  async sendPluginCommand(cmd) {
+    if (this.worldEditEnabled && this.worldEdit) {
+      // Use executor for tracking, undo history, and rate limits
+      await this.worldEdit.executeCommand(cmd);
+    } else if (this.bot.chat) {
+      this.bot.chat(cmd);
+      await this.sleep(100);
+    }
+  }
+
+  /**
    * Execute WorldEdit Sphere (Async - Using FAWE)
    */
   async executeWorldEditSphere(descriptor, startPos) {

@@ -48,27 +48,27 @@ export const BLOCK_CATEGORIES = {
     'blackstone', 'polished_blackstone', 'polished_blackstone_bricks', 'chiseled_polished_blackstone',
     'gilded_blackstone', 'crying_obsidian', 'obsidian', 'glowstone', 'shroomlight', 'sea_lantern'
   ],
-  
+
   decorative: [
-    'glass', 'white_stained_glass', 'light_gray_stained_glass', 
+    'glass', 'white_stained_glass', 'light_gray_stained_glass',
     'gray_stained_glass', 'black_stained_glass', 'brown_stained_glass',
     'red_stained_glass', 'orange_stained_glass', 'yellow_stained_glass',
     'lime_stained_glass', 'green_stained_glass', 'cyan_stained_glass',
-    'light_blue_stained_glass', 'blue_stained_glass', 
+    'light_blue_stained_glass', 'blue_stained_glass',
     'purple_stained_glass', 'magenta_stained_glass', 'pink_stained_glass',
     'glass_pane', 'white_stained_glass_pane', 'light_gray_stained_glass_pane',
     'oak_stairs', 'spruce_stairs', 'birch_stairs', 'jungle_stairs',
-    'acacia_stairs', 'dark_oak_stairs', 'stone_stairs', 
+    'acacia_stairs', 'dark_oak_stairs', 'stone_stairs',
     'cobblestone_stairs', 'brick_stairs', 'stone_brick_stairs',
     'sandstone_stairs', 'red_sandstone_stairs', 'quartz_stairs',
     'oak_slab', 'spruce_slab', 'birch_slab', 'jungle_slab',
-    'acacia_slab', 'dark_oak_slab', 'stone_slab', 
+    'acacia_slab', 'dark_oak_slab', 'stone_slab',
     'cobblestone_slab', 'brick_slab', 'stone_brick_slab',
     'sandstone_slab', 'red_sandstone_slab', 'quartz_slab',
     'oak_fence', 'spruce_fence', 'birch_fence', 'jungle_fence',
     'acacia_fence', 'dark_oak_fence', 'nether_brick_fence'
   ],
-  
+
   functional: [
     'oak_door', 'spruce_door', 'birch_door', 'jungle_door',
     'acacia_door', 'dark_oak_door', 'iron_door',
@@ -76,7 +76,7 @@ export const BLOCK_CATEGORIES = {
     'torch', 'lantern', 'soul_lantern',
     'ladder', 'chest', 'crafting_table', 'furnace'
   ],
-  
+
   natural: [
     'dirt', 'grass_block', 'sand', 'gravel', 'clay',
     'oak_leaves', 'spruce_leaves', 'birch_leaves',
@@ -112,8 +112,10 @@ export const VERSION_COMPATIBILITY = {
  * @returns {boolean} - True if block exists in version
  */
 export function isValidBlock(blockName, version = '1.20.1') {
+  // Normalize: remove minecraft: prefix
+  const normalizedName = blockName.replace(/^minecraft:/, '');
   const versionBlocks = VERSION_COMPATIBILITY[version] || ALL_BLOCKS;
-  return versionBlocks.includes(blockName);
+  return versionBlocks.includes(normalizedName);
 }
 
 /**
@@ -136,11 +138,11 @@ export function suggestAlternatives(blockName, version = '1.20.1') {
   if (isValidBlock(blockName, version)) {
     return [blockName];
   }
-  
+
   // Simple fuzzy matching by category
   const versionBlocks = VERSION_COMPATIBILITY[version] || ALL_BLOCKS;
   const category = blockName.split('_')[1] || blockName.split('_')[0];
-  
+
   return versionBlocks
     .filter(b => b.includes(category))
     .slice(0, 3);
@@ -169,7 +171,7 @@ export const PIXEL_ART_PALETTE = {
   gray: 'gray_wool',
   black: 'black_wool',
   brown: 'brown_wool',
-  
+
   // Concrete alternatives (more saturated, flat look)
   bright_red: 'red_concrete',
   bright_orange: 'orange_concrete',
@@ -184,7 +186,7 @@ export const PIXEL_ART_PALETTE = {
   bright_pink: 'pink_concrete',
   bright_white: 'white_concrete',
   bright_black: 'black_concrete',
-  
+
   // Skin tones and special colors
   skin_light: 'orange_terracotta',
   skin_medium: 'brown_terracotta',
@@ -193,7 +195,7 @@ export const PIXEL_ART_PALETTE = {
   tan: 'sandstone',
   cream: 'birch_planks',
   beige: 'smooth_sandstone',
-  
+
   // Metallic and special
   silver: 'iron_block',
   dark_gray: 'gray_concrete',
@@ -203,12 +205,12 @@ export const PIXEL_ART_PALETTE = {
   teal: 'cyan_terracotta',
   coral: 'pink_terracotta',
   peach: 'pink_terracotta',
-  
+
   // Fire/flame colors
   flame_red: 'red_wool',
   flame_orange: 'orange_wool',
   flame_yellow: 'yellow_wool',
-  
+
   // Transparent/empty
   transparent: 'air',
   empty: 'air',
@@ -222,19 +224,19 @@ export const PIXEL_ART_PALETTE = {
  */
 export function getPixelArtBlock(colorName) {
   const normalized = colorName.toLowerCase().replace(/[^a-z_]/g, '_');
-  
+
   // Direct match
   if (PIXEL_ART_PALETTE[normalized]) {
     return PIXEL_ART_PALETTE[normalized];
   }
-  
+
   // Partial match
   for (const [key, block] of Object.entries(PIXEL_ART_PALETTE)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return block;
     }
   }
-  
+
   // Default to white if no match
   return 'white_wool';
 }

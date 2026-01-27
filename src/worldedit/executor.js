@@ -392,9 +392,13 @@ export class WorldEditExecutor {
    * Validate WorldEdit command before execution
    */
   validateCommand(command) {
-    // Ensure command starts with //
-    if (!command.startsWith('//') && !command.startsWith('/tp')) {
-      throw new Error('Invalid WorldEdit command format (must start with //)');
+    // Ensure command starts with // or / (some plugins use single slash like /brush)
+    if (!command.startsWith('//') &&
+      !command.startsWith('/tp') &&
+      !command.startsWith('/brush') &&
+      !command.startsWith('/b') &&
+      !command.startsWith('/v')) {
+      throw new Error(`Invalid WorldEdit command format: ${command} (must start with //, /tp, /brush, /b, or /v)`);
     }
 
     // Parse command type
@@ -411,7 +415,8 @@ export class WorldEditExecutor {
     const allowedCommands = [
       'pos1', 'pos2', 'set', 'walls', 'replace',
       'pyramid', 'hpyramid', 'cyl', 'hcyl', 'sphere', 'hsphere',
-      'desel', 'undo', 'version', 'sel', 'tp'
+      'desel', 'undo', 'version', 'sel', 'tp',
+      'brush', 'b', 'v', 'u'
     ];
 
     if (!allowedCommands.includes(cmdType)) {
