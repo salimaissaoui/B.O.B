@@ -73,7 +73,7 @@ const DEFAULT_LIMITS = {
    *
    * Prevents:
    * - Server TPS (ticks per second) degradation
-   * - Excessive build times (30000 blocks ≈ 10-15 minutes vanilla, 30-60 seconds with WorldEdit)
+   * - Excessive build times
    * - Client render lag in large structures
    *
    * Recommended ranges:
@@ -83,7 +83,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact if exceeded: Blueprint validation will reject the build
    */
-  maxBlocks: 30000,
+  maxBlocks: 5000000, // effectively unlimited
 
   /**
    * Maximum unique block types in palette (default: 15)
@@ -100,7 +100,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact if exceeded: LLM is guided to use fewer block types
    */
-  maxUniqueBlocks: 15,
+  maxUniqueBlocks: 20,
 
   /**
    * Maximum build height (default: 256)
@@ -122,7 +122,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact if exceeded: Blueprint validation will reject the build
    */
-  maxWidth: 100,
+  maxWidth: 2000,
 
   /**
    * Maximum build depth (Z-axis) (default: 100)
@@ -131,7 +131,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact if exceeded: Blueprint validation will reject the build
    */
-  maxDepth: 100,
+  maxDepth: 2000,
 
   /**
    * Maximum blueprint operations/steps (default: 1000)
@@ -146,7 +146,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact if exceeded: Blueprint validation will reject the build
    */
-  maxSteps: 1000,
+  maxSteps: 2000,
 
   /**
    * Block placement rate limit (blocks/second) (default: 50)
@@ -165,7 +165,7 @@ const DEFAULT_LIMITS = {
    *
    * Impact: Controls delay between block placements (1000ms / buildRateLimit = delay per block)
    */
-  buildRateLimit: 100,
+  buildRateLimit: 200,
 
   /**
    * Block placement retry attempts (default: 3)
@@ -305,7 +305,7 @@ const DEFAULT_LIMITS = {
      *
      * Impact if exceeded: Operations split into multiple smaller selections
      */
-    maxSelectionVolume: 50000,
+    maxSelectionVolume: 500000,
 
     /**
      * Maximum single dimension for WorldEdit selection (default: 50)
@@ -319,7 +319,7 @@ const DEFAULT_LIMITS = {
      *
      * Impact: Large dimensions automatically split into multiple operations
      */
-    maxSelectionDimension: 50,
+    maxSelectionDimension: 250,
 
     /**
      * WorldEdit commands per second (default: 5)
@@ -357,7 +357,7 @@ const DEFAULT_LIMITS = {
      *
      * Impact: Directly affects build time (N commands * delay = total time)
      */
-    commandMinDelayMs: 100,
+    commandMinDelayMs: 250,
 
     /**
      * Maximum total WorldEdit commands per build (default: 500)

@@ -75,14 +75,14 @@ export const BLOCK_CATEGORIES = {
     'oak_door', 'spruce_door', 'birch_door', 'jungle_door',
     'acacia_door', 'dark_oak_door', 'iron_door',
     'oak_trapdoor', 'spruce_trapdoor', 'birch_trapdoor',
-    'torch', 'lantern', 'soul_lantern',
+    'torch', 'lantern', 'soul_lantern', 'jack_o_lantern',
     'ladder', 'chest', 'crafting_table', 'furnace'
   ],
 
   natural: [
     'dirt', 'grass_block', 'sand', 'gravel', 'clay',
     'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'mangrove_leaves', 'cherry_leaves', 'azalea_leaves', 'flowering_azalea_leaves',
-    'water', 'lava', 'snow', 'ice',
+    'water', 'lava', 'snow', 'ice', 'glow_lichen',
     'vine', 'lily_pad', 'cactus', 'sugar_cane', 'brown_mushroom', 'red_mushroom',
     'flower_pot', 'dandelion', 'poppy', 'blue_orchid', 'allium', 'azure_bluet', 'red_tulip', 'orange_tulip', 'white_tulip', 'pink_tulip', 'oxeye_daisy', 'cornflower', 'lily_of_the_valley',
     'wheat', 'carrots', 'potatoes', 'beetroots', 'pumpkin', 'melon', 'hay_block'

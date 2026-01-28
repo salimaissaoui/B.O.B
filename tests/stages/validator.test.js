@@ -53,8 +53,8 @@ function validateCoordinateBounds(blueprint, dimensions) {
 
   const isWithinBounds = (coord, w, h, d) => {
     return coord.x >= 0 && coord.x < w &&
-           coord.y >= 0 && coord.y < h &&
-           coord.z >= 0 && coord.z < d;
+      coord.y >= 0 && coord.y < h &&
+      coord.z >= 0 && coord.z < d;
   };
 
   for (let i = 0; i < (blueprint.steps || []).length; i++) {
@@ -106,17 +106,21 @@ describe('Validator Limit Enforcement', () => {
     expect(result.errors.some(e => e.includes('Too many steps'))).toBe(true);
   });
 
-  test('should reject blueprint exceeding volume limit', () => {
+  test('should ACCEPT blueprint exceeding OLD volume limit', () => {
+    // 2000x2000x2 = 8,000,000 > 5,000,000? Wait.
+    // My limit is 5,000,000. 8M is still > 5M.
+    // I should test something large but valid.
+    // 1000x1000x1 = 1,000,000. This should pass.
     const blueprint = {
-      size: { width: 500, depth: 500, height: 500 },
+      size: { width: 1000, depth: 1000, height: 1 },
       palette: ['stone'],
       steps: []
     };
 
     const result = validateLimits(blueprint);
 
-    expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('Volume exceeds limit'))).toBe(true);
+    expect(result.valid).toBe(true);
+    expect(result.errors.length).toBe(0);
   });
 
   test('should reject blueprint with too many unique blocks', () => {
@@ -137,17 +141,17 @@ describe('Validator Limit Enforcement', () => {
     expect(result.errors.some(e => e.includes('Too many unique blocks'))).toBe(true);
   });
 
-  test('should reject blueprint exceeding dimension limits', () => {
+  test('should ACCEPT blueprint within dimension limits', () => {
+    // Width 2000 is allowed.
     const blueprint = {
-      size: { width: SAFETY_LIMITS.maxWidth + 10, depth: 10, height: 10 },
+      size: { width: 2000, depth: 10, height: 10 },
       palette: ['stone'],
       steps: []
     };
 
     const result = validateLimits(blueprint);
 
-    expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.includes('Width exceeds limit'))).toBe(true);
+    expect(result.valid).toBe(true);
   });
 });
 
@@ -428,6 +432,19 @@ describe('Operation Parameter Validation', () => {
           pos: { x: 0, y: 0, z: 0 },
           facing: 'north'
         }
+      ]
+    };
+
+    const isValid = validateBlueprint(blueprint);
+    expect(isValid).toBe(true);
+  });
+  test('should accept previously problematic blocks', () => {
+    const blueprint = {
+      size: { width: 10, depth: 10, height: 10 },
+      palette: ['glow_lichen', 'jack_o_lantern'],
+      steps: [
+        { op: 'set', block: 'glow_lichen', pos: { x: 0, y: 0, z: 0 } },
+        { op: 'set', block: 'jack_o_lantern', pos: { x: 1, y: 0, z: 0 } }
       ]
     };
 

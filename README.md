@@ -9,6 +9,8 @@ AI-powered Minecraft building assistant that safely converts natural language in
 - ✅ Multi-stage LLM planning with safety validation
 - ✅ Schema-constrained generation (no hallucinated blocks)
 - ✅ WorldEdit integration for 50-100x faster large builds
+- ✅ **Async WorldEdit tracking** for high-speed construction
+- ✅ **Persistent build state** (Resume/List support)
 - ✅ Architectural detail operations (stairs, slabs, doors, balconies)
 - ✅ Quality validation with feature completeness checking
 - ✅ Automatic fallback from WorldEdit to vanilla placement
@@ -119,6 +121,16 @@ Undo the last completed build.
 !build status
 ```
 Check the progress of the current build (includes WorldEdit ops, fallbacks, and unconfirmed operations).
+
+```
+!build resume
+```
+Resume the most recently interrupted or saved build.
+
+```
+!build list
+```
+List recent saved builds and their statuses.
 
 ```
 !build help
@@ -357,7 +369,8 @@ When WorldEdit is available, B.O.B uses it intelligently:
 - **Hollow Structures**: Uses `//walls` for efficient wall creation
 - **Complex Shapes**: Uses `//pyramid`, `//cyl`, `//sphere` for geometric structures
 - **Automatic Fallback**: If WorldEdit fails, automatically switches to vanilla block placement
-- **Rate Limiting**: Enforces 200ms delays between WorldEdit commands to prevent spam kicks
+- **Async Command Tracking**: Sends multiple commands without blocking on server ACKs for maximum speed
+- **Rate Limiting**: Enforces configurable delays between commands to prevent spam kicks
 - **Adaptive Throttling**: Detects spam warnings and increases delays automatically
 
 Performance comparison:

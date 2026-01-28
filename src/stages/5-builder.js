@@ -440,6 +440,11 @@ export class Builder {
     const delays = [50, 100, 200]; // Exponential backoff delays in ms
 
     // Self-collision check: Move bot if it's standing where we want to place a block
+    // P0 Fix: If we have remote building access, we don't need to be close, so skip range checks
+    if (this.hasSetblockAccess || this.worldEditEnabled) {
+      skipRangeCheck = true;
+    }
+
     if (!skipRangeCheck && this.bot?.entity?.position && this.pathfindingHelper?.isAvailable()) {
       const botPos = this.bot.entity.position;
       const botX = Math.floor(botPos.x);
@@ -1543,19 +1548,17 @@ export class Builder {
    */
   batchBlocksToWorldEdit(blocks, startPos) {
     // Determine threshold based on build type
-    // Pixel Art needs NO batching (handled upstream via skipBatching) or very careful batching
     // General builds can use standard threshold (10)
+
+    // Pass configuration to optimizer
+    const options = {
+      use2DOptimization: SAFETY_LIMITS.pixelArtBatching
+    };
 
     // Delegate to new RLE optimizer
     // Coordinates in 'blocks' are relative to startPos
     // Optimizer returns relative operations
-
-    // Import dynamically if needed or assume imported at top
-    // For now, we will paste the logic here or call the import if I added it
-    // Wait, I need to add the import first.
-    // Let's assume I'll add the import at the top in a separate edit.
-
-    return optimizeBlockGroups(blocks, 10);
+    return optimizeBlockGroups(blocks, 10, options);
   }
 
   // Legacy groupings removed (groupByPlane, processSlices, findMaximalRectangles, createRunOp)
