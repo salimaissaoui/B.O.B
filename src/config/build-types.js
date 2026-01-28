@@ -746,6 +746,35 @@ export const BUILD_TYPES = {
   },
 
   // =====================
+  // PLATFORM / FOUNDATION
+  // =====================
+  platform: {
+    name: 'Platform/Foundation',
+    keywords: ['platform', 'foundation', 'flat', 'floor', 'slab', 'pad', 'base', 'plot', 'square', 'circle', 'ground'],
+    description: 'Flat horizontal structure (foundation or platform)',
+    primaryOperations: ['fill', 'we_fill', 'we_cylinder', 'hollow_box'],
+    dimensions: {
+      small: { width: 10, height: 1, depth: 10 },
+      medium: { width: 25, height: 1, depth: 25 },
+      large: { width: 50, height: 2, depth: 50 }
+    },
+    materials: {
+      styles: {
+        stone: { primary: 'stone', secondary: 'stone_bricks', trim: 'smooth_stone_slab' },
+        wood: { primary: 'oak_planks', secondary: 'spruce_planks', trim: 'oak_slab' },
+        modern: { primary: 'white_concrete', secondary: 'gray_concrete', trim: 'smooth_quartz_slab' }
+      }
+    },
+    features: ['foundation', 'surface'],
+    buildOrder: ['foundation_layer', 'surface_layer', 'trim'],
+    tips: [
+      'Use fill or we_fill for main surface',
+      'Ensure height is minimal (1-3 blocks)',
+      'Add trim around edges if requested'
+    ]
+  },
+
+  // =====================
   // MODERN BUILDING
   // =====================
   modern: {
@@ -863,7 +892,7 @@ export function detectBuildType(prompt) {
  */
 export function detectTheme(prompt) {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   // Check each theme's keywords
   for (const [themeKey, themeInfo] of Object.entries(BUILD_THEMES)) {
     for (const keyword of themeInfo.keywords) {
@@ -877,7 +906,7 @@ export function detectTheme(prompt) {
       }
     }
   }
-  
+
   // No theme detected - return null (will use type defaults)
   return null;
 }
@@ -894,7 +923,7 @@ export function getMergedMaterials(typeInfo, themeInfo) {
   if (!themeInfo) {
     return getRecommendedMaterials(typeInfo);
   }
-  
+
   // Theme materials take precedence
   return {
     ...getRecommendedMaterials(typeInfo),
@@ -910,7 +939,7 @@ export function getMergedMaterials(typeInfo, themeInfo) {
  */
 export function getRecommendedDimensions(buildType, sizeModifier = 'medium') {
   const dimensions = buildType.dimensions || BUILD_TYPES.house.dimensions;
-  
+
   // Map alternative size words
   const sizeMap = {
     'tiny': 'small',
@@ -925,7 +954,7 @@ export function getRecommendedDimensions(buildType, sizeModifier = 'medium') {
     'detailed': 'large',
     'complex': 'large'
   };
-  
+
   const normalizedSize = sizeMap[sizeModifier] || sizeModifier;
   return dimensions[normalizedSize] || dimensions.medium || { width: 15, height: 15, depth: 15 };
 }
@@ -938,7 +967,7 @@ export function getRecommendedDimensions(buildType, sizeModifier = 'medium') {
  */
 export function getRecommendedMaterials(buildType, style = null) {
   const materials = buildType.materials || BUILD_TYPES.house.materials;
-  
+
   if (materials.styles) {
     // If style specified, use it
     if (style && materials.styles[style]) {
@@ -948,7 +977,7 @@ export function getRecommendedMaterials(buildType, style = null) {
     const defaultStyle = Object.keys(materials.styles)[0];
     return materials.styles[defaultStyle];
   }
-  
+
   return materials;
 }
 
@@ -959,13 +988,13 @@ export function getRecommendedMaterials(buildType, style = null) {
  */
 export function detectSize(prompt) {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   const sizeKeywords = {
     small: ['small', 'tiny', 'little', 'mini', 'simple', 'basic', 'compact', 'cozy'],
     medium: ['medium', 'normal', 'standard', 'regular', 'average'],
     large: ['large', 'big', 'huge', 'giant', 'massive', 'grand', 'epic', 'enormous', 'detailed', 'elaborate', 'complex']
   };
-  
+
   for (const [size, keywords] of Object.entries(sizeKeywords)) {
     for (const keyword of keywords) {
       const regex = new RegExp(`\\b${keyword}\\b`, 'i');
@@ -974,8 +1003,85 @@ export function detectSize(prompt) {
       }
     }
   }
-  
+
   return { size: 'medium', matchedWord: null };
+}
+
+/**
+ * Detect aesthetic/quality modifiers from prompt
+ * These words indicate the user wants a HIGH QUALITY, visually impressive build
+ * @param {string} prompt - User's build request
+ * @returns {Object} - { quality: 'standard'|'high'|'exceptional', modifiers: string[], tips: string[] }
+ */
+export function detectQualityModifiers(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+
+  // High quality indicators
+  const highQualityWords = [
+    'beautiful', 'pretty', 'nice', 'good', 'lovely', 'cute',
+    'cool', 'awesome', 'great', 'amazing', 'impressive'
+  ];
+
+  // Exceptional quality indicators (strongest)
+  const exceptionalWords = [
+    'majestic', 'magnificent', 'stunning', 'breathtaking', 'spectacular',
+    'incredible', 'extraordinary', 'gorgeous', 'elegant', 'exquisite',
+    'grand', 'glorious', 'epic', 'legendary', 'perfect', 'masterpiece',
+    'ornate', 'intricate', 'detailed', 'elaborate', 'luxurious', 'regal',
+    'divine', 'awe-inspiring', 'dramatic', 'imposing', 'towering'
+  ];
+
+  const foundModifiers = [];
+  let quality = 'standard';
+
+  // Check exceptional words first
+  for (const word of exceptionalWords) {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    if (regex.test(lowerPrompt)) {
+      foundModifiers.push(word);
+      quality = 'exceptional';
+    }
+  }
+
+  // Check high quality words
+  for (const word of highQualityWords) {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    if (regex.test(lowerPrompt)) {
+      foundModifiers.push(word);
+      if (quality !== 'exceptional') {
+        quality = 'high';
+      }
+    }
+  }
+
+  // Generate quality-specific tips
+  const tips = [];
+  if (quality === 'exceptional') {
+    tips.push(
+      'Add extra architectural details and ornamentation',
+      'Use complementary accent blocks for visual interest',
+      'Include asymmetric elements for natural feel',
+      'Add depth with layered walls and varied textures',
+      'Consider dramatic proportions and imposing scale',
+      'Use material variety to create visual richness'
+    );
+  } else if (quality === 'high') {
+    tips.push(
+      'Add appropriate details and finishing touches',
+      'Use accent blocks for visual interest',
+      'Ensure proportions are pleasing'
+    );
+  }
+
+  return {
+    quality,
+    modifiers: foundModifiers,
+    tips,
+    // Quality affects dimensions - higher quality = more detail = potentially larger
+    sizeBoost: quality === 'exceptional' ? 1.3 : quality === 'high' ? 1.15 : 1.0,
+    // Quality affects detail density
+    detailLevel: quality === 'exceptional' ? 'maximum' : quality === 'high' ? 'high' : 'standard'
+  };
 }
 
 /**
@@ -992,7 +1098,7 @@ export function getThemeOperations(themeInfo, typeInfo) {
       tips: typeInfo?.tips || []
     };
   }
-  
+
   // Theme-specific operation preferences
   const themeOps = {
     gothic: {
@@ -1056,9 +1162,9 @@ export function getThemeOperations(themeInfo, typeInfo) {
       tips: ['Add pipes and chains', 'Include smokestacks', 'Use copper accents']
     }
   };
-  
+
   const themeSpecific = themeOps[themeInfo.theme] || {};
-  
+
   return {
     preferred: themeSpecific.preferred || typeInfo?.primaryOperations || ['fill', 'hollow_box'],
     featureAdditions: themeSpecific.featureAdditions || [],
@@ -1076,41 +1182,51 @@ export function analyzePrompt(prompt) {
   const detectedType = detectBuildType(prompt);
   const detectedTheme = detectTheme(prompt);
   const detectedSize = detectSize(prompt);
-  
+  const detectedQuality = detectQualityModifiers(prompt);
+
   const typeInfo = BUILD_TYPES[detectedType.type] || BUILD_TYPES.house;
   const materials = getMergedMaterials(typeInfo, detectedTheme);
   const dimensions = getRecommendedDimensions(typeInfo, detectedSize.size);
   const operations = getThemeOperations(detectedTheme, typeInfo);
-  
+
   // Apply theme height multiplier if present
   if (detectedTheme?.modifiers?.heightMultiplier) {
     dimensions.height = Math.round(dimensions.height * detectedTheme.modifiers.heightMultiplier);
   }
-  
+
+  // Apply quality size boost for exceptional/high quality requests
+  if (detectedQuality.sizeBoost > 1.0) {
+    dimensions.width = Math.round(dimensions.width * detectedQuality.sizeBoost);
+    dimensions.height = Math.round(dimensions.height * detectedQuality.sizeBoost);
+    dimensions.depth = Math.round(dimensions.depth * detectedQuality.sizeBoost);
+  }
+
   return {
     // Detection results
     type: detectedType,
     theme: detectedTheme,
     size: detectedSize,
-    
+    quality: detectedQuality,
+
     // Derived recommendations
     typeInfo,
     materials,
     dimensions,
     operations,
-    
+
     // Combined features (type features + theme additions)
     features: [
       ...(typeInfo.features || []),
       ...(operations.featureAdditions || [])
     ],
-    
-    // Combined tips
+
+    // Combined tips (including quality-specific tips)
     tips: [
       ...(typeInfo.tips || []),
-      ...(operations.tips || [])
+      ...(operations.tips || []),
+      ...(detectedQuality.tips || [])
     ],
-    
+
     // Build order
     buildOrder: typeInfo.buildOrder || ['foundation', 'walls', 'roof', 'details']
   };

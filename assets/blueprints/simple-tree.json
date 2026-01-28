@@ -1,0 +1,62 @@
+{
+  "name": "Simple Tree",
+  "description": "A natural-looking tree with trunk and leaf canopy",
+  "tags": ["tree", "oak", "natural", "organic", "plant", "nature"],
+  "buildType": "tree",
+  "parameterizable": true,
+  "parameters": {
+    "trunkHeight": { "default": 6, "min": 4, "max": 20 },
+    "canopyRadius": { "default": 3, "min": 2, "max": 8 },
+    "trunkBlock": { "default": "oak_log" },
+    "leafBlock": { "default": "oak_leaves" }
+  },
+  "template": {
+    "size": { "width": 9, "height": 12, "depth": 9 },
+    "palette": {
+      "trunk": "${trunkBlock}",
+      "leaves": "${leafBlock}"
+    },
+    "steps": [
+      {
+        "op": "we_fill",
+        "comment": "Main trunk",
+        "from": { "x": 4, "y": 0, "z": 4 },
+        "to": { "x": 4, "y": "${trunkHeight}", "z": 4 },
+        "block": "$trunk"
+      },
+      {
+        "op": "we_fill",
+        "comment": "Trunk base taper",
+        "from": { "x": 3, "y": 0, "z": 4 },
+        "to": { "x": 5, "y": 1, "z": 4 },
+        "block": "$trunk"
+      },
+      {
+        "op": "we_fill",
+        "comment": "Lower canopy layer",
+        "from": { "x": 1, "y": "${trunkHeight-1}", "z": 1 },
+        "to": { "x": 7, "y": "${trunkHeight}", "z": 7 },
+        "block": "$leaves"
+      },
+      {
+        "op": "we_fill",
+        "comment": "Middle canopy layer",
+        "from": { "x": 2, "y": "${trunkHeight+1}", "z": 2 },
+        "to": { "x": 6, "y": "${trunkHeight+2}", "z": 6 },
+        "block": "$leaves"
+      },
+      {
+        "op": "we_fill",
+        "comment": "Top canopy",
+        "from": { "x": 3, "y": "${trunkHeight+3}", "z": 3 },
+        "to": { "x": 5, "y": "${trunkHeight+3}", "z": 5 },
+        "block": "$leaves"
+      }
+    ]
+  },
+  "qualityHints": {
+    "asymmetry": "Add branch operations offset from center",
+    "variation": "Use multiple leaf block variants",
+    "naturalness": "Avoid perfect geometric shapes"
+  }
+}

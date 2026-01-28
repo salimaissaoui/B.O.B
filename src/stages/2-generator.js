@@ -18,6 +18,39 @@ function extractPixelArtSubject(userPrompt) {
 }
 
 /**
+ * Generate a simple platform blueprint (deterministic, no LLM needed)
+ */
+function generatePlatformBlueprint(analysis) {
+  const { hints } = analysis;
+  const dims = hints.dimensions || { width: 10, depth: 10 };
+  const width = dims.width || 10;
+  const depth = dims.depth || dims.width || 10;
+  const height = dims.height || 1;
+
+  // Extract material
+  const material = hints.materials?.primary || 'stone';
+
+  console.log(`📦 Generating simple platform: ${width}x${depth}x${height} ${material}`);
+
+  return {
+    buildType: 'platform',
+    theme: 'default',
+    size: { width, height, depth },
+    palette: { primary: material },
+    steps: [
+      { op: 'site_prep' },
+      {
+        op: 'we_fill',
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: width - 1, y: height - 1, z: depth - 1 },
+        block: '$primary'
+      }
+    ],
+    generationMethod: 'deterministic_platform'
+  };
+}
+
+/**
  * Stage 2: Generate complete blueprint (single LLM call)
  * Merges design planning + blueprint generation into one step
  *
@@ -35,7 +68,27 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     throw new Error('Invalid API key: Gemini API key required');
   }
 
-  const { userPrompt, buildType } = analysis;
+  const { userPrompt, buildType, libraryBlueprint } = analysis;
+
+  // FAST PATH 1: Use library blueprint if available
+  if (libraryBlueprint) {
+    console.log(`📚 Using library blueprint: ${libraryBlueprint.templateName || 'template'}`);
+
+    // Ensure site_prep is first
+    if (libraryBlueprint.steps && libraryBlueprint.steps[0]?.op !== 'site_prep') {
+      libraryBlueprint.steps.unshift({ op: 'site_prep' });
+    }
+
+    return {
+      ...libraryBlueprint,
+      generationMethod: 'library_template'
+    };
+  }
+
+  // FAST PATH 2: Simple platforms don't need LLM
+  if (buildType === 'platform' && analysis.hints?.explicitDimensions) {
+    return generatePlatformBlueprint(analysis);
+  }
 
   if (DEBUG) {
     console.log('\n┌─────────────────────────────────────────────────────────');
@@ -81,23 +134,52 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
       console.log('------------------------------------\n');
     }
 
-    // Call LLM with streaming for real-time feedback
+    // Call LLM with fallback strategy
+    // Attempt 1: Streaming (for better UX)
     const client = new GeminiClient(apiKey);
-    console.log('🤖 Generating blueprint (streaming)...');
+    let blueprint = null;
 
-    let progressDots = 0;
-    let blueprint = await client.streamContent({
-      prompt,
-      temperature: 0.5,
-      onProgress: (progress) => {
-        progressDots++;
-        // Show live progress every few chunks
-        process.stdout.write(`\r  Thinking... ${'.'.repeat(progressDots % 10 + 1).padEnd(10)} (${Math.round(progress.bytesReceived / 1024)}KB)`);
+    try {
+      console.log('[LLM] streaming=true attempt=1');
+      console.log('🤖 Generating blueprint (streaming)...');
+
+      let progressDots = 0;
+      blueprint = await client.streamContent({
+        prompt,
+        temperature: 0.5,
+        onProgress: (progress) => {
+          progressDots++;
+          // Show live progress every few chunks
+          process.stdout.write(`\r  Thinking... ${'.'.repeat(progressDots % 10 + 1).padEnd(10)} (${Math.round(progress.bytesReceived / 1024)}KB)`);
+        }
+      });
+
+      // Clear progress line
+      process.stdout.write('\r' + ' '.repeat(60) + '\r');
+      console.log('[LLM] streaming=true success');
+
+    } catch (streamError) {
+      // Clear progress line if failed mid-stream
+      process.stdout.write('\r' + ' '.repeat(60) + '\r');
+      console.warn(`[LLM] streaming failed: ${streamError.message}. Retrying with streaming=false`);
+
+      // Attempt 2: Non-streaming (Fallback)
+      try {
+        console.log('[LLM] streaming=false attempt=2');
+        console.log('🤖 Generating blueprint (fallback mode)...');
+
+        blueprint = await client.generateContent({
+          prompt,
+          temperature: 0.5,
+          responseFormat: 'json'
+        });
+
+        console.log('[LLM] streaming=false success');
+      } catch (fallbackError) {
+        console.error(`[LLM] non-streaming failed: ${fallbackError.message}`);
+        throw new Error(`All generation attempts failed. Stream error: ${streamError.message}. Fallback error: ${fallbackError.message}`);
       }
-    });
-
-    // Clear progress line
-    process.stdout.write('\r' + ' '.repeat(60) + '\r');
+    }
 
     // Basic structure validation
     if (!blueprint.size || !blueprint.palette || !blueprint.steps) {

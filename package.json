@@ -6,7 +6,14 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:core": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/stages/analyzer-enhanced.test.js tests/worldedit/ack-patterns.test.js tests/validation/",
+    "test:normalizer": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/utils/normalizer.test.js",
+    "test:analyzer": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/stages/analyzer-enhanced.test.js",
+    "test:validation": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/validation/",
+    "test:worldedit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/worldedit/",
+    "test:pixel-art": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/operations/pixel-art",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "keywords": [
     "minecraft",
@@ -24,7 +31,7 @@
     "minecraft-data": "^3.103.0",
     "minecraft-protocol": "github:PrismarineJS/node-minecraft-protocol#master",
     "mineflayer": "github:PrismarineJS/mineflayer#master",
-    "mineflayer-pathfinder": "^2.4.4",
+    "mineflayer-pathfinder": "^2.4.5",
     "prismarine-registry": "^1.11.0",
     "sharp": "^0.33.0"
   },

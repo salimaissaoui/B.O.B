@@ -1,5 +1,8 @@
 import { SAFETY_LIMITS } from '../config/limits.js';
 
+// Debug mode for ACK tracking
+const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
+
 /**
  * WorldEdit Executor
  * Handles WorldEdit command execution with rate limiting and validation
@@ -15,23 +18,28 @@ export class WorldEditExecutor {
     this.backoffMultiplier = 1.0;
 
     // Command History Tracking
-    // Original bug: No undo support - builds were permanent
-    // Fix: Track all executed commands so they can be reversed with //undo
     this.commandHistory = [];
 
     // Response Handler for Command Verification
-    // Original bug: Commands assumed successful without verification, leading to silent failures
-    // Fix: Wait for and parse server responses to confirm command execution
     this.pendingResponse = null;
 
     // Track unconfirmed operations (no acknowledgment received)
     this.unconfirmedOps = [];
+
+    // Message buffer for debugging multi-line responses
+    this.messageBuffer = [];
+    this.bufferWindowMs = 2000;
 
     // Listen for chat messages (spam warnings + command responses)
     if (bot && typeof bot.on === 'function') {
       bot.on('message', (message) => {
         const text = message.toString();
         const textLower = text.toLowerCase();
+
+        // Add to message buffer for debugging
+        this.messageBuffer.push({ text, timestamp: Date.now() });
+        // Clean old messages from buffer
+        this.messageBuffer = this.messageBuffer.filter(m => Date.now() - m.timestamp < this.bufferWindowMs);
 
         // Handle spam warnings
         if (textLower.includes('spam') ||
@@ -49,6 +57,18 @@ export class WorldEditExecutor {
         }
       });
     }
+  }
+
+  /**
+   * Get recent messages from the buffer
+   * @param {number} windowMs - Time window in milliseconds (default: 1000)
+   * @returns {string[]} - Array of recent message texts
+   */
+  getRecentMessages(windowMs = 1000) {
+    const now = Date.now();
+    return this.messageBuffer
+      .filter(m => now - m.timestamp < windowMs)
+      .map(m => m.text);
   }
 
   /**
@@ -87,13 +107,8 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Detect if WorldEdit is available by testing a safe command
-   *
-   * Original bug: Detection assumed WorldEdit was available without verification,
-   * causing all WorldEdit operations to silently fail on servers without the plugin.
-   *
-   * Fix: Send //version command and parse response to confirm WorldEdit is installed.
-   * Returns false if response indicates "Unknown command" or timeout.
+   * Detect if WorldEdit is available by testing commands
+   * Updated to favor //sel since //version returns generic errors on some servers
    */
   async detectWorldEdit() {
     if (!SAFETY_LIMITS.worldEdit.enabled) {
@@ -111,56 +126,54 @@ export class WorldEditExecutor {
     try {
       console.log('Detecting WorldEdit plugin...');
 
-      // Start listening for response before sending command
+      // Method 1: Try //sel (Proven reliable on this server)
+      const selPromise = this.waitForResponse(
+        (text) => {
+          const lower = text.toLowerCase();
+          return lower.includes('selection') ||
+            lower.includes('cuboid') ||
+            lower.includes('region') ||
+            lower.includes('cleared') ||
+            lower.includes('fawe') ||
+            lower.includes('worldedit');
+        },
+        3000
+      );
+
+      this.bot.chat('//sel');
+      const selResponse = await selPromise;
+
+      if (selResponse) {
+        this.available = true;
+        console.log('✓ WorldEdit detected via //sel command');
+        return true;
+      }
+
+      // Method 2: Try //version as fallback (often hijacked by Bukkit)
+      console.log('  No //sel response, trying //version...');
+
       const responsePromise = this.waitForResponse(
         (text) => {
           const lower = text.toLowerCase();
-          // WorldEdit responds with version info like "WorldEdit version 7.2.15"
-          // or FAWE: "FastAsyncWorldEdit version 2.x.x"
           return lower.includes('worldedit') ||
             lower.includes('fawe') ||
             lower.includes('asyncworldedit');
         },
-        3000 // 3 second timeout
+        3000
       );
 
-      // Send version command
       this.bot.chat('//version');
-
-      // Wait for response
       const response = await responsePromise;
 
       if (response) {
         this.available = true;
         console.log(`✓ WorldEdit detected: ${response.substring(0, 60)}...`);
         return true;
-      } else {
-        // No response - try fallback detection with //sel
-        console.log('  No //version response, trying //sel...');
-
-        const selPromise = this.waitForResponse(
-          (text) => {
-            const lower = text.toLowerCase();
-            return lower.includes('selection') ||
-              lower.includes('cuboid') ||
-              lower.includes('region');
-          },
-          2000
-        );
-
-        this.bot.chat('//sel');
-        const selResponse = await selPromise;
-
-        if (selResponse) {
-          this.available = true;
-          console.log('✓ WorldEdit detected via //sel command');
-          return true;
-        }
-
-        console.log('✗ WorldEdit not available: no response to commands');
-        this.available = false;
-        return false;
       }
+
+      console.log('✗ WorldEdit not available: no response to commands');
+      this.available = false;
+      return false;
     } catch (error) {
       console.log('✗ WorldEdit not available, will use vanilla placement');
       console.log(`  Reason: ${error.message}`);
@@ -171,13 +184,6 @@ export class WorldEditExecutor {
 
   /**
    * Execute a WorldEdit command with rate limiting and validation
-   *
-   * Original bug: Commands sent without waiting for confirmation, leading to:
-   * - Race conditions (next command sent before previous completed)
-   * - Silent failures (no error detection)
-   * - Command queue overflow (server kicks bot)
-   *
-   * Fix: Wait for server response, parse for errors, apply rate limiting.
    */
   async executeCommand(command, options = {}) {
     // Rate limiting with backoff
@@ -203,35 +209,62 @@ export class WorldEditExecutor {
       );
     }
 
-    // P0 Fix: Set up response listener for commands that modify blocks
-    const expectsBlockChange = this.commandExpectsBlockChange(command);
+    // P0 Fix: Response listener for ALL critical WorldEdit commands (state + edit)
+    const expectsAck = this.commandExpectsAck(command);
     let responsePromise = null;
 
-    if (expectsBlockChange && !options.skipAcknowledgment) {
+    if (expectsAck && !options.skipAcknowledgment) {
       responsePromise = this.waitForResponse(
         (text) => {
           const lower = text.toLowerCase();
-          // WorldEdit/FAWE block change responses:
-          // "X blocks have been changed"
-          // "X block(s) changed"
-          // "0 blocks changed" (FAWE)
-          // "No blocks in region"
-          // "Operation completed"
-          // Error patterns: "Unknown command", "No permission", "Selection too large"
-          return /\d+\s*block/.test(lower) ||
-            lower.includes('changed') ||
-            lower.includes('affected') ||
-            lower.includes('operation complete') ||
-            lower.includes('no blocks') ||
-            lower.includes('unknown command') ||
+
+          // 1. FAWE/WorldEdit Success Patterns
+          // Pattern A: "Operation completed (123 blocks)."
+          if (lower.includes('operation completed')) return true;
+
+          // Pattern B: "0.5s elapsed (history: 123 changed; ...)"
+          if (lower.includes('elapsed') && lower.includes('history') && lower.includes('changed')) return true;
+
+          // Pattern C: Standard WE responses
+          // FIXED: Use precise patterns to avoid false positives like "Selection type changed to cuboid"
+          if (/\d+\s*blocks?\s*(changed|affected|set)/i.test(text)) return true;  // "10 blocks changed"
+          if (/history.*\d+\s*changed/i.test(text)) return true;                  // "history: N changed"
+          if (lower.includes('set to') && !lower.includes('selection type')) {    // "First position set to..." but not "Selection type"
+            return true;
+          }
+          if (lower.includes('selection cleared') ||  // "//desel"
+            lower.includes('region cleared') ||
+            lower.includes('pasted') ||
+            lower.includes('clipboard') ||
+            lower.includes('no blocks')) {         // "No blocks changed" (still a valid ACK)
+            return true;
+          }
+          // Selection mode confirmation (but NOT "Selection type changed to cuboid" as a block-change ACK)
+          if (/cuboid.*left click|left click.*cuboid/i.test(text)) {
+            return true;
+          }
+
+          // Undo/Redo success
+          if (lower.includes('undo successful') || lower.includes('undid') || lower.includes('redo successful')) {
+            return true;
+          }
+
+          // 2. Failure patterns (Fail fast)
+          return lower.includes('unknown command') ||
             lower.includes('no permission') ||
             lower.includes('don\'t have permission') ||
             lower.includes('not permitted') ||
             lower.includes('selection too large') ||
+            lower.includes('invalid value') ||
+            lower.includes('does not match a valid block type') ||
+            lower.includes('acceptable values are') ||
             lower.includes('maximum') ||
             lower.includes('error') ||
             lower.includes('cannot') ||
-            lower.includes('failed');
+            lower.includes('failed') ||
+            lower.includes('unknown or incomplete command') ||
+            lower.includes('see below for error') ||
+            lower.includes('<--[here]');
         },
         options.acknowledgmentTimeout || 5000
       );
@@ -239,27 +272,28 @@ export class WorldEditExecutor {
 
     // Execute via chat
     console.log(`  [WorldEdit] ${command}`);
-
-    // Feedback for user
-    if (expectsBlockChange) {
-      this.bot.chat(`WE >> ${command}`);
+    if (DEBUG_ACK) {
+      console.log(`[WE-ACK] CMD: ${command}`);
     }
-
     this.bot.chat(command);
 
     this.lastCommandTime = Date.now();
     this.commandsExecuted++;
 
-    // P0 Fix: Track command in history for undo support
+    // Track command in history for undo support
     this.commandHistory.push({
       command,
       timestamp: this.lastCommandTime,
       options
     });
 
-    // P0 Fix: Wait for and verify response
+    // Wait for and verify response
     if (responsePromise) {
       const response = await responsePromise;
+
+      if (DEBUG_ACK) {
+        console.log(`[WE-ACK] RSP: ${response?.substring(0, 100) || '(null)'}`);
+      }
 
       if (response) {
         const lower = response.toLowerCase();
@@ -272,13 +306,13 @@ export class WorldEditExecutor {
           error.errorType = errorInfo.type;
           error.suggestedFix = errorInfo.suggestedFix;
           error.command = command;
-          console.error(`    ✗ WorldEdit error: ${errorInfo.type}`);
+          console.error(`    ✗ WorldEdit error: ${errorInfo.type} - ${response}`);
           console.error(`      Command: ${command}`);
           console.error(`      Suggestion: ${errorInfo.suggestedFix}`);
           throw error;
         }
 
-        // Check for "0 blocks changed" or "No blocks in region" (not an error, but worth noting)
+        // Check for "0 blocks changed" or "No blocks in region"
         const blockMatch = response.match(/(\d+)\s*block/i);
         const blocksChanged = blockMatch ? parseInt(blockMatch[1], 10) : null;
 
@@ -286,8 +320,6 @@ export class WorldEditExecutor {
           console.warn(`    ⚠ Operation completed but changed 0 blocks: ${command}`);
           console.warn(`      This may indicate selection issues or empty region`);
         }
-
-        console.log(`    → ${response.substring(0, 50)}${response.length > 50 ? '...' : ''}`);
 
         return {
           success: true,
@@ -297,17 +329,15 @@ export class WorldEditExecutor {
           confirmed: true
         };
       } else {
-        // No response - command may have worked but no feedback
+        // No response
         console.warn(`    ⚠ No acknowledgment received for: ${command}`);
         console.warn(`      This could indicate: plugin lag, chat spam filter, or command failure`);
 
-        // Track unconfirmed operation
         this.unconfirmedOps.push({
           command,
           timestamp: Date.now()
         });
 
-        // Don't fail, but flag as unconfirmed
         return {
           success: true,
           command,
@@ -317,7 +347,7 @@ export class WorldEditExecutor {
       }
     }
 
-    // Non-block-changing commands (pos1, pos2, sel, desel)
+    // For commands not expecting ACK, add small safety delay
     const executionDelay = options.executionDelay || 300;
     await this.sleep(executionDelay);
 
@@ -330,6 +360,28 @@ export class WorldEditExecutor {
   classifyError(response, command) {
     const lower = response.toLowerCase();
 
+    // Command Parser/Syntax Errors (Server doesn't recognize format)
+    if (lower.includes('unknown or incomplete command') ||
+      lower.includes('see below for error') ||
+      lower.includes('<--[here]')) {
+      return {
+        type: 'COMMAND_NOT_RECOGNIZED',
+        message: `Server rejected command syntax: ${response}`,
+        suggestedFix: 'Ensure correct WorldEdit command prefix. This server requires // commands (not /).'
+      };
+    }
+
+    // Invalid Pattern/Argument Errors
+    if (lower.includes('invalid value') ||
+      lower.includes('does not match a valid block type') ||
+      lower.includes('acceptable values are')) {
+      return {
+        type: 'INVALID_SYNTAX',
+        message: `WorldEdit/FAWE rejected arguments: ${response}`,
+        suggestedFix: 'Remove invalid flags like -a and confirm block names are standard.'
+      };
+    }
+
     // Permission errors
     if (lower.includes('no permission') ||
       lower.includes('don\'t have permission') ||
@@ -337,16 +389,16 @@ export class WorldEditExecutor {
       return {
         type: 'PERMISSION_DENIED',
         message: `WorldEdit permission denied: ${response}`,
-        suggestedFix: 'Grant WorldEdit permissions to the bot user. Required: worldedit.selection.*, worldedit.region.*, worldedit.generation.*'
+        suggestedFix: 'Grant WorldEdit permissions to the bot user.'
       };
     }
 
-    // Unknown command (plugin not installed or command not available)
+    // Unknown command (plugin specific)
     if (lower.includes('unknown command')) {
       return {
         type: 'PLUGIN_NOT_FOUND',
         message: `WorldEdit command not recognized: ${response}`,
-        suggestedFix: 'Ensure WorldEdit/FAWE plugin is installed and loaded. Check //version command.'
+        suggestedFix: 'Ensure WorldEdit/FAWE plugin is installed.'
       };
     }
 
@@ -357,7 +409,25 @@ export class WorldEditExecutor {
       return {
         type: 'SELECTION_TOO_LARGE',
         message: `WorldEdit selection exceeds server limits: ${response}`,
-        suggestedFix: 'Reduce selection size or increase server WorldEdit limits. Current B.O.B limits: 50k blocks, 50x50x50 dimensions.'
+        suggestedFix: 'Reduce selection size.'
+      };
+    }
+
+    // No selection defined
+    if (/no\s*(?:blocks\s*)?(?:selected|selection)|make\s*a\s*(?:region\s*)?selection/i.test(lower)) {
+      return {
+        type: 'NO_SELECTION',
+        message: `No selection defined: ${response}`,
+        suggestedFix: 'Set pos1 and pos2 before this operation'
+      };
+    }
+
+    // Internal exception
+    if (/exception|internal\s*error|stack\s*trace/i.test(lower)) {
+      return {
+        type: 'INTERNAL_ERROR',
+        message: `WorldEdit internal error: ${response}`,
+        suggestedFix: 'Check server logs for stack trace'
       };
     }
 
@@ -366,7 +436,7 @@ export class WorldEditExecutor {
       return {
         type: 'COMMAND_FAILED',
         message: `WorldEdit command failed: ${response}`,
-        suggestedFix: 'Check command syntax, selection state, and server logs for details.'
+        suggestedFix: 'Check server logs.'
       };
     }
 
@@ -374,7 +444,27 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Check if a command is expected to change blocks
+   * Check if a command expects an ACK (Edit OR Selection State)
+   */
+  commandExpectsAck(command) {
+    const ackCommands = [
+      // Block-changing commands
+      '//set', '//walls', '//replace',
+      '//pyramid', '//hpyramid',
+      '//cyl', '//hcyl',
+      '//sphere', '//hsphere',
+
+      // Selection / State commands - MUST WAIT FOR ACK
+      '//pos1', '//pos2', '//sel', '//desel',
+      '//expand', '//wand', '//copy', '//paste', '//undo', '//redo'
+    ];
+
+    const cmdLower = command.toLowerCase();
+    return ackCommands.some(cmd => cmdLower.startsWith(cmd));
+  }
+
+  /**
+   * Check if a command is expected to change blocks (Legacy helper)
    */
   commandExpectsBlockChange(command) {
     const blockChangingCommands = [
@@ -383,7 +473,6 @@ export class WorldEditExecutor {
       '//cyl', '//hcyl',
       '//sphere', '//hsphere'
     ];
-
     const cmdLower = command.toLowerCase();
     return blockChangingCommands.some(cmd => cmdLower.startsWith(cmd));
   }
@@ -392,13 +481,9 @@ export class WorldEditExecutor {
    * Validate WorldEdit command before execution
    */
   validateCommand(command) {
-    // Ensure command starts with // or / (some plugins use single slash like /brush)
-    if (!command.startsWith('//') &&
-      !command.startsWith('/tp') &&
-      !command.startsWith('/brush') &&
-      !command.startsWith('/b') &&
-      !command.startsWith('/v')) {
-      throw new Error(`Invalid WorldEdit command format: ${command} (must start with //, /tp, /brush, /b, or /v)`);
+    // Ensure command starts with // or / 
+    if (!command.startsWith('//') && !command.startsWith('/')) {
+      throw new Error(`Invalid WorldEdit command format: ${command} (must start with // or /)`);
     }
 
     // Parse command type
@@ -416,24 +501,11 @@ export class WorldEditExecutor {
       'pos1', 'pos2', 'set', 'walls', 'replace',
       'pyramid', 'hpyramid', 'cyl', 'hcyl', 'sphere', 'hsphere',
       'desel', 'undo', 'version', 'sel', 'tp',
-      'brush', 'b', 'v', 'u'
+      'brush', 'b', 'v', 'u', 'expand', 'copy', 'paste', 'redo', 'wand'
     ];
 
     if (!allowedCommands.includes(cmdType)) {
       throw new Error(`WorldEdit command '${cmdType}' not in allowlist`);
-    }
-
-    // Additional validation for specific commands
-    if (['set', 'walls', 'replace'].includes(cmdType)) {
-      if (parts.length < 2) {
-        throw new Error(`Command '//${cmdType}' requires block parameter`);
-      }
-    }
-
-    if (['pyramid', 'hpyramid', 'cyl', 'hcyl', 'sphere', 'hsphere'].includes(cmdType)) {
-      if (parts.length < 3) {
-        throw new Error(`Command '//${cmdType}' requires block and size parameters`);
-      }
     }
   }
 
@@ -479,24 +551,27 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Fill selection with block
+   * Fill selection with block (REMOVED -a flag)
    */
   async fillSelection(block) {
-    await this.executeCommand(`//set -a ${block}`, { executionDelay: 500 });
+    // FIX: Removed -a flag which caused FAWE syntax errors
+    await this.executeCommand(`//set ${block}`, { executionDelay: 500 });
   }
 
   /**
-   * Create walls in selection (hollow)
+   * Create walls in selection (REMOVED -a flag)
    */
   async createWalls(block) {
-    await this.executeCommand(`//walls -a ${block}`, { executionDelay: 500 });
+    // FIX: Removed -a flag which caused FAWE syntax errors
+    await this.executeCommand(`//walls ${block}`, { executionDelay: 500 });
   }
 
   /**
-   * Replace blocks in selection
+   * Replace blocks in selection (REMOVED -a flag)
    */
   async replaceBlocks(fromBlock, toBlock) {
-    await this.executeCommand(`//replace -a ${fromBlock} ${toBlock}`, { executionDelay: 500 });
+    // FIX: Removed -a flag which caused FAWE syntax errors
+    await this.executeCommand(`//replace ${fromBlock} ${toBlock}`, { executionDelay: 500 });
   }
 
   /**
@@ -508,19 +583,21 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Create cylinder
+   * Create cylinder (REMOVED -a flag)
    */
   async createCylinder(block, radius, height, hollow = false) {
     const cmd = hollow ? 'hcyl' : 'cyl';
-    await this.executeCommand(`//${cmd} -a ${block} ${radius} ${height}`, { executionDelay: 700 });
+    // FIX: Removed -a flag which caused FAWE syntax errors
+    await this.executeCommand(`//${cmd} ${block} ${radius} ${height}`, { executionDelay: 700 });
   }
 
   /**
-   * Create sphere
+   * Create sphere (REMOVED -a flag)
    */
   async createSphere(block, radius, hollow = false) {
     const cmd = hollow ? 'hsphere' : 'sphere';
-    await this.executeCommand(`//${cmd} -a ${block} ${radius}`, { executionDelay: 700 });
+    // FIX: Removed -a flag which caused FAWE syntax errors
+    await this.executeCommand(`//${cmd} ${block} ${radius}`, { executionDelay: 700 });
   }
 
   /**
@@ -549,6 +626,8 @@ export class WorldEditExecutor {
     this.commandHistory = [];
     // Clear unconfirmed operations
     this.unconfirmedOps = [];
+    // Clear message buffer
+    this.messageBuffer = [];
   }
 
   /**

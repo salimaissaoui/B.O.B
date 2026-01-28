@@ -13,7 +13,25 @@ function createMockBot(options = {}) {
     const bot = {
         chat: jest.fn((msg) => {
             // Simulate WorldEdit responses
-            if (msg.startsWith('//') || msg.startsWith('/tp')) {
+            if (msg.startsWith('//sel')) {
+                setTimeout(() => {
+                    if (handlers['message']) {
+                        handlers['message'].forEach(h => h('Selection type: cuboid'));
+                    }
+                }, 10);
+            } else if (msg.startsWith('//pos1')) {
+                setTimeout(() => {
+                    if (handlers['message']) {
+                        handlers['message'].forEach(h => h('First position set to (0, 0, 0).'));
+                    }
+                }, 10);
+            } else if (msg.startsWith('//pos2')) {
+                setTimeout(() => {
+                    if (handlers['message']) {
+                        handlers['message'].forEach(h => h('Second position set to (0, 0, 0).'));
+                    }
+                }, 10);
+            } else if (msg.startsWith('//') || msg.startsWith('/tp')) {
                 setTimeout(() => {
                     if (handlers['message']) {
                         handlers['message'].forEach(h => h("Operation completed (100 blocks changed)."));
@@ -51,22 +69,25 @@ function createMockBot(options = {}) {
 describe('Builder Optimized Logic (Task 3 & 4)', () => {
 
     describe('WorldEdit Async Flags', () => {
-        test('should include -a flag in all major WorldEdit operations', async () => {
+        test('should execute WorldEdit operations without -a flag', async () => {
             const bot = createMockBot();
             const builder = new Builder(bot);
             builder.worldEditEnabled = true;
 
             // Test Fill
             await builder.executeWorldEditFill({ from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, block: 'stone' }, { x: 0, y: 0, z: 0 });
-            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//set -a stone'));
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//set stone'));
+            expect(bot.chat).not.toHaveBeenCalledWith(expect.stringContaining('//set -a'));
 
             // Test Walls
             await builder.executeWorldEditWalls({ from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, block: 'stone' }, { x: 0, y: 0, z: 0 });
-            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//walls -a stone'));
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//walls stone'));
+            expect(bot.chat).not.toHaveBeenCalledWith(expect.stringContaining('//walls -a'));
 
             // Test Sphere
             await builder.executeWorldEditSphere({ center: { x: 0, y: 0, z: 0 }, radius: 5, block: 'stone' }, { x: 0, y: 0, z: 0 });
-            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//sphere -a stone 5'));
+            expect(bot.chat).toHaveBeenCalledWith(expect.stringContaining('//sphere stone 5'));
+            expect(bot.chat).not.toHaveBeenCalledWith(expect.stringContaining('//sphere -a'));
         });
     });
 

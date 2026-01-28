@@ -29,56 +29,42 @@ function createMockBot(options = {}) {
 
 describe('WorldEditExecutor P0 Fixes', () => {
   describe('Response-based Detection', () => {
-    test('should detect WorldEdit from //version response', async () => {
+    test('should detect WorldEdit from //sel response', async () => {
       const mockBot = createMockBot();
       const executor = new WorldEditExecutor(mockBot);
 
       // Simulate async response after command
       setTimeout(() => {
-        mockBot.emit('message', { toString: () => 'WorldEdit version 7.2.15' });
-      }, 100);
-
-      const result = await executor.detectWorldEdit();
-
-      expect(result).toBe(true);
-      expect(executor.available).toBe(true);
-      expect(mockBot.chat).toHaveBeenCalledWith('//version');
-    });
-
-    test('should detect FAWE from //version response', async () => {
-      const mockBot = createMockBot();
-      const executor = new WorldEditExecutor(mockBot);
-
-      setTimeout(() => {
-        mockBot.emit('message', { toString: () => 'FastAsyncWorldEdit version 2.5.0' });
-      }, 100);
-
-      const result = await executor.detectWorldEdit();
-
-      expect(result).toBe(true);
-      expect(executor.available).toBe(true);
-    });
-
-    test('should fallback to //sel detection when //version fails', async () => {
-      const mockBot = createMockBot();
-      const executor = new WorldEditExecutor(mockBot);
-
-      // No response to //version, but respond to //sel
-      setTimeout(() => {
-        // First call is //version - no matching response
-        mockBot.emit('message', { toString: () => 'Some unrelated message' });
-      }, 100);
-
-      setTimeout(() => {
-        // Second call is //sel - matching response
         mockBot.emit('message', { toString: () => 'Selection type: cuboid' });
-      }, 3500);
+      }, 100);
 
       const result = await executor.detectWorldEdit();
 
       expect(result).toBe(true);
-      expect(mockBot.chat).toHaveBeenCalledWith('//version');
+      expect(executor.available).toBe(true);
       expect(mockBot.chat).toHaveBeenCalledWith('//sel');
+    });
+
+    test('should fallback to //version detection when //sel fails', async () => {
+      const mockBot = createMockBot();
+      const executor = new WorldEditExecutor(mockBot);
+
+      // No matching response to //sel, but respond to //version
+      setTimeout(() => {
+        // First call is //sel - no matching response (or unrelated)
+        mockBot.emit('message', { toString: () => 'Unknown command' });
+      }, 100);
+
+      setTimeout(() => {
+        // Second call is //version - matching response
+        mockBot.emit('message', { toString: () => 'WorldEdit version 7.2.15' });
+      }, 3500); // Wait for //sel timeout (3000ms)
+
+      const result = await executor.detectWorldEdit();
+
+      expect(result).toBe(true);
+      expect(mockBot.chat).toHaveBeenCalledWith('//sel');
+      expect(mockBot.chat).toHaveBeenCalledWith('//version');
     });
 
     test('should return false when no response received', async () => {
@@ -125,7 +111,7 @@ describe('WorldEditExecutor P0 Fixes', () => {
       executor.available = true;
 
       setTimeout(() => {
-        mockBot.emit('message', { toString: () => '1000 blocks have been changed' });
+        mockBot.emit('message', { toString: () => '1000 blocks changed' });
       }, 100);
 
       const result = await executor.executeCommand('//set stone', { skipValidation: true });
@@ -182,7 +168,7 @@ describe('WorldEditExecutor P0 Fixes', () => {
       executor.available = true;
 
       const startTime = Date.now();
-      const result = await executor.executeCommand('//pos1 10,64,10', { skipValidation: true });
+      const result = await executor.executeCommand('//brush sphere sand 5', { skipValidation: true });
       const elapsed = Date.now() - startTime;
 
       expect(result.success).toBe(true);
@@ -214,8 +200,8 @@ describe('WorldEditExecutor P0 Fixes', () => {
       const executor = new WorldEditExecutor(mockBot);
       executor.available = true;
 
-      await executor.executeCommand('//sel cuboid', { skipValidation: true });
-      await executor.executeCommand('//pos1 0,0,0', { skipValidation: true });
+      await executor.executeCommand('//sel cuboid', { skipValidation: true, skipAcknowledgment: true });
+      await executor.executeCommand('//pos1 0,0,0', { skipValidation: true, skipAcknowledgment: true });
       await executor.executeCommand('//set stone', { skipValidation: true, skipAcknowledgment: true });
 
       const history = executor.getCommandHistory();
@@ -244,10 +230,19 @@ describe('WorldEditExecutor P0 Fixes', () => {
       executor.available = true;
 
       // Execute mixed commands
-      await executor.executeCommand('//sel cuboid', { skipValidation: true });
+      await executor.executeCommand('//sel cuboid', { skipValidation: true, skipAcknowledgment: true });
       await executor.executeCommand('//set stone', { skipValidation: true, skipAcknowledgment: true });
-      await executor.executeCommand('//pos1 0,0,0', { skipValidation: true });
+      await executor.executeCommand('//pos1 0,0,0', { skipValidation: true, skipAcknowledgment: true });
       await executor.executeCommand('//walls oak_planks', { skipValidation: true, skipAcknowledgment: true });
+
+      // Mock undo response
+      mockBot.chat.mockImplementation((cmd) => {
+        if (cmd === '//undo') {
+          setTimeout(() => {
+            mockBot.emit('message', { toString: () => 'Undo successful' });
+          }, 10);
+        }
+      });
 
       // Undo all
       const result = await executor.undoAll();

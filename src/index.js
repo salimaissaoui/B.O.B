@@ -1,6 +1,7 @@
 import { createBot } from './bot/connection.js';
 import { registerCommands } from './bot/commands.js';
 import { Builder } from './stages/5-builder.js';
+import { resolveVersion } from './config/version-resolver.js';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
@@ -82,6 +83,9 @@ async function main() {
       reject(new Error('Connection timed out (30s) - Verify server is running on ' + port));
     }, 30000);
   });
+
+  // Resolve and cache the Minecraft version
+  resolveVersion(bot);
 
   // Create builder
   const builder = new Builder(bot);

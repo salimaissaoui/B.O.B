@@ -75,6 +75,61 @@ export function registerCommands(bot, builder, apiKey) {
         safeChat(bot, '  !build status - Check build progress');
       }
 
+      // WE ACK Test Command (Debug)
+      else if (message === '!weacktest') {
+        if (!builder.worldEditEnabled) {
+          safeChat(bot, 'WorldEdit not detected');
+        } else {
+          safeChat(bot, 'Starting WE ACK Test (via Executor)...');
+          const pos = bot.entity.position.floored();
+          const we = builder.worldEdit; // Access the executor instance directly
+
+          try {
+            // 1. Selection Mode
+            await we.executeCommand('//sel cuboid');
+
+            // 2. Set Positions
+            await we.executeCommand(`//pos1 ${pos.x},${pos.y},${pos.z}`);
+            await we.executeCommand(`//pos2 ${pos.x + 2},${pos.y + 2},${pos.z + 2}`);
+
+            // 3. Set Block (Strict Verification)
+            // checking if fillSelection logic works (should NOT act as -a)
+            // But for this test, let's call executeCommand with the CLEAN command to prove it works
+            const setRes = await we.executeCommand('//set stone');
+
+            // 4. Clear
+            await we.executeCommand('//desel');
+
+            // 5. Verify Set Result
+            // Requirement D: Mark PASSED only if observed real completion signal
+            const resp = setRes.response ? setRes.response : '';
+            const respLower = resp.toLowerCase();
+
+            const isFaweSuccess = respLower.includes('operation completed');
+            const isFaweElapsed = respLower.includes('elapsed') && respLower.includes('history') && respLower.includes('changed');
+            // FIXED: Use precise regex to avoid false positives like "Selection type changed"
+            const isStandardSuccess = /\d+\s*blocks?\s*(changed|affected|set)/i.test(resp);
+
+            // Block count validation (3x3x3 = 27 blocks expected)
+            const expectedBlocks = 27;
+            const actualBlocks = setRes.blocksChanged;
+
+            if (setRes.confirmed && (isFaweSuccess || isFaweElapsed || isStandardSuccess)) {
+              if (actualBlocks !== null && actualBlocks !== expectedBlocks) {
+                safeChat(bot, `WE ACK Test WARN: Expected ${expectedBlocks} blocks, got ${actualBlocks}`);
+              }
+              safeChat(bot, 'WE ACK Test PASSED');
+            } else {
+              safeChat(bot, 'WE ACK Test FAILED: did not observe completion ACK');
+              console.warn(`Failed Response: ${resp}`);
+            }
+          } catch (err) {
+            safeChat(bot, `WE ACK Test FAILED: ${err.message}`);
+            console.error(err);
+          }
+        }
+      }
+
       // Build command (check LAST since it uses startsWith)
       else if (message.startsWith('!build ')) {
         const prompt = message.slice(7).trim();
@@ -121,13 +176,24 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
 
     // Stage 2: GENERATOR (single LLM call)
     safeChat(bot, 'Stage 2/3: Generating blueprint...');
-    const blueprint = await generateBlueprint(
-      analysis,
-      apiKey,
-      builder.worldEditEnabled
-    );
+
+    let blueprint;
+    try {
+      blueprint = await generateBlueprint(
+        analysis,
+        apiKey,
+        builder.worldEditEnabled
+      );
+    } catch (genError) {
+      console.error('Blueprint generation failed:', genError);
+      safeChat(bot, '✗ Blueprint generation failed (see console)');
+      return;
+    }
     console.log(`  Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
-    console.log(`  Blocks: ${blueprint.palette.length} types`);
+    const paletteCount = Array.isArray(blueprint.palette)
+      ? blueprint.palette.length
+      : Object.keys(blueprint.palette || {}).length;
+    console.log(`  Blocks: ${paletteCount} types`);
     console.log(`  Steps: ${blueprint.steps.length} operations`);
 
     // Stage 3: VALIDATOR + EXECUTOR

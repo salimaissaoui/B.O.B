@@ -1,3 +1,5 @@
+import { getResolvedVersion } from './version-resolver.js';
+
 // Comprehensive Minecraft 1.20.1 block registry
 export const BLOCK_CATEGORIES = {
   building: [
@@ -79,8 +81,11 @@ export const BLOCK_CATEGORIES = {
 
   natural: [
     'dirt', 'grass_block', 'sand', 'gravel', 'clay',
-    'oak_leaves', 'spruce_leaves', 'birch_leaves',
-    'water', 'lava', 'snow', 'ice'
+    'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'mangrove_leaves', 'cherry_leaves', 'azalea_leaves', 'flowering_azalea_leaves',
+    'water', 'lava', 'snow', 'ice',
+    'vine', 'lily_pad', 'cactus', 'sugar_cane', 'brown_mushroom', 'red_mushroom',
+    'flower_pot', 'dandelion', 'poppy', 'blue_orchid', 'allium', 'azure_bluet', 'red_tulip', 'orange_tulip', 'white_tulip', 'pink_tulip', 'oxeye_daisy', 'cornflower', 'lily_of_the_valley',
+    'wheat', 'carrots', 'potatoes', 'beetroots', 'pumpkin', 'melon', 'hay_block'
   ],
 
   // Special blocks (used internally for operations like undo)
@@ -108,39 +113,54 @@ export const VERSION_COMPATIBILITY = {
 /**
  * Validate if a block exists in the target Minecraft version
  * @param {string} blockName - The block name to validate
- * @param {string} version - Minecraft version (default: 1.20.1)
+ * @param {string} version - Minecraft version (uses resolved version if not specified)
  * @returns {boolean} - True if block exists in version
  */
-export function isValidBlock(blockName, version = '1.20.1') {
+export function isValidBlock(blockName, version = null) {
+  // Use resolved version or fallback to 1.20.1
+  let effectiveVersion;
+  try {
+    effectiveVersion = version || getResolvedVersion();
+  } catch {
+    effectiveVersion = '1.20.1'; // Fallback if resolver not initialized
+  }
   // Normalize: remove minecraft: prefix
   const normalizedName = blockName.replace(/^minecraft:/, '');
-  const versionBlocks = VERSION_COMPATIBILITY[version] || ALL_BLOCKS;
+  const versionBlocks = VERSION_COMPATIBILITY[effectiveVersion] || ALL_BLOCKS;
   return versionBlocks.includes(normalizedName);
 }
 
 /**
  * Get valid blocks from a list for a specific version
  * @param {string[]} blockList - List of block names
- * @param {string} version - Minecraft version
+ * @param {string} version - Minecraft version (uses resolved version if not specified)
  * @returns {string[]} - Filtered list of valid blocks
  */
-export function getValidBlocks(blockList, version = '1.20.1') {
+export function getValidBlocks(blockList, version = null) {
   return blockList.filter(block => isValidBlock(block, version));
 }
 
 /**
  * Suggest alternative blocks if a block is invalid
  * @param {string} blockName - The invalid block name
- * @param {string} version - Minecraft version
+ * @param {string} version - Minecraft version (uses resolved version if not specified)
  * @returns {string[]} - Suggested alternatives
  */
-export function suggestAlternatives(blockName, version = '1.20.1') {
+export function suggestAlternatives(blockName, version = null) {
   if (isValidBlock(blockName, version)) {
     return [blockName];
   }
 
+  // Use resolved version or fallback
+  let effectiveVersion;
+  try {
+    effectiveVersion = version || getResolvedVersion();
+  } catch {
+    effectiveVersion = '1.20.1';
+  }
+
   // Simple fuzzy matching by category
-  const versionBlocks = VERSION_COMPATIBILITY[version] || ALL_BLOCKS;
+  const versionBlocks = VERSION_COMPATIBILITY[effectiveVersion] || ALL_BLOCKS;
   const category = blockName.split('_')[1] || blockName.split('_')[0];
 
   return versionBlocks

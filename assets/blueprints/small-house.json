@@ -1,0 +1,64 @@
+{
+  "name": "Small House",
+  "description": "A cozy small house with walls, door, windows, and roof",
+  "tags": ["house", "cottage", "home", "cabin", "hut", "dwelling", "small"],
+  "buildType": "house",
+  "parameterizable": true,
+  "parameters": {
+    "width": { "default": 9, "min": 7, "max": 15 },
+    "depth": { "default": 9, "min": 7, "max": 15 },
+    "wallHeight": { "default": 5, "min": 4, "max": 8 },
+    "wallBlock": { "default": "oak_planks" },
+    "roofBlock": { "default": "oak_stairs" },
+    "windowBlock": { "default": "glass_pane" },
+    "doorBlock": { "default": "oak_door" }
+  },
+  "template": {
+    "size": { "width": "${width}", "height": "${wallHeight+4}", "depth": "${depth}" },
+    "palette": {
+      "primary": "${wallBlock}",
+      "roof": "${roofBlock}",
+      "window": "${windowBlock}",
+      "door": "${doorBlock}"
+    },
+    "steps": [
+      {
+        "op": "we_fill",
+        "comment": "Foundation",
+        "from": { "x": 0, "y": 0, "z": 0 },
+        "to": { "x": "${width-1}", "y": 0, "z": "${depth-1}" },
+        "block": "cobblestone"
+      },
+      {
+        "op": "hollow_box",
+        "comment": "Walls",
+        "from": { "x": 0, "y": 1, "z": 0 },
+        "to": { "x": "${width-1}", "y": "${wallHeight}", "z": "${depth-1}" },
+        "block": "$primary"
+      },
+      {
+        "op": "door",
+        "comment": "Front door",
+        "pos": { "x": "${Math.floor(width/2)}", "y": 1, "z": 0 },
+        "block": "$door",
+        "facing": "south"
+      },
+      {
+        "op": "window_strip",
+        "comment": "Front windows",
+        "from": { "x": 2, "y": 3, "z": 0 },
+        "to": { "x": "${width-3}", "y": 3, "z": 0 },
+        "block": "$window",
+        "spacing": 2
+      },
+      {
+        "op": "roof_gable",
+        "comment": "Roof",
+        "from": { "x": -1, "y": "${wallHeight+1}", "z": -1 },
+        "to": { "x": "${width}", "y": "${wallHeight+4}", "z": "${depth}" },
+        "block": "$roof",
+        "peakHeight": 3
+      }
+    ]
+  }
+}

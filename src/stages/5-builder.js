@@ -795,50 +795,6 @@ export class Builder {
   }
 
   /**
-   * Execute WorldEdit Sphere (Async - Using FAWE)
-   */
-  async executeWorldEditSphere(descriptor, startPos) {
-    const worldPos = this.calculateWorldPosition(descriptor.center || descriptor.pos, startPos);
-    const radius = descriptor.radius || 3;
-    const block = descriptor.block || 'stone';
-
-    // //sphere -a <block> <radius>
-    const cmd = `//sphere -a ${block} ${radius}`;
-    console.log(`    → FAWE: Creating sphere at ${worldPos.x},${worldPos.y},${worldPos.z}`);
-
-    // Move to position first? Or pos1? 
-    // Standard WE operates at selection or player pos. 
-    // We should teleport/move bot or use //pos1 to define center?
-    // //sphere uses player position. So we must TP or move bot.
-    // Safer: Use pathfinding to get close, or /tp if OP.
-
-    // For now, let's try moving near it or using //pos1 which actually sets selection, 
-    // but //sphere builds AT player. 
-
-    // CRITICAL: We update the bot to stand at center
-    await this.bot.chat(`/tp ${worldPos.x} ${worldPos.y} ${worldPos.z}`);
-    await this.bot.waitForTicks(5);
-    await this.sendPluginCommand(cmd);
-  }
-
-  /**
-   * Execute WorldEdit Cylinder (Async - Using FAWE)
-   */
-  async executeWorldEditCylinder(descriptor, startPos) {
-    const worldPos = this.calculateWorldPosition(descriptor.base || descriptor.pos, startPos);
-    const radius = descriptor.radius || 3;
-    const height = descriptor.height || 1;
-    const block = descriptor.block || 'stone';
-
-    const cmd = `//cyl -a ${block} ${radius} ${height}`;
-    console.log(`    → FAWE: Creating cylinder at ${worldPos.x},${worldPos.y},${worldPos.z}`);
-
-    await this.bot.chat(`/tp ${worldPos.x} ${worldPos.y} ${worldPos.z}`);
-    await this.bot.waitForTicks(5);
-    await this.sendPluginCommand(cmd);
-  }
-
-  /**
    * Execute a WorldEdit descriptor returned by universal ops
    */
   async executeWorldEditDescriptor(descriptor, startPos) {

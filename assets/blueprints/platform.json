@@ -1,0 +1,25 @@
+{
+  "name": "Simple Platform",
+  "description": "A flat rectangular platform",
+  "tags": ["platform", "flat", "foundation", "floor", "pad", "base", "ground", "slab"],
+  "buildType": "platform",
+  "parameterizable": true,
+  "parameters": {
+    "width": { "default": 10, "min": 3, "max": 100 },
+    "depth": { "default": 10, "min": 3, "max": 100 },
+    "height": { "default": 1, "min": 1, "max": 5 },
+    "block": { "default": "stone" }
+  },
+  "template": {
+    "size": { "width": "${width}", "height": "${height}", "depth": "${depth}" },
+    "palette": { "primary": "${block}" },
+    "steps": [
+      {
+        "op": "we_fill",
+        "from": { "x": 0, "y": 0, "z": 0 },
+        "to": { "x": "${width-1}", "y": "${height-1}", "z": "${depth-1}" },
+        "block": "$primary"
+      }
+    ]
+  }
+}

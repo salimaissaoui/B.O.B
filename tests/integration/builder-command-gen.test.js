@@ -124,7 +124,7 @@ describe('Integration: Builder Command Generation', () => {
 
         // Builder executes: 
         // 1. /tp 100 64 100 (from executeWorldEditSphere logic)
-        // 2. //sphere -a diamond_block 5
+        // 2. //sphere diamond_block 5
 
         // Check teleport (Builder function mocked)
         // Since we mocked teleportAndVerify, checking mockBot.chat for /tp will fail
@@ -135,7 +135,7 @@ describe('Integration: Builder Command Generation', () => {
         // Note: Observed behavior shows a second argument {executionDelay: 700}. 
         // We match anything for the second argument to be robust.
         expect(executorSpy).toHaveBeenCalledWith(
-            expect.stringContaining('//sphere -a diamond_block 5'),
+            expect.stringContaining('//sphere diamond_block 5'),
             expect.anything()
         );
     });
@@ -162,7 +162,7 @@ describe('Integration: Builder Command Generation', () => {
 
         // Check command
         expect(executorSpy).toHaveBeenCalledWith(
-            expect.stringContaining('//cyl -a gold_block 3 4'),
+            expect.stringContaining('//cyl gold_block 3 4'),
             expect.anything()
         );
     });
@@ -198,6 +198,6 @@ describe('Integration: Builder Command Generation', () => {
         expect(executorSpy).toHaveBeenCalledWith('//pos2 102,66,102');
 
         // 4. //set stone (Has delay option)
-        expect(executorSpy).toHaveBeenCalledWith('//set -a stone', expect.anything());
+        expect(executorSpy).toHaveBeenCalledWith('//set stone', expect.anything());
     });
 });

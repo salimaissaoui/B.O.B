@@ -28,11 +28,24 @@ import { GeminiClient } from '../llm/gemini-client.js';
 import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
 import { validateGeometry } from '../validation/geometry-validator.js';
+import { validateTreeQuality, fixTreeQuality, isOrganicBuild } from '../validation/organic-quality.js';
 import { getOperationMetadata } from '../config/operations-registry.js';
 import { isValidBlock } from '../config/blocks.js';
+import { normalizeBlueprint } from '../utils/normalizer.js';
+import { getResolvedVersion } from '../config/version-resolver.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+const DEBUG_VALIDATION = process.env.BOB_DEBUG_VALIDATION === 'true';
+
+/**
+ * Log validation stage with timestamp (for DEBUG_VALIDATION)
+ */
+function logValidationStage(stage, result) {
+  if (!DEBUG_VALIDATION) return;
+  const ts = new Date().toISOString().slice(11, 23);
+  console.log(`[VAL ${ts}] Stage ${stage}: ${result.errors?.length || 0} errors`);
+}
 
 // Creative build types where allowlist is optional (LLM picks blocks freely)
 const CREATIVE_BUILD_TYPES = [
@@ -48,7 +61,6 @@ const CREATIVE_BUILD_TYPES = [
  * @returns {Promise<Object>} - Validation result with repaired blueprint
  */
 export async function validateBlueprint(blueprint, analysis, apiKey) {
-  let currentBlueprint = blueprint;
   let retries = 0;
   let qualityScore = null;
 
@@ -62,6 +74,40 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
     console.log(`│ Max retries: ${SAFETY_LIMITS.maxRetries}`);
     console.log('└─────────────────────────────────────────────────────────\n');
   }
+
+  // Phase 0: Required Fields Check (fail fast)
+  const requiredFieldsErrors = validateRequiredFields(blueprint);
+  if (requiredFieldsErrors.length > 0) {
+    logValidationStage('RequiredFields', { errors: requiredFieldsErrors });
+    console.error('Blueprint missing required fields:');
+    requiredFieldsErrors.forEach(err => console.error(`   - ${err}`));
+    return {
+      valid: false,
+      blueprint,
+      errors: requiredFieldsErrors
+    };
+  }
+
+  // Phase 1: Normalization (before validation loop)
+  const normResult = normalizeBlueprint(blueprint);
+  logValidationStage('Normalization', { errors: normResult.errors });
+
+  if (normResult.changes.length > 0 && DEBUG) {
+    console.log('Normalization changes:', normResult.changes);
+  }
+
+  // Unresolved placeholders are critical errors
+  if (normResult.errors.length > 0) {
+    console.error('Normalization errors (unresolved placeholders):');
+    normResult.errors.forEach(err => console.error(`   - ${err}`));
+    return {
+      valid: false,
+      blueprint,
+      errors: normResult.errors
+    };
+  }
+
+  let currentBlueprint = normResult.blueprint;
 
   while (retries < SAFETY_LIMITS.maxRetries) {
     const errors = [];
@@ -78,6 +124,14 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
     if (invalidMinecraftBlocks.length > 0) {
       errors.push(`Invalid Minecraft blocks: ${invalidMinecraftBlocks.join(', ')}`);
     }
+    logValidationStage('BlockValidation', { errors: invalidMinecraftBlocks.length > 0 ? ['block errors'] : [] });
+
+    // 2.5. Placeholder Token Validation
+    const placeholderErrors = validateNoPlaceholderTokens(currentBlueprint);
+    if (placeholderErrors.length > 0) {
+      errors.push(...placeholderErrors);
+    }
+    logValidationStage('PlaceholderValidation', { errors: placeholderErrors });
 
     // 3. Operation parameter validation
     const opErrors = validateOperationParams(currentBlueprint);
@@ -99,6 +153,21 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
     const geometryResult = validateGeometry(currentBlueprint, buildType);
     if (!geometryResult.valid) {
       errors.push(...geometryResult.errors);
+    }
+
+    // 5.7. Organic quality validation (trees, plants)
+    if (isOrganicBuild({ buildType })) {
+      const organicResult = validateTreeQuality(currentBlueprint);
+      if (!organicResult.valid) {
+        errors.push(...organicResult.errors.map(e => `Organic quality: ${e}`));
+        // Auto-fix if possible
+        if (organicResult.score >= 0.5) {
+          currentBlueprint = fixTreeQuality(currentBlueprint);
+          if (DEBUG) {
+            console.log('  → Auto-fixed organic quality issues');
+          }
+        }
+      }
     }
 
     // 6. Volume and Step Limits
@@ -302,10 +371,86 @@ function validateStepParams(step, meta, label) {
 }
 
 /**
+ * Validate that no unresolved placeholder tokens remain in the blueprint
+ * Placeholders like $primary, $secondary must be resolved from palette
+ */
+function validateNoPlaceholderTokens(blueprint) {
+  const errors = [];
+  const PLACEHOLDER_REGEX = /^\$\w+$/;
+
+  for (let i = 0; i < (blueprint.steps || []).length; i++) {
+    const step = blueprint.steps[i];
+    if (step.block && PLACEHOLDER_REGEX.test(step.block)) {
+      const key = step.block.substring(1);
+      if (!blueprint.palette?.[key]) {
+        errors.push(`Step ${i}: Unresolved placeholder '${step.block}' not in palette`);
+      }
+    }
+    // Check fallback too
+    if (step.fallback?.block && PLACEHOLDER_REGEX.test(step.fallback.block)) {
+      const key = step.fallback.block.substring(1);
+      if (!blueprint.palette?.[key]) {
+        errors.push(`Step ${i} fallback: Unresolved placeholder '${step.fallback.block}' not in palette`);
+      }
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validate that required fields are present in the blueprint
+ * This is a fail-fast check before other validations
+ */
+function validateRequiredFields(blueprint) {
+  const errors = [];
+
+  if (!blueprint) {
+    errors.push('Missing required field: blueprint is null or undefined');
+    return errors;
+  }
+
+  // Check palette
+  if (!blueprint.palette ||
+    (Array.isArray(blueprint.palette) && blueprint.palette.length === 0) ||
+    (typeof blueprint.palette === 'object' && !Array.isArray(blueprint.palette) && Object.keys(blueprint.palette).length === 0)) {
+    errors.push('Missing required field: palette (must be non-empty array or object)');
+  }
+
+  // Check size
+  if (!blueprint.size) {
+    errors.push('Missing required field: size');
+  } else {
+    if (!blueprint.size.width || blueprint.size.width <= 0) {
+      errors.push('Missing required field: size.width (must be positive integer)');
+    }
+    if (!blueprint.size.height || blueprint.size.height <= 0) {
+      errors.push('Missing required field: size.height (must be positive integer)');
+    }
+    if (!blueprint.size.depth || blueprint.size.depth <= 0) {
+      errors.push('Missing required field: size.depth (must be positive integer)');
+    }
+  }
+
+  // Check steps
+  if (!blueprint.steps || !Array.isArray(blueprint.steps) || blueprint.steps.length === 0) {
+    errors.push('Missing required field: steps (must be non-empty array)');
+  }
+
+  return errors;
+}
+
+/**
  * Validate that all blocks are valid Minecraft blocks
  * This allows ANY valid Minecraft block (no allowlist restrictions)
  */
-function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
+function validateMinecraftBlocks(blueprint, minecraftVersion = null) {
+  // Use resolved version or fallback to 1.20.1
+  let version;
+  try {
+    version = minecraftVersion || getResolvedVersion();
+  } catch {
+    version = '1.20.1'; // Fallback if resolver not initialized
+  }
   const invalidBlocks = [];
 
   // Check palette - handle both array and object formats
@@ -315,7 +460,7 @@ function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
       : Object.values(blueprint.palette);
 
     for (const block of paletteBlocks) {
-      if (!isValidBlock(block, minecraftVersion)) {
+      if (!isValidBlock(block, version)) {
         invalidBlocks.push(block);
       }
     }
@@ -323,7 +468,7 @@ function validateMinecraftBlocks(blueprint, minecraftVersion = '1.20.1') {
 
   // Check steps
   for (const step of blueprint.steps || []) {
-    if (step.block && !isValidBlock(step.block, minecraftVersion)) {
+    if (step.block && !isValidBlock(step.block, version)) {
       if (!invalidBlocks.includes(step.block)) {
         invalidBlocks.push(step.block);
       }
@@ -453,8 +598,8 @@ function validateFeatures(blueprint, analysis) {
   const requiredFeatures = analysis?.hints?.features || [];
   const stepOps = (blueprint.steps || []).map(s => s.op);
 
-  // Skip feature validation for creative builds
-  const creativeBuildTypes = ['pixel_art', 'statue', 'character', 'art', 'sculpture'];
+  // Skip feature validation for creative/simple builds
+  const creativeBuildTypes = ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'platform'];
   if (creativeBuildTypes.includes(buildType)) {
     return errors;
   }

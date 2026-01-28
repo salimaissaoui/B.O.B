@@ -14,7 +14,15 @@
       "Bash(npm start)",
       "Bash(test:*)",
       "Bash(npm install)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(npm run test:core:*)",
+      "Bash(git ls-files:*)",
+      "Bash(done)",
+      "Bash(npm run test:pixel-art:*)",
+      "Bash(npm run test:validation:*)",
+      "Bash(xargs:*)",
+      "Bash(grep:*)",
+      "Bash(npm run test:analyzer:*)"
     ]
   }
 }

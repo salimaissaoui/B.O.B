@@ -213,10 +213,59 @@ LEGACY OPERATIONS (avoid if possible, use universal ops instead):
 }
 
 /**
+ * Get quality-specific guidance
+ */
+function getQualityGuidance(quality) {
+  if (!quality || quality.quality === 'standard') {
+    return '';
+  }
+
+  if (quality.quality === 'exceptional') {
+    return `
+=== EXCEPTIONAL QUALITY REQUESTED ===
+⭐ The user wants a MASTERPIECE. Go above and beyond!
+
+QUALITY REQUIREMENTS:
+- Add EXTRA architectural details and ornamentation
+- Use VARIED materials for visual richness (don't just use one block type)
+- Include ASYMMETRIC elements for natural, organic feel
+- Add DEPTH with layered walls, recessed windows, protruding elements
+- Consider DRAMATIC proportions - taller spires, wider bases, more impressive scale
+- Include ACCENT DETAILS - trim, molding, decorative elements
+- Use COMPLEMENTARY COLORS in your block palette
+- Add VISUAL INTEREST at every level of the build
+
+QUALITY TIPS FROM DETECTED MODIFIERS (${quality.modifiers?.join(', ')}):
+${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it impressive!'}
+
+DO NOT create a basic or minimal build. This should be SHOWCASE quality.
+`;
+  }
+
+  if (quality.quality === 'high') {
+    return `
+=== HIGH QUALITY REQUESTED ===
+The user wants something nice - add appropriate details.
+
+QUALITY REQUIREMENTS:
+- Include finishing touches and details
+- Use accent blocks for visual interest
+- Ensure pleasing proportions
+- Add appropriate decorative elements
+
+QUALITY TIPS:
+${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it look good!'}
+`;
+  }
+
+  return '';
+}
+
+/**
  * Main unified blueprint prompt
  */
 export function unifiedBlueprintPrompt(analysis, worldEditAvailable) {
-  const { userPrompt, buildType, theme, hints } = analysis;
+  const { userPrompt, buildType, theme, hints, quality } = analysis;
 
   const themeName = theme?.name || 'default';
   const themeSection = theme ? `
@@ -229,6 +278,7 @@ Theme materials:
 - Windows: ${theme.materials.windows}
 ` : '';
 
+  const qualitySection = getQualityGuidance(quality);
   const creativeBuild = isCreativeBuild(buildType);
 
   return `
@@ -236,6 +286,7 @@ You are an expert Minecraft architect. Build: "${userPrompt}"
 
 BUILD TYPE: ${buildType.toUpperCase()}
 ${themeSection}
+${qualitySection}
 
 === YOUR TASK ===
 Generate a COMPLETE executable blueprint including:

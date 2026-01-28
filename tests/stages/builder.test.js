@@ -54,6 +54,29 @@ function createMockBot(options = {}) {
           };
         }
       }
+
+      // Simulate WorldEdit responses (for strict ACK tests)
+      if (cmd.startsWith('//sel')) {
+        setTimeout(() => {
+          listeners['message'] && listeners['message'].forEach(h => h({ toString: () => 'Selection type: cuboid' }));
+        }, 10);
+      } else if (cmd.startsWith('//pos1')) {
+        setTimeout(() => {
+          listeners['message'] && listeners['message'].forEach(h => h({ toString: () => 'First position set to (0, 64, 0).' }));
+        }, 10);
+      } else if (cmd.startsWith('//pos2')) {
+        setTimeout(() => {
+          listeners['message'] && listeners['message'].forEach(h => h({ toString: () => 'Second position set to (10, 64, 10).' }));
+        }, 10);
+      } else if (cmd.startsWith('//set') || cmd.startsWith('//walls') || cmd.startsWith('//faces') || cmd.startsWith('//outset')) {
+        setTimeout(() => {
+          listeners['message'] && listeners['message'].forEach(h => h({ toString: () => 'Operation completed (10 blocks affected).' }));
+        }, 10);
+      } else if (cmd === '//undo') {
+        setTimeout(() => {
+          listeners['message'] && listeners['message'].forEach(h => h({ toString: () => 'Undo successful' }));
+        }, 10);
+      }
     }),
     on: jest.fn((event, handler) => {
       listeners[event] = listeners[event] || [];

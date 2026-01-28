@@ -14,6 +14,14 @@ export class WorldEditValidator {
     let totalWorldEditCmds = 0;
     let totalWorldEditBlocks = 0;
 
+    if (!blueprint.steps || !Array.isArray(blueprint.steps)) {
+      return {
+        valid: false,
+        errors: ['Blueprint missing steps array'],
+        stats: { worldEditCommands: 0, worldEditBlocks: 0 }
+      };
+    }
+
     for (const step of blueprint.steps) {
       if (!isWorldEditOperation(step.op)) continue;
 
@@ -253,7 +261,7 @@ export class WorldEditValidator {
    */
   static calculateVolume(from, to) {
     return Math.abs(to.x - from.x + 1) *
-           Math.abs(to.y - from.y + 1) *
-           Math.abs(to.z - from.z + 1);
+      Math.abs(to.y - from.y + 1) *
+      Math.abs(to.z - from.z + 1);
   }
 }
