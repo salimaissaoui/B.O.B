@@ -185,3 +185,6 @@ export function calculateDistance2D(posA, posB) {
   const dz = posA.z - posB.z;
   return Math.sqrt(dx * dx + dz * dz);
 }
+
+// Re-export BuildStationManager for convenience
+export { BuildStationManager, calculateOptimalStations } from '../positioning/BuildStationManager.js';

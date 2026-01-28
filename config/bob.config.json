@@ -1,0 +1,44 @@
+{
+  "$schema": "./bob.config.schema.json",
+  "_comment": "B.O.B Configuration File - Customize build limits and performance settings",
+
+  "limits": {
+    "maxWidth": 100,
+    "maxDepth": 100,
+    "maxHeight": 256,
+    "maxBlocks": 30000,
+    "maxSteps": 1000,
+    "maxUniqueBlocks": 15,
+    "infiniteMode": false
+  },
+
+  "performance": {
+    "buildRateLimit": 100,
+    "chatCommandMinDelayMs": 500,
+    "pixelArtBatching": true,
+    "stationBasedMovement": true
+  },
+
+  "worldedit": {
+    "enabled": true,
+    "maxSelectionVolume": 50000,
+    "maxSelectionDimension": 50,
+    "commandRateLimit": 10,
+    "commandMinDelayMs": 100,
+    "maxCommandsPerBuild": 500,
+    "fallbackOnError": true
+  },
+
+  "validation": {
+    "minQualityScore": 0.7,
+    "requireFeatureCompletion": true,
+    "allowPartialBuilds": false
+  },
+
+  "llm": {
+    "timeoutMs": 120000,
+    "maxRetries": 5,
+    "retryDelayMs": 1000,
+    "maxOutputTokens": 8192
+  }
+}

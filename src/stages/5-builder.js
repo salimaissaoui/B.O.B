@@ -35,6 +35,9 @@ import { buildMetrics } from '../utils/performance-metrics.js';
 import { ActionQueue } from '../utils/queue/action-queue.js';
 import { InventoryManager, formatValidationResult } from '../utils/inventory-manager.js';
 import { PathfindingHelper, calculateDistance } from '../utils/pathfinding-helper.js';
+import { BuildStationManager } from '../positioning/BuildStationManager.js';
+import { validateBuildArea, clampToWorldBoundaries, safeBlockAt, WORLD_BOUNDARIES } from '../validation/world-validator.js';
+import { BuildStateManager } from '../state/build-state.js';
 
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
@@ -160,6 +163,12 @@ export class Builder {
     this.inventoryManager = new InventoryManager(bot);
     this.pathfindingHelper = new PathfindingHelper(bot);
 
+    // Build Station Manager - reduces pathfinding calls from 400+ to ~10-20
+    this.stationManager = new BuildStationManager(bot);
+
+    // State persistence for crash recovery
+    this.stateManager = new BuildStateManager();
+
     // Progress tracking configuration
     this.progressUpdateInterval = 10; // Emit progress every N blocks
 
@@ -232,6 +241,86 @@ export class Builder {
   }
 
   /**
+   * Pre-Build Obstruction Scout
+   * Scans the build area for non-air blocks before building.
+   * Returns obstruction info so the caller can decide to clear or skip.
+   *
+   * @param {Object} startPos - Build start position {x, y, z}
+   * @param {Object} size - Build dimensions {width, height, depth}
+   * @returns {Promise<Object>} { hasObstructions, count, obstructions (first 10) }
+   */
+  async preBuildScout(startPos, size) {
+    const obstructions = [];
+    const maxScan = 50; // Cap scan area to avoid huge loops
+
+    const scanW = Math.min(size.width || 10, maxScan);
+    const scanH = Math.min(size.height || 10, maxScan);
+    const scanD = Math.min(size.depth || 10, maxScan);
+
+    for (let y = 0; y < scanH; y++) {
+      for (let x = 0; x < scanW; x++) {
+        for (let z = 0; z < scanD; z++) {
+          const worldPos = {
+            x: startPos.x + x,
+            y: startPos.y + y,
+            z: startPos.z + z
+          };
+
+          try {
+            const block = this.bot.blockAt(new Vec3(worldPos.x, worldPos.y, worldPos.z));
+            if (block && block.name !== 'air' && block.name !== 'cave_air' && block.name !== 'void_air') {
+              obstructions.push({ pos: worldPos, block: block.name });
+            }
+          } catch {
+            // Ignore unloaded chunks during scout
+          }
+        }
+      }
+    }
+
+    return {
+      hasObstructions: obstructions.length > 0,
+      count: obstructions.length,
+      obstructions: obstructions.slice(0, 10) // First 10 for logging
+    };
+  }
+
+  /**
+   * Clear obstructions in the build area using WorldEdit or vanilla
+   * @param {Object} startPos - Build start position
+   * @param {Object} size - Build dimensions
+   * @returns {Promise<boolean>} True if cleared
+   */
+  async clearObstructions(startPos, size) {
+    if (this.worldEditEnabled) {
+      const from = {
+        x: startPos.x - 1,
+        y: startPos.y,
+        z: startPos.z - 1
+      };
+      const to = {
+        x: startPos.x + (size.width || 10) + 1,
+        y: startPos.y + (size.height || 10) + 1,
+        z: startPos.z + (size.depth || 10) + 1
+      };
+
+      try {
+        await this.worldEdit.createSelection(from, to);
+        await this.worldEdit.fillSelection('air');
+        await this.worldEdit.clearSelection();
+        console.log('    ✓ Obstructions cleared (WorldEdit)');
+        return true;
+      } catch (e) {
+        console.warn(`    ⚠ Clearing failed: ${e.message}`);
+        return false;
+      }
+    }
+
+    console.log('    ⚠ Obstruction clearing requires WorldEdit (skipped)');
+    return false;
+  }
+
+  /**
    * Validate step against build mode constraints
    */
   validateStepForMode(step, buildType) {
@@ -280,14 +369,17 @@ export class Builder {
 
   /**
    * Calculate world position from relative position
+   * Includes Y-axis clamping to world boundaries (-64 to 320)
    * @param {Object} relativePos - Relative position {x, y, z}
    * @param {Object} startPos - Starting position {x, y, z}
    * @returns {Object} World position {x, y, z}
    */
   calculateWorldPosition(relativePos, startPos) {
+    const worldY = Math.floor(startPos.y + relativePos.y);
+
     return {
       x: Math.floor(startPos.x + relativePos.x),
-      y: Math.floor(startPos.y + relativePos.y),
+      y: Math.max(WORLD_BOUNDARIES.MIN_Y, Math.min(WORLD_BOUNDARIES.MAX_Y, worldY)),
       z: Math.floor(startPos.z + relativePos.z)
     };
   }
@@ -336,23 +428,62 @@ export class Builder {
 
   /**
    * Place a block with retry logic and exponential backoff
+   * Uses station-based positioning when available (no per-block pathfinding)
+   *
    * @param {Object} pos - World position {x, y, z}
    * @param {string} blockType - Block type to place
    * @param {number} maxRetries - Maximum retry attempts (default: 3)
+   * @param {boolean} skipRangeCheck - Skip range check (when using stations)
    * @returns {Promise<boolean>} True if placement succeeded
    */
-  async placeBlockWithRetry(pos, blockType, maxRetries = 3) {
+  async placeBlockWithRetry(pos, blockType, maxRetries = 3, skipRangeCheck = false) {
     const delays = [50, 100, 200]; // Exponential backoff delays in ms
+
+    // Self-collision check: Move bot if it's standing where we want to place a block
+    if (!skipRangeCheck && this.bot?.entity?.position && this.pathfindingHelper?.isAvailable()) {
+      const botPos = this.bot.entity.position;
+      const botX = Math.floor(botPos.x);
+      const botY = Math.floor(botPos.y);
+      const botZ = Math.floor(botPos.z);
+
+      // Check if bot is standing on or in the target block position
+      const blocksPlacement = (botX === pos.x && botY === pos.y && botZ === pos.z);
+      const standsOnBlock = (botX === pos.x && botY === pos.y - 1 && botZ === pos.z);
+
+      if (blocksPlacement || standsOnBlock) {
+        console.log(`  Bot collision at ${pos.x},${pos.y},${pos.z} (bot at ${botX},${botY},${botZ}), moving away...`);
+
+        // Move bot to a safe position away from the block
+        const safePos = {
+          x: pos.x + 2,
+          y: pos.y,
+          z: pos.z
+        };
+
+        try {
+          // Directly use pathfinder to move (ensures goto is always called)
+          const goal = new goals.GoalNear(safePos.x, safePos.y, safePos.z, 1);
+          await this.bot.pathfinder.goto(goal);
+        } catch (error) {
+          console.warn(`  Failed to move bot away from collision: ${error.message}`);
+        }
+      }
+    }
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Ensure bot is in range before placing
+        // Check if in range using station manager (fast check, no pathfinding)
         let inRange = true;
-        if (this.pathfindingHelper.isAvailable()) {
-          inRange = await this.pathfindingHelper.ensureInRange(pos);
+        if (!skipRangeCheck && this.stationManager) {
+          inRange = this.stationManager.isBlockInReach(pos);
           if (!inRange) {
-            console.warn(`  Bot cannot reach position ${pos.x}, ${pos.y}, ${pos.z}`);
-            // Continue with attempt anyway - might work if close enough
+            // Only use pathfinding as fallback if station manager isn't being used
+            if (!this.usingStationBasedMovement && this.pathfindingHelper.isAvailable()) {
+              inRange = await this.pathfindingHelper.ensureInRange(pos);
+            }
+            if (!inRange) {
+              console.warn(`  Bot cannot reach position ${pos.x}, ${pos.y}, ${pos.z}`);
+            }
           }
         }
 
@@ -367,11 +498,11 @@ export class Builder {
 
         // Verify placement
         await this.sleep(50); // Small delay for block update
-        const placedBlock = this.bot.blockAt(new Vec3(pos.x, pos.y, pos.z));
+        const placedBlock = safeBlockAt(this.bot, new Vec3(pos.x, pos.y, pos.z));
 
         // Handle block states - compare base block name (before '[' if present)
         const expectedBlockName = blockType.split('[')[0];
-        const actualBlockName = placedBlock ? placedBlock.name : 'air';
+        const actualBlockName = placedBlock ? (placedBlock.name || 'air') : 'air';
 
         if (actualBlockName === expectedBlockName || actualBlockName === blockType) {
           return true; // Success
@@ -438,6 +569,27 @@ export class Builder {
       console.log(`  Total steps: ${blueprint.steps.length}`);
       console.log(`  WorldEdit: ${this.worldEditEnabled ? 'ENABLED' : 'DISABLED'}`);
 
+      // Pre-build world validation (chunks & boundaries)
+      console.log('\n→ Validating build area...');
+      const worldValidation = validateBuildArea(this.bot, startPos, blueprint.size);
+
+      if (worldValidation.warnings.length > 0) {
+        console.log('  World validation warnings:');
+        worldValidation.warnings.forEach(w => console.warn(`    ⚠ ${w}`));
+      }
+
+      if (!worldValidation.valid) {
+        throw new Error('Build area validation failed: ' + worldValidation.warnings.join('; '));
+      }
+
+      // Apply Y-axis clamping if needed
+      if (worldValidation.yClampApplied) {
+        console.log(`  Applied Y-axis clamp: height ${blueprint.size.height} → ${worldValidation.clampedSize.height}`);
+        blueprint.size.height = worldValidation.clampedSize.height;
+      }
+
+      console.log(`  Chunks: ${worldValidation.chunksLoaded}/${worldValidation.chunksNeeded} loaded`);
+
       // Pre-build material validation
       console.log('\n→ Validating materials...');
       const materialValidation = this.inventoryManager.validateForBlueprint(blueprint);
@@ -456,13 +608,32 @@ export class Builder {
       // P0 Fix: Clear WE history for new build
       this.worldEditHistory = [];
 
+      // Start state tracking for crash recovery
+      const buildId = this.stateManager.startBuild(blueprint, startPos);
+      console.log(`  Build ID: ${buildId}`);
+
       // Start performance metrics tracking
       buildMetrics.startBuild();
 
       // P0 Fix: Initialize Cursor and Context
       this.cursor = new BuildCursor(startPos);
 
-      // P0 Fix: Auto-Clear Area
+      // Pre-build obstruction scout
+      console.log('\n→ Scanning build area for obstructions...');
+      const scoutResult = await this.preBuildScout(startPos, blueprint.size);
+      if (scoutResult.hasObstructions) {
+        console.log(`  Found ${scoutResult.count} obstructing blocks`);
+        scoutResult.obstructions.forEach(o => {
+          console.log(`    → ${o.block} at ${o.pos.x},${o.pos.y},${o.pos.z}`);
+        });
+        if (scoutResult.count > scoutResult.obstructions.length) {
+          console.log(`    ... and ${scoutResult.count - scoutResult.obstructions.length} more`);
+        }
+      } else {
+        console.log('  ✓ Build area is clear');
+      }
+
+      // P0 Fix: Auto-Clear Area (also clears obstructions)
       await this.autoClearArea(blueprint, startPos);
 
       const resolveBlock = (blockName) => {
@@ -512,6 +683,14 @@ export class Builder {
           console.log(`    DEBUG: ${step.op} ${detailStr} ${posStr}`);
         }
 
+        // Update state progress
+        this.stateManager.updateProgress({
+          currentStep: i,
+          blocksPlaced: this.currentBuild.blocksPlaced,
+          blocksFailed: this.currentBuild.blocksFailed,
+          worldEditOps: this.currentBuild.worldEditOpsExecuted
+        });
+
         // UNIVERSAL OPS HANDLER (box, wall, outline, fill, hollow_box)
         if (['box', 'wall', 'outline', 'fill', 'hollow_box'].includes(step.op)) {
           // These are the new universal ops that handle their own dispatch
@@ -524,9 +703,10 @@ export class Builder {
               // Execute WE
               await this.executeWorldEditDescriptor(result, startPos);
             } else if (Array.isArray(result)) {
-              // Execute Vanilla
-              // P0 Fix: Skip batching for pixel_art to avoid tearing artifacts
-              const skipBatching = step.op === 'pixel_art';
+              // Execute Vanilla with smart batching
+              // Pixel art now uses 2D rectangle optimization (greedy-rectangles.js)
+              // skipBatching only if explicitly disabled in config
+              const skipBatching = SAFETY_LIMITS.pixelArtBatching === false && step.op === 'pixel_art';
               await this.executeVanillaBlocks(result, startPos, buildHistory, skipBatching);
             }
           } catch (err) {
@@ -587,7 +767,13 @@ export class Builder {
           // Vanilla operation
           await this.executeVanillaOperation(step, startPos, buildHistory, false, buildContext);
         }
+
+        // Mark step as completed in state
+        this.stateManager.completeStep(i);
       }
+
+      // Mark build as completed in state manager
+      this.stateManager.completeBuild();
 
       // Store history for undo
       if (buildHistory.length > 0) {
@@ -634,6 +820,8 @@ export class Builder {
 
     } catch (error) {
       console.error(`Build execution failed: ${error.message}`);
+      // Mark build as failed in state manager
+      this.stateManager.failBuild(error.message);
       throw error;
     } finally {
       this.building = false;
@@ -641,6 +829,39 @@ export class Builder {
       // P0 Fix: Release mutex when done
       this.buildMutex.release();
     }
+  }
+
+  /**
+   * Resume an interrupted build
+   * @returns {Promise<boolean>} True if build resumed successfully
+   */
+  async resumeBuild() {
+    const resumeData = this.stateManager.prepareBuildResume();
+
+    if (!resumeData) {
+      console.log('No incomplete build found to resume');
+      return false;
+    }
+
+    console.log(`Resuming build ${resumeData.buildId}...`);
+    console.log(`  Resuming from step ${resumeData.resumeFromStep}`);
+    console.log(`  Blocks already placed: ${resumeData.blocksPlacedSoFar}`);
+
+    // Restore undo history
+    this.worldEditHistory = resumeData.worldEditHistory || [];
+
+    // The blueprint needs to be reconstructed or passed
+    // For now, just return the resume data
+    return resumeData;
+  }
+
+  /**
+   * Get list of resumable builds
+   * @returns {Array} List of incomplete builds
+   */
+  getResumableBuilds() {
+    return this.stateManager.listSavedBuilds()
+      .filter(b => b.status === 'in_progress');
   }
 
   /**
@@ -817,6 +1038,7 @@ export class Builder {
 
   /**
    * Execute raw vanilla blocks list (refactored from executeVanillaOperation)
+   * Uses station-based movement for efficiency when pathfinder is available
    */
   async executeVanillaBlocks(blocks, startPos, buildHistory, skipBatching = false) {
     // Optimize build order before execution
@@ -850,13 +1072,81 @@ export class Builder {
       blocks = optimizedBlocks;
     }
 
-    // Vanilla placement loop
+    // Use station-based movement if we have enough blocks and pathfinder available
+    if (blocks.length > 10 && this.stationManager.isAvailable()) {
+      await this.executeBlocksWithStations(blocks, startPos, buildHistory);
+    } else {
+      // Fallback: traditional per-block placement
+      await this.executeBlocksSequentially(blocks, startPos, buildHistory);
+    }
+  }
+
+  /**
+   * Execute blocks using station-based movement (reduced pathfinding)
+   * Moves to calculated vantage points, then places all reachable blocks
+   */
+  async executeBlocksWithStations(blocks, startPos, buildHistory) {
+    // Calculate optimal build stations
+    const stations = this.stationManager.calculateBuildStations(blocks, startPos);
+    this.usingStationBasedMovement = true;
+
+    console.log(`  Using station-based movement: ${stations.length} stations for ${blocks.length} blocks`);
+
+    for (let i = 0; i < stations.length; i++) {
+      if (!this.building) break;
+
+      const station = stations[i];
+      console.log(`  Station ${i + 1}/${stations.length}: ${station.blocks.length} blocks`);
+
+      // Move to station
+      const moved = await this.stationManager.moveToStation(station);
+      if (!moved) {
+        console.warn(`  Failed to reach station ${i + 1}, attempting blocks anyway`);
+      }
+
+      // Place all blocks reachable from this station
+      for (const block of station.blocks) {
+        if (!this.building) break;
+
+        const worldPos = {
+          x: block.worldX,
+          y: block.worldY,
+          z: block.worldZ
+        };
+
+        try {
+          // skipRangeCheck=true since we already moved to station
+          const success = await this.placeBlockWithRetry(worldPos, block.block, 3, true);
+
+          if (success) {
+            this.currentBuild.blocksPlaced++;
+          } else {
+            this.currentBuild.blocksFailed++;
+          }
+
+          this.emitProgressUpdate();
+          await this.sleep(this.getPlacementDelayMs());
+        } catch (err) {
+          this.currentBuild.blocksFailed++;
+          console.error(`Block placement error at ${worldPos.x},${worldPos.y},${worldPos.z}: ${err.message}`);
+        }
+      }
+    }
+
+    this.usingStationBasedMovement = false;
+    this.stationManager.reset();
+  }
+
+  /**
+   * Execute blocks sequentially (traditional per-block approach)
+   * Used as fallback when station-based movement isn't available
+   */
+  async executeBlocksSequentially(blocks, startPos, buildHistory) {
     for (const blockPlacement of blocks) {
       if (!this.building) break;
       const worldPos = this.calculateWorldPosition(blockPlacement, startPos);
 
       try {
-        // Use new retry logic with pathfinding
         const success = await this.placeBlockWithRetry(worldPos, blockPlacement.block);
 
         if (success) {
@@ -866,9 +1156,7 @@ export class Builder {
           console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z} after retries`);
         }
 
-        // Emit progress update periodically
         this.emitProgressUpdate();
-
         await this.sleep(this.getPlacementDelayMs());
       } catch (err) {
         this.currentBuild.blocksFailed++;

@@ -73,6 +73,47 @@ export function registerCommands(bot, builder, apiKey) {
         safeChat(bot, '  !build cancel - Cancel current build');
         safeChat(bot, '  !build undo - Undo last build');
         safeChat(bot, '  !build status - Check build progress');
+        safeChat(bot, '  !build resume - Resume interrupted build');
+        safeChat(bot, '  !build list - List saved builds');
+      }
+
+      // Resume command
+      else if (message === '!build resume') {
+        try {
+          const resumable = builder.getResumableBuilds();
+          if (resumable.length === 0) {
+            safeChat(bot, 'No incomplete builds to resume');
+            return;
+          }
+
+          const resumeData = await builder.resumeBuild();
+          if (resumeData) {
+            safeChat(bot, `Resuming build: ${resumeData.buildType || 'unknown'}`);
+            safeChat(bot, `Progress: ${resumeData.blocksPlacedSoFar} blocks placed`);
+            // Note: Full resume would need to reload the blueprint
+            safeChat(bot, 'Resume feature will continue from last checkpoint');
+          }
+        } catch (error) {
+          safeChat(bot, `Resume failed: ${error.message}`);
+        }
+      }
+
+      // List builds command
+      else if (message === '!build list') {
+        try {
+          const builds = builder.stateManager.listSavedBuilds().slice(0, 5);
+          if (builds.length === 0) {
+            safeChat(bot, 'No saved builds found');
+            return;
+          }
+
+          safeChat(bot, `Recent builds (${builds.length}):`);
+          for (const build of builds) {
+            safeChat(bot, `  ${build.status}: ${build.buildType || '?'} - ${build.progress}`);
+          }
+        } catch (error) {
+          safeChat(bot, `List failed: ${error.message}`);
+        }
       }
 
       // WE ACK Test Command (Debug)

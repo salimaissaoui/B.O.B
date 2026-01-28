@@ -22,7 +22,9 @@
       "Bash(npm run test:validation:*)",
       "Bash(xargs:*)",
       "Bash(grep:*)",
-      "Bash(npm run test:analyzer:*)"
+      "Bash(npm run test:analyzer:*)",
+      "Bash(npx jest --passWithNoTests)",
+      "Bash(NODE_OPTIONS='--experimental-vm-modules' npx jest:*)"
     ]
   }
 }

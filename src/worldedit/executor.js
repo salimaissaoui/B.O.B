@@ -614,6 +614,195 @@ export class WorldEditExecutor {
     await this.executeCommand('//undo');
   }
 
+  // ─── Async Command Tracking (Phase 8) ────────────────────────────────
+  // Send commands without blocking on ACK, then verify in background.
+  // This allows batching multiple commands and checking results later.
+
+  /**
+   * Send a command asynchronously without waiting for ACK
+   * @param {string} command - WorldEdit command
+   * @returns {number} Command ID for tracking
+   */
+  async sendCommandAsync(command) {
+    // Rate limiting
+    const now = Date.now();
+    const baseDelay = SAFETY_LIMITS.worldEdit.commandMinDelayMs;
+    const effectiveDelay = baseDelay * this.backoffMultiplier;
+    const timeSinceLastCmd = now - this.lastCommandTime;
+
+    if (timeSinceLastCmd < effectiveDelay) {
+      await this.sleep(effectiveDelay - timeSinceLastCmd);
+    }
+
+    // Validate
+    this.validateCommand(command);
+
+    // Check limit
+    if (this.commandsExecuted >= SAFETY_LIMITS.worldEdit.maxCommandsPerBuild) {
+      throw new Error(`WorldEdit command limit reached: ${SAFETY_LIMITS.worldEdit.maxCommandsPerBuild}`);
+    }
+
+    const cmdId = this.commandsExecuted;
+
+    // Track as pending
+    if (!this.pendingAsyncCommands) {
+      this.pendingAsyncCommands = new Map();
+    }
+
+    this.pendingAsyncCommands.set(cmdId, {
+      command,
+      sentAt: Date.now(),
+      confirmed: false,
+      response: null
+    });
+
+    // Send via chat
+    console.log(`  [WorldEdit-Async] ${command}`);
+    this.bot.chat(command);
+
+    this.lastCommandTime = Date.now();
+    this.commandsExecuted++;
+
+    this.commandHistory.push({
+      command,
+      timestamp: this.lastCommandTime,
+      async: true
+    });
+
+    return cmdId;
+  }
+
+  /**
+   * Start background ACK verifier
+   * Listens for chat messages and matches them to pending commands
+   */
+  startAckVerifier() {
+    if (this.ackVerifierStarted) return;
+    this.ackVerifierStarted = true;
+
+    if (!this.pendingAsyncCommands) {
+      this.pendingAsyncCommands = new Map();
+    }
+
+    this.bot.on('message', (message) => {
+      const text = message.toString();
+
+      if (!this.pendingAsyncCommands || this.pendingAsyncCommands.size === 0) return;
+
+      // Check if this message is an ACK for any pending command
+      const isAck = this.isAckMessage(text);
+      if (!isAck) return;
+
+      // Match to oldest unconfirmed command
+      for (const [cmdId, entry] of this.pendingAsyncCommands) {
+        if (!entry.confirmed) {
+          entry.confirmed = true;
+          entry.response = text;
+          entry.confirmedAt = Date.now();
+
+          // Check for errors
+          const errorInfo = this.classifyError(text, entry.command);
+          if (errorInfo) {
+            entry.error = errorInfo;
+            console.warn(`  [Async-ACK] Error for cmd ${cmdId}: ${errorInfo.type}`);
+          }
+
+          break; // Only match one command per message
+        }
+      }
+    });
+  }
+
+  /**
+   * Check if a message looks like a WorldEdit ACK
+   */
+  isAckMessage(text) {
+    const lower = text.toLowerCase();
+    return /\d+\s*blocks?\s*(changed|affected|set)/i.test(text) ||
+      lower.includes('operation completed') ||
+      (lower.includes('elapsed') && lower.includes('changed')) ||
+      (lower.includes('set to') && !lower.includes('selection type')) ||
+      lower.includes('selection cleared') ||
+      lower.includes('undo successful') ||
+      lower.includes('no blocks') ||
+      lower.includes('unknown command') ||
+      lower.includes('no permission') ||
+      lower.includes('error');
+  }
+
+  /**
+   * Wait for all pending async commands to confirm or timeout
+   * @param {number} timeoutMs - Max wait time per command
+   * @returns {Object} { confirmed, timedOut, errors }
+   */
+  async flushPendingCommands(timeoutMs = 5000) {
+    if (!this.pendingAsyncCommands || this.pendingAsyncCommands.size === 0) {
+      return { confirmed: 0, timedOut: 0, errors: 0 };
+    }
+
+    let confirmed = 0;
+    let timedOut = 0;
+    let errors = 0;
+
+    const startTime = Date.now();
+
+    // Wait for all pending commands
+    while (Date.now() - startTime < timeoutMs) {
+      let allConfirmed = true;
+
+      for (const [cmdId, entry] of this.pendingAsyncCommands) {
+        if (!entry.confirmed) {
+          allConfirmed = false;
+          break;
+        }
+      }
+
+      if (allConfirmed) break;
+      await this.sleep(100);
+    }
+
+    // Count results
+    for (const [cmdId, entry] of this.pendingAsyncCommands) {
+      if (entry.confirmed) {
+        if (entry.error) {
+          errors++;
+        } else {
+          confirmed++;
+        }
+      } else {
+        timedOut++;
+        // Move to unconfirmed list
+        this.unconfirmedOps.push({
+          command: entry.command,
+          timestamp: entry.sentAt
+        });
+      }
+    }
+
+    // Clear pending
+    this.pendingAsyncCommands.clear();
+
+    if (timedOut > 0) {
+      console.warn(`  [Async-ACK] ${timedOut} commands timed out without ACK`);
+    }
+
+    return { confirmed, timedOut, errors };
+  }
+
+  /**
+   * Get count of pending async commands
+   */
+  getPendingCount() {
+    if (!this.pendingAsyncCommands) return 0;
+    let count = 0;
+    for (const [, entry] of this.pendingAsyncCommands) {
+      if (!entry.confirmed) count++;
+    }
+    return count;
+  }
+
+  // ─── End Async Command Tracking ────────────────────────────────────
+
   /**
    * Reset executor state for new build
    */
@@ -628,6 +817,10 @@ export class WorldEditExecutor {
     this.unconfirmedOps = [];
     // Clear message buffer
     this.messageBuffer = [];
+    // Clear async pending commands
+    if (this.pendingAsyncCommands) {
+      this.pendingAsyncCommands.clear();
+    }
   }
 
   /**
@@ -647,10 +840,9 @@ export class WorldEditExecutor {
       commandsExecuted: this.commandsExecuted,
       spamDetected: this.spamDetected,
       backoffMultiplier: this.backoffMultiplier,
-      // P0 Fix: Include command history count
       commandHistoryCount: this.commandHistory.length,
-      // Track unconfirmed operations
-      unconfirmedOps: this.unconfirmedOps.length
+      unconfirmedOps: this.unconfirmedOps.length,
+      pendingAsyncCommands: this.getPendingCount()
     };
   }
 

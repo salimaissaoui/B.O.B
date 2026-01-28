@@ -1,0 +1,35 @@
+{
+  "buildId": "e4d8cf4a-fd47-457a-ab50-11d5926293dc",
+  "startedAt": "2026-01-28T17:02:58.310Z",
+  "lastUpdated": "2026-01-28T17:02:58.701Z",
+  "startPos": {
+    "x": 0,
+    "y": 64,
+    "z": 0
+  },
+  "blueprint": {
+    "size": {
+      "width": 10,
+      "depth": 10,
+      "height": 10
+    },
+    "palette": [
+      "stone"
+    ],
+    "stepsCount": 2
+  },
+  "progress": {
+    "currentStep": 2,
+    "blocksPlaced": 1,
+    "blocksFailed": 0,
+    "completedSteps": [
+      0,
+      1
+    ],
+    "worldEditOps": 0
+  },
+  "undoHistory": [],
+  "worldEditHistory": [],
+  "status": "completed",
+  "completedAt": "2026-01-28T17:02:58.701Z"
+}

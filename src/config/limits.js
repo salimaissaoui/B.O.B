@@ -3,8 +3,71 @@
  *
  * These limits prevent server overload, client disconnection, and ensure builds complete successfully.
  * Adjust these values based on your server's performance capabilities and your use case.
+ *
+ * Configuration can be customized via config/bob.config.json file.
+ * If the config file exists, values are loaded from it and merged with defaults.
  */
-export const SAFETY_LIMITS = {
+
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Load external configuration if available
+ * @returns {Object|null} External config or null if not found
+ */
+function loadExternalConfig() {
+  // Try multiple locations for config file
+  const configPaths = [
+    join(__dirname, '../../config/bob.config.json'),
+    join(process.cwd(), 'config/bob.config.json'),
+    join(process.cwd(), 'bob.config.json'),
+  ];
+
+  for (const configPath of configPaths) {
+    try {
+      if (existsSync(configPath)) {
+        const configData = readFileSync(configPath, 'utf-8');
+        const config = JSON.parse(configData);
+        console.log(`✓ Loaded config from: ${configPath}`);
+        return config;
+      }
+    } catch (error) {
+      console.warn(`⚠ Failed to load config from ${configPath}: ${error.message}`);
+    }
+  }
+
+  return null;
+}
+
+// Load external config (once at startup)
+const externalConfig = loadExternalConfig();
+
+/**
+ * Deep merge two objects (external config overrides defaults)
+ */
+function deepMerge(defaults, overrides) {
+  if (!overrides) return defaults;
+
+  const result = { ...defaults };
+
+  for (const key of Object.keys(overrides)) {
+    if (overrides[key] !== null && typeof overrides[key] === 'object' && !Array.isArray(overrides[key])) {
+      result[key] = deepMerge(defaults[key] || {}, overrides[key]);
+    } else if (overrides[key] !== undefined) {
+      result[key] = overrides[key];
+    }
+  }
+
+  return result;
+}
+
+// Default limits (used if no config file exists)
+const DEFAULT_LIMITS = {
   /**
    * Maximum total blocks per build (default: 30000)
    *
@@ -399,5 +462,80 @@ export const SAFETY_LIMITS = {
    *
    * Impact: If true, builds may be incomplete; if false, builds fail early if materials missing
    */
-  allowPartialBuilds: false
+  allowPartialBuilds: false,
+
+  /**
+   * Enable 2D rectangle batching for pixel art (default: true)
+   *
+   * When true: Pixel art uses greedy rectangle algorithm to batch blocks
+   * into efficient WorldEdit rectangle fills (100+ blocks -> ~5-10 operations)
+   *
+   * When false: Pixel art uses single-block placement (legacy behavior)
+   *
+   * Set to false if you experience "tearing" artifacts in pixel art builds.
+   * This can happen on servers with slow WorldEdit command processing.
+   *
+   * Impact: Dramatically improves pixel art build speed (30+ seconds vs 10+ minutes)
+   */
+  pixelArtBatching: true,
+
+  /**
+   * Flag indicating this config can be customized via external file
+   */
+  isConfigurable: true
 };
+
+/**
+ * Merge external config into defaults
+ * External config structure:
+ * {
+ *   limits: { maxWidth, maxDepth, maxHeight, maxBlocks, ... },
+ *   performance: { buildRateLimit, chatCommandMinDelayMs, pixelArtBatching, ... },
+ *   worldedit: { enabled, maxSelectionVolume, ... },
+ *   validation: { minQualityScore, ... },
+ *   llm: { timeoutMs, maxRetries, ... }
+ * }
+ */
+function mergeExternalConfig(defaults, external) {
+  if (!external) return defaults;
+
+  const merged = { ...defaults };
+
+  // Map external config sections to SAFETY_LIMITS structure
+  if (external.limits) {
+    if (external.limits.maxWidth !== undefined) merged.maxWidth = external.limits.maxWidth;
+    if (external.limits.maxDepth !== undefined) merged.maxDepth = external.limits.maxDepth;
+    if (external.limits.maxHeight !== undefined) merged.maxHeight = external.limits.maxHeight;
+    if (external.limits.maxBlocks !== undefined) merged.maxBlocks = external.limits.maxBlocks;
+    if (external.limits.maxSteps !== undefined) merged.maxSteps = external.limits.maxSteps;
+    if (external.limits.maxUniqueBlocks !== undefined) merged.maxUniqueBlocks = external.limits.maxUniqueBlocks;
+  }
+
+  if (external.performance) {
+    if (external.performance.buildRateLimit !== undefined) merged.buildRateLimit = external.performance.buildRateLimit;
+    if (external.performance.chatCommandMinDelayMs !== undefined) merged.chatCommandMinDelayMs = external.performance.chatCommandMinDelayMs;
+    if (external.performance.pixelArtBatching !== undefined) merged.pixelArtBatching = external.performance.pixelArtBatching;
+  }
+
+  if (external.worldedit) {
+    merged.worldEdit = deepMerge(merged.worldEdit, external.worldedit);
+  }
+
+  if (external.validation) {
+    if (external.validation.minQualityScore !== undefined) merged.minQualityScore = external.validation.minQualityScore;
+    if (external.validation.requireFeatureCompletion !== undefined) merged.requireFeatureCompletion = external.validation.requireFeatureCompletion;
+    if (external.validation.allowPartialBuilds !== undefined) merged.allowPartialBuilds = external.validation.allowPartialBuilds;
+  }
+
+  if (external.llm) {
+    if (external.llm.timeoutMs !== undefined) merged.llmTimeoutMs = external.llm.timeoutMs;
+    if (external.llm.maxRetries !== undefined) merged.llmMaxRetries = external.llm.maxRetries;
+    if (external.llm.retryDelayMs !== undefined) merged.llmRetryDelayMs = external.llm.retryDelayMs;
+    if (external.llm.maxOutputTokens !== undefined) merged.llmMaxOutputTokens = external.llm.maxOutputTokens;
+  }
+
+  return merged;
+}
+
+// Export merged configuration
+export const SAFETY_LIMITS = mergeExternalConfig(DEFAULT_LIMITS, externalConfig);
