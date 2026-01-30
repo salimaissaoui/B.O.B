@@ -48,7 +48,8 @@ export const BLOCK_CATEGORIES = {
     'mud_bricks', 'packed_mud', 'bamboo_block', 'stripped_bamboo_block', 'bamboo_planks',
     'bamboo_mosaic', 'nether_bricks', 'red_nether_bricks', 'cracked_nether_bricks', 'chiseled_nether_bricks',
     'blackstone', 'polished_blackstone', 'polished_blackstone_bricks', 'chiseled_polished_blackstone',
-    'gilded_blackstone', 'crying_obsidian', 'obsidian', 'glowstone', 'shroomlight', 'sea_lantern'
+    'gilded_blackstone', 'crying_obsidian', 'obsidian', 'glowstone', 'shroomlight', 'sea_lantern',
+    'gold_block', 'iron_block', 'diamond_block', 'emerald_block', 'lapis_block', 'redstone_block', 'coal_block', 'netherite_block', 'amethyst_block', 'copper_block', 'slime_block', 'honey_block'
   ],
 
   decorative: [
@@ -159,13 +160,49 @@ export function suggestAlternatives(blockName, version = null) {
     effectiveVersion = '1.20.1';
   }
 
-  // Simple fuzzy matching by category
   const versionBlocks = VERSION_COMPATIBILITY[effectiveVersion] || ALL_BLOCKS;
-  const category = blockName.split('_')[1] || blockName.split('_')[0];
 
-  return versionBlocks
-    .filter(b => b.includes(category))
-    .slice(0, 3);
+  // 1. Direct word match (e.g. "oak_wood_plank" -> matches "oak" and "planks")
+  const parts = blockName.split('_');
+
+  // Calculate score for each existing block
+  const candidates = versionBlocks.map(candidate => {
+    let score = 0;
+
+    // Exact containment boosts
+    if (candidate.includes(blockName)) score += 10;
+    if (blockName.includes(candidate)) score += 10;
+
+    // Word overlap
+    const candidateParts = candidate.split('_');
+    const overlap = parts.filter(p => candidateParts.includes(p)).length;
+    score += overlap * 4; // Increased from 2
+
+    // Boost for matching last word (e.g. "planks")
+    if (parts[parts.length - 1] === candidateParts[candidateParts.length - 1]) {
+      score += 5;
+    }
+
+    // Boost for matching first word (Material type)
+    if (parts[0] === candidateParts[0]) {
+      score += 2;
+    }
+
+    // Penalty for length difference (prefer similar length)
+    score -= Math.abs(candidate.length - blockName.length) * 0.5;
+
+    return { name: candidate, score };
+  });
+
+  // Filter out low scores
+  // A score of 5 usually means at least one word overlap + some other bonus, or a strong inclusion
+  const threshold = 6;
+  const strongCandidates = candidates.filter(c => c.score >= threshold);
+
+  // Sort by score descending
+  strongCandidates.sort((a, b) => b.score - a.score);
+
+  return strongCandidates.slice(0, 3).map(c => c.name);
 }
 
 /**
@@ -174,62 +211,70 @@ export function suggestAlternatives(blockName, version = null) {
  * terracotta for muted/earthy tones
  */
 export const PIXEL_ART_PALETTE = {
-  // Basic colors - using wool for vibrancy
-  red: 'red_wool',
-  orange: 'orange_wool',
-  yellow: 'yellow_wool',
-  lime: 'lime_wool',
-  green: 'green_wool',
-  cyan: 'cyan_wool',
-  light_blue: 'light_blue_wool',
-  blue: 'blue_wool',
-  purple: 'purple_wool',
-  magenta: 'magenta_wool',
-  pink: 'pink_wool',
-  white: 'white_wool',
-  light_gray: 'light_gray_wool',
-  gray: 'gray_wool',
-  black: 'black_wool',
-  brown: 'brown_wool',
+  // Vibrant Colors - Favoring Concrete for consistent smooth texture
+  white: 'white_concrete',
+  light_gray: 'light_gray_concrete',
+  gray: 'gray_concrete',
+  black: 'black_concrete',
+  red: 'red_concrete',
+  orange: 'orange_concrete',
+  yellow: 'yellow_concrete',
+  lime: 'lime_concrete',
+  green: 'green_concrete',
+  cyan: 'cyan_concrete',
+  light_blue: 'light_blue_concrete',
+  blue: 'blue_concrete',
+  purple: 'purple_concrete',
+  magenta: 'magenta_concrete',
+  pink: 'pink_concrete',
+  brown: 'brown_concrete',
 
-  // Concrete alternatives (more saturated, flat look)
-  bright_red: 'red_concrete',
-  bright_orange: 'orange_concrete',
-  bright_yellow: 'yellow_concrete',
-  bright_lime: 'lime_concrete',
-  bright_green: 'green_concrete',
-  bright_cyan: 'cyan_concrete',
-  bright_light_blue: 'light_blue_concrete',
-  bright_blue: 'blue_concrete',
-  bright_purple: 'purple_concrete',
-  bright_magenta: 'magenta_concrete',
-  bright_pink: 'pink_concrete',
-  bright_white: 'white_concrete',
-  bright_black: 'black_concrete',
+  // Muted/Texture Variants - Wool for specific cases
+  white_wool: 'white_wool',
+  light_gray_wool: 'light_gray_wool',
+  gray_wool: 'gray_wool',
+  black_wool: 'black_wool',
+  red_wool: 'red_wool',
+  orange_wool: 'orange_wool',
+  yellow_wool: 'yellow_wool',
+  lime_wool: 'lime_wool',
+  green_wool: 'green_wool',
+  cyan_wool: 'cyan_wool',
+  light_blue_wool: 'light_blue_wool',
+  blue_wool: 'blue_wool',
+  purple_wool: 'purple_wool',
+  magenta_wool: 'magenta_wool',
+  pink_wool: 'pink_wool',
+  brown_wool: 'brown_wool',
 
-  // Skin tones and special colors
-  skin_light: 'orange_terracotta',
-  skin_medium: 'brown_terracotta',
-  skin_dark: 'brown_wool',
+  // Dark/Depth Variants
+  dark_red: 'nether_wart_block',
+  dark_green: 'dark_prismarine',
+  dark_blue: 'blue_terracotta',
+  dark_gray: 'gray_terracotta',
+  dark_brown: 'dark_oak_planks',
+
+  // Skin Tones & Earthy tones
+  skin_pale: 'white_terracotta',
+  skin_light: 'pink_terracotta',
+  skin_medium: 'orange_terracotta',
+  skin_tan: 'sandstone',
+  skin_dark: 'brown_terracotta',
+
+  // Natural/Landscape
+  grass: 'moss_block',
+  dirt: 'coarse_dirt',
+  stone: 'stone',
+  sky: 'light_blue_concrete',
+  cloud: 'white_concrete',
+
+  // Metallic & Special
   gold: 'gold_block',
-  tan: 'sandstone',
-  cream: 'birch_planks',
-  beige: 'smooth_sandstone',
-
-  // Metallic and special
   silver: 'iron_block',
-  dark_gray: 'gray_concrete',
-  navy: 'blue_terracotta',
-  maroon: 'red_terracotta',
-  olive: 'green_terracotta',
-  teal: 'cyan_terracotta',
-  coral: 'pink_terracotta',
-  peach: 'pink_terracotta',
-
-  // Fire/flame colors
-  flame_red: 'red_wool',
-  flame_orange: 'orange_wool',
-  flame_yellow: 'yellow_wool',
+  bronze: 'copper_block',
+  diamond: 'diamond_block',
+  emerald: 'emerald_block',
+  obsidian: 'obsidian',
 
   // Transparent/empty
   transparent: 'air',
@@ -243,20 +288,37 @@ export const PIXEL_ART_PALETTE = {
  * @returns {string} - Best matching Minecraft block
  */
 export function getPixelArtBlock(colorName) {
-  const normalized = colorName.toLowerCase().replace(/[^a-z_]/g, '_');
+  if (!colorName) return 'white_concrete';
 
-  // Direct match
+  const normalized = colorName.toLowerCase().trim().replace(/[^a-z_]/g, '_');
+
+  // 1. Direct match
   if (PIXEL_ART_PALETTE[normalized]) {
     return PIXEL_ART_PALETTE[normalized];
   }
 
-  // Partial match
+  // 2. Multi-word match (if "bright_yellow" is requested and we have "yellow")
+  const words = normalized.split('_');
+  for (const word of words) {
+    if (word.length < 3) continue;
+    if (PIXEL_ART_PALETTE[word]) {
+      return PIXEL_ART_PALETTE[word];
+    }
+  }
+
+  // 3. Partial match loop
   for (const [key, block] of Object.entries(PIXEL_ART_PALETTE)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
+    if (normalized.includes(key)) {
       return block;
     }
   }
 
-  // Default to white if no match
-  return 'white_wool';
+  // 4. Fuzzy backup using suggestAlternatives
+  const alternatives = suggestAlternatives(normalized);
+  if (alternatives.length > 0) {
+    return alternatives[0];
+  }
+
+  // Default to white concrete if no match
+  return 'white_concrete';
 }

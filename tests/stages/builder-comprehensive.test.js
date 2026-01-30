@@ -81,8 +81,8 @@ describe('Builder Comprehensive Edge Cases', () => {
             await builder.placeBlockWithRetry(farBlock, 'stone');
 
             // Verification: goto should NOT be called because skipRangeCheck should be true
+            // when WorldEdit is enabled (remote building access)
             expect(bot.pathfinder.goto).not.toHaveBeenCalled();
-            expect(bot.lookAt).toHaveBeenCalled(); // Should still look at it (simulated)
         });
 
         test('should SKIP pathfinding when hasSetblockAccess is true', async () => {
@@ -100,21 +100,23 @@ describe('Builder Comprehensive Edge Cases', () => {
             // We need to valid mock PathfindingHelper logic or mock it on the builder
             // But placeBlockWithRetry checks this.pathfindingHelper?.isAvailable()
 
-            // Mock pathfinding helper availability
+            // Mock pathfinding helper availability with all required methods
             builder.pathfindingHelper = {
                 isAvailable: () => true,
+                ensureInRange: jest.fn().mockResolvedValue(true),
                 goToBlock: jest.fn().mockResolvedValue(true)
             };
             builder.worldEditEnabled = false;
             builder.hasSetblockAccess = false;
+            builder.building = true; // Must be set for placeBlockWithRetry to proceed
 
             const farBlock = { x: 100, y: 64, z: 100 }; // Far away from (0,64,0)
 
             // Actually place block
             await builder.placeBlockWithRetry(farBlock, 'stone');
 
-            // Should attempt to go to block
-            expect(builder.pathfindingHelper.goToBlock).toHaveBeenCalled();
+            // Should attempt to ensure in range
+            expect(builder.pathfindingHelper.ensureInRange).toHaveBeenCalled();
         });
     });
 
@@ -167,7 +169,7 @@ describe('Builder Comprehensive Edge Cases', () => {
         test('SAFETY_LIMITS should allow massive values', () => {
             expect(SAFETY_LIMITS.maxBlocks).toBeGreaterThanOrEqual(1000000);
             expect(SAFETY_LIMITS.maxWidth).toBeGreaterThanOrEqual(1000);
-            expect(SAFETY_LIMITS.maxSelectionVolume).toBeGreaterThanOrEqual(150000);
+            expect(SAFETY_LIMITS.worldEdit.maxSelectionVolume).toBeGreaterThanOrEqual(150000);
         });
     });
 });

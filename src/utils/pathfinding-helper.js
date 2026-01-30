@@ -32,7 +32,10 @@ export class PathfindingHelper {
 
   async ensureInRange(position, range = 4.5) {
     if (!this.isAvailable()) {
-      return false;
+      // Pathfinder not available - return true to allow command-based placement
+      // The caller should check hasSetblockAccess before calling this
+      console.warn('Pathfinder not available - assuming command-based placement');
+      return true;
     }
 
     const botPos = this.bot.entity.position;

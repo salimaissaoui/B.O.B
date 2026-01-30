@@ -1,7 +1,112 @@
 import { detectBuildType, detectTheme, analyzePrompt as analyzeBuildTypes } from '../config/build-types.js';
 import { retrieveBlueprint } from '../library/blueprint-library.js';
+import { INTENT_SCALE_MAP } from '../config/creative-scales.js';
+import { detectCharacter } from '../config/character-palettes.js';
 
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+
+/**
+ * Detect intent-based scale from prompt
+ * Maps descriptive words to scale categories for dimension selection
+ * @param {string} prompt - User's build request
+ * @returns {Object} - { scale: string, matchedKeyword: string|null, dimensions: { min, max, default } }
+ */
+function detectIntentScale(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+
+  const scaleKeywords = {
+    tiny: ['tiny', 'miniature', 'mini'],
+    small: ['small', 'little', 'compact'],
+    medium: ['medium', 'normal', 'standard'],
+    large: ['large', 'big', 'grand'],
+    massive: ['massive', 'huge', 'enormous'],
+    towering: ['towering', 'soaring', 'sky-high'],
+    colossal: ['colossal', 'gigantic', 'epic', 'legendary', 'ancient']
+  };
+
+  // Check in priority order (most specific first)
+  for (const scale of ['colossal', 'towering', 'massive', 'large', 'medium', 'small', 'tiny']) {
+    const keywords = scaleKeywords[scale];
+    for (const keyword of keywords) {
+      const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (regex.test(lowerPrompt)) {
+        return {
+          scale,
+          matchedKeyword: keyword,
+          dimensions: INTENT_SCALE_MAP[scale] || INTENT_SCALE_MAP.medium
+        };
+      }
+    }
+  }
+
+  return {
+    scale: 'medium',
+    matchedKeyword: null,
+    dimensions: INTENT_SCALE_MAP.medium
+  };
+}
+
+/**
+ * Infer theme for palette selection based on prompt and build type
+ * @param {string} prompt - User's build request
+ * @param {string} buildType - Detected build type
+ * @returns {Object} - { theme: string, suggestedPaletteSize: number, lockPalette: boolean }
+ */
+function inferThemeForPalette(prompt, buildType) {
+  const lowerPrompt = prompt.toLowerCase();
+
+  const themes = {
+    organic: {
+      patterns: ['tree', 'forest', 'nature', 'plant', 'garden', 'jungle'],
+      suggestedPaletteSize: 4,
+      lockPalette: true
+    },
+    fantasy: {
+      patterns: ['magic', 'enchanted', 'mystical', 'wizard', 'fairy', 'dragon'],
+      suggestedPaletteSize: 6,
+      lockPalette: false
+    },
+    medieval: {
+      patterns: ['castle', 'fortress', 'medieval', 'knight', 'keep'],
+      suggestedPaletteSize: 6,
+      lockPalette: false
+    },
+    modern: {
+      patterns: ['modern', 'futuristic', 'sleek', 'contemporary', 'minimalist'],
+      suggestedPaletteSize: 5,
+      lockPalette: false
+    },
+    gothic: {
+      patterns: ['gothic', 'dark', 'evil', 'haunted', 'vampire'],
+      suggestedPaletteSize: 5,
+      lockPalette: false
+    },
+    natural: {
+      patterns: ['natural', 'organic', 'rustic', 'wooden', 'cabin'],
+      suggestedPaletteSize: 4,
+      lockPalette: true
+    }
+  };
+
+  for (const [themeName, themeConfig] of Object.entries(themes)) {
+    for (const pattern of themeConfig.patterns) {
+      if (lowerPrompt.includes(pattern)) {
+        return {
+          theme: themeName,
+          suggestedPaletteSize: themeConfig.suggestedPaletteSize,
+          lockPalette: themeConfig.lockPalette
+        };
+      }
+    }
+  }
+
+  // Default based on build type
+  if (buildType === 'tree') {
+    return { theme: 'organic', suggestedPaletteSize: 4, lockPalette: true };
+  }
+
+  return { theme: 'default', suggestedPaletteSize: 5, lockPalette: false };
+}
 
 /**
  * Stage 1: Lightweight analyzer (no LLM)
@@ -152,25 +257,48 @@ export function analyzePrompt(userPrompt) {
   const explicitDimensions = extractDimensions(userPrompt);
   const explicitMaterial = extractMaterial(userPrompt);
 
+  // NEW: Intent-based scale detection
+  const intentScale = detectIntentScale(userPrompt);
+
+  // NEW: Theme inference for palette
+  const themeInference = inferThemeForPalette(userPrompt, finalBuildType);
+
   // Try to retrieve a matching blueprint from library
-  let libraryBlueprint = null;
+  // DISABLED: User requested full LLM creativity for all builds.
+  // We bypass the library entirely to ensure robust, unique generation every time.
+  const libraryBlueprint = null;
+  /* 
   try {
     libraryBlueprint = retrieveBlueprint({
       userPrompt,
       buildType: finalBuildType
     });
   } catch (e) {
-    // Library retrieval is optional
-    if (DEBUG) {
-      console.log(`Blueprint library: ${e.message}`);
-    }
+    if (DEBUG) console.log(`Blueprint library: ${e.message}`);
   }
+  */
 
   // Build hints with explicit overrides
-  const dimensions = explicitDimensions || analysis.dimensions;
+  // Use intent scale dimensions if no explicit dimensions provided
+  let dimensions = explicitDimensions || analysis.dimensions;
+
+  // Scale dimensions based on intent ONLY if we don't have type-specific dimensions
+  // This prevents overriding specific dimensions (like tall trees) with generic boxes
+  if (intentScale.scale !== 'medium' && !explicitDimensions && !analysis.dimensions) {
+    const scaleDims = intentScale.dimensions;
+    dimensions = {
+      width: scaleDims.default,
+      height: scaleDims.default,
+      depth: scaleDims.default
+    };
+  }
+
   const materials = explicitMaterial
     ? { ...analysis.materials, primary: explicitMaterial.block }
     : analysis.materials;
+
+  // NEW: Detect iconic characters (Pikachu, Mario, etc.)
+  const character = detectCharacter(userPrompt);
 
   const result = {
     userPrompt,
@@ -178,16 +306,22 @@ export function analyzePrompt(userPrompt) {
     buildTypeInfo: enhancedType || buildTypeInfo,
     theme: themeInfo,
     quality: analysis.quality,  // Quality modifiers (beautiful, majestic, etc.)
+    intentScale,  // Intent-based scale detection
+    themeInference,  // Theme inference for palette
+    character,  // NEW: Detected iconic character (if any)
     hints: {
       dimensions,
       materials,
       features: analysis.features,
-      size: analysis.size?.size || 'medium',
+      size: analysis.size?.size || intentScale.scale || 'medium',
       operations: analysis.operations,
       explicitDimensions: !!explicitDimensions,
       explicitMaterial: !!explicitMaterial,
       qualityLevel: analysis.quality?.quality || 'standard',
-      qualityTips: analysis.quality?.tips || []
+      qualityTips: analysis.quality?.tips || [],
+      // Palette hints from theme inference
+      suggestedPaletteSize: themeInference.suggestedPaletteSize,
+      lockPalette: themeInference.lockPalette
     },
     libraryBlueprint
   };
@@ -200,7 +334,9 @@ export function analyzePrompt(userPrompt) {
     console.log(`│ Build Type: ${finalBuildType}`);
     console.log(`│ Theme: ${themeInfo?.theme || 'default'}`);
     console.log(`│ Size: ${result.hints.size}`);
+    console.log(`│ Intent Scale: ${intentScale.scale}${intentScale.matchedKeyword ? ` (matched: "${intentScale.matchedKeyword}")` : ''}`);
     console.log(`│ Quality: ${result.hints.qualityLevel}${analysis.quality?.modifiers?.length ? ` (${analysis.quality.modifiers.join(', ')})` : ''}`);
+    console.log(`│ Palette Theme: ${themeInference.theme} (${themeInference.suggestedPaletteSize} blocks, lock: ${themeInference.lockPalette})`);
     if (explicitDimensions) {
       console.log(`│ Explicit Dimensions: ${explicitDimensions.width}x${explicitDimensions.depth}${explicitDimensions.height ? 'x' + explicitDimensions.height : ''}`);
     }
@@ -209,6 +345,9 @@ export function analyzePrompt(userPrompt) {
     }
     if (libraryBlueprint) {
       console.log(`│ Library Match: ${libraryBlueprint.templateName || 'found'}`);
+    }
+    if (character) {
+      console.log(`│ 🎨 Character: ${character.name} (${Object.keys(character.colors).length} colors)`);
     }
     console.log('└─────────────────────────────────────────────────────────\n');
   }

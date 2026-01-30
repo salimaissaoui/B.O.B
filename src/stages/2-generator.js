@@ -2,6 +2,8 @@ import { GeminiClient } from '../llm/gemini-client.js';
 import { unifiedBlueprintPrompt } from '../llm/prompts/unified-blueprint.js';
 import { optimizeBuildOrder } from './optimization/layering.js';
 import { generateFromWebReference } from '../services/sprite-reference.js';
+import { routeProceduralBuild } from '../generators/index.js';
+import { optimizeBlueprint } from '../utils/blueprint-optimizer.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
@@ -90,6 +92,19 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     return generatePlatformBlueprint(analysis);
   }
 
+  // FAST PATH 3: Procedural generators for consistent, elegant builds
+  const proceduralBlueprint = routeProceduralBuild(analysis);
+  if (proceduralBlueprint) {
+    console.log(`✨ Using procedural generator for: ${buildType}`);
+
+    // Feature: Add site prep as first step if missing
+    if (proceduralBlueprint.steps && proceduralBlueprint.steps[0]?.op !== 'site_prep') {
+      proceduralBlueprint.steps.unshift({ op: 'site_prep' });
+    }
+
+    return proceduralBlueprint;
+  }
+
   if (DEBUG) {
     console.log('\n┌─────────────────────────────────────────────────────────');
     console.log('│ DEBUG: Unified Blueprint Generation');
@@ -124,9 +139,31 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     }
   }
 
+  // CHECK FOR IMAGE URL
+  const imageUrlMatch = userPrompt.match(/https?:\/\/\S+\.(jpg|jpeg|png|webp)/i);
+  let imagePayload = null;
+  if (imageUrlMatch) {
+    try {
+      console.log(`🖼 Visual Blueprint: Analyzing image ${imageUrlMatch[0]}...`);
+      const response = await fetch(imageUrlMatch[0]);
+      if (response.ok) {
+        const buffer = await response.arrayBuffer();
+        imagePayload = {
+          mimeType: response.headers.get('content-type') || 'image/jpeg',
+          data: Buffer.from(buffer).toString('base64')
+        };
+        console.log('✓ Image loaded successfully');
+      } else {
+        console.warn(`⚠ Failed to fetch image: ${response.statusText}`);
+      }
+    } catch (e) {
+      console.warn(`⚠ Failed to load image: ${e.message}`);
+    }
+  }
+
   try {
     // Generate unified prompt (design + blueprint in one)
-    const prompt = unifiedBlueprintPrompt(analysis, worldEditAvailable);
+    const prompt = unifiedBlueprintPrompt(analysis, worldEditAvailable, !!imagePayload);
 
     if (DEBUG) {
       console.log('\n--- FINAL PROMPT SENT TO GEMINI ---');
@@ -146,6 +183,7 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
       let progressDots = 0;
       blueprint = await client.streamContent({
         prompt,
+        images: imagePayload ? [imagePayload] : [],
         temperature: 0.5,
         onProgress: (progress) => {
           progressDots++;
@@ -170,6 +208,7 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
 
         blueprint = await client.generateContent({
           prompt,
+          images: imagePayload ? [imagePayload] : [],
           temperature: 0.5,
           responseFormat: 'json'
         });
@@ -247,7 +286,9 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     console.log(`  Blocks: ${paletteCount} types`);
     console.log(`  Steps: ${blueprint.steps.length} operations`);
 
-    return blueprint;
+    // POST-PROCESS: Optimize the blueprint (fix coords, merge ops)
+    const optimized = optimizeBlueprint(blueprint);
+    return optimized;
   } catch (error) {
     if (DEBUG) {
       console.log('\n┌─────────────────────────────────────────────────────────');

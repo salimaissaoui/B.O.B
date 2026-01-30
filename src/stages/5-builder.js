@@ -39,7 +39,9 @@ import { BuildStationManager } from '../positioning/BuildStationManager.js';
 import { validateBuildArea, clampToWorldBoundaries, safeBlockAt, WORLD_BOUNDARIES } from '../validation/world-validator.js';
 import { BuildStateManager } from '../state/build-state.js';
 
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { sanitizer } from '../utils/blueprint-sanitizer.js';
+
+const DEBUG = true;
 
 /**
  * Build Mutex - Prevents Concurrent Build Race Conditions
@@ -177,7 +179,8 @@ export class Builder {
         if (this.building) {
           console.warn('Build interrupted: bot disconnected');
           this.building = false;
-          this.buildMutex.release();
+          // Note: Do NOT release mutex here - the finally block in executeBlueprint handles it
+          // Releasing here would cause a race condition with double-release
         }
       });
     }
@@ -231,6 +234,15 @@ export class Builder {
         await this.worldEdit.createSelection(from, to);
         await this.worldEdit.fillSelection('air');
         await this.worldEdit.clearSelection();
+
+        // Record to history for undo support
+        this.worldEditHistory.push({
+          step: { op: 'site_clear', block: 'air', from, to },
+          startPos: { x: 0, y: 0, z: 0 }, // Absolute coords already in from/to
+          timestamp: Date.now(),
+          type: 'worldedit'
+        });
+
         console.log('    ✓ Site cleared (WorldEdit)');
       } catch (e) {
         console.warn(`    ⚠ Auto-clear failed: ${e.message}`);
@@ -308,6 +320,15 @@ export class Builder {
         await this.worldEdit.createSelection(from, to);
         await this.worldEdit.fillSelection('air');
         await this.worldEdit.clearSelection();
+
+        // Record to history for undo support
+        this.worldEditHistory.push({
+          step: { op: 'obstruction_clear', block: 'air', from, to },
+          startPos: { x: 0, y: 0, z: 0 }, // Absolute coords already in from/to
+          timestamp: Date.now(),
+          type: 'worldedit'
+        });
+
         console.log('    ✓ Obstructions cleared (WorldEdit)');
         return true;
       } catch (e) {
@@ -385,36 +406,24 @@ export class Builder {
   }
 
   /**
-   * Optimize build order for efficient placement
-   * Sorts blocks by: 1) Y-level (bottom to top), 2) Distance from bot, 3) Block type
-   * @param {Array} blocks - Array of blocks to sort
-   * @param {Object} startPos - Starting position
-   * @returns {Array} Sorted blocks
+   * Sort by vertical level first (bottom-up), then horizontal distance
+   * to minimize bot movement and prevent floating block placement errors.
+   *
+   * @param {Array} blocks - List of block coordinates
+   * @param {Object} startPos - Reference start point
    */
   optimizeBuildOrder(blocks, startPos) {
-    if (!blocks || blocks.length === 0) {
-      return blocks;
-    }
-
-    const botPos = this.bot && this.bot.entity ? this.bot.entity.position : startPos;
+    if (!blocks || blocks.length === 0) return [];
 
     return blocks.sort((a, b) => {
-      // Extract positions
-      const posA = a.pos || a;
-      const posB = b.pos || b;
-
-      // Primary: Sort by Y-level (bottom to top)
-      if (posA.y !== posB.y) {
-        return posA.y - posB.y;
+      // Primary: Y-level (Bottom to TOP)
+      if (a.y !== b.y) {
+        return a.y - b.y;
       }
 
-      // Secondary: Sort by distance from bot position
-      const worldPosA = this.calculateWorldPosition(posA, startPos);
-      const worldPosB = this.calculateWorldPosition(posB, startPos);
-
-      const distA = calculateDistance(botPos, worldPosA);
-      const distB = calculateDistance(botPos, worldPosB);
-
+      // Secondary: Distance from bot (proxied here by distance from center of floor)
+      const distA = Math.sqrt(Math.pow(a.x, 2) + Math.pow(a.z, 2));
+      const distB = Math.sqrt(Math.pow(b.x, 2) + Math.pow(b.z, 2));
       if (Math.abs(distA - distB) > 0.1) {
         return distA - distB;
       }
@@ -424,6 +433,140 @@ export class Builder {
       const blockB = b.block || '';
       return blockA.localeCompare(blockB);
     });
+  }
+
+  /**
+   * Execute a list of vanilla block placements with optimization and rate limiting
+   * @param {Array} blocks - List of relative block placements {x, y, z, block}
+   * @param {Object} startPos - Start position for the build
+   * @param {Array} buildHistory - Array to record placements for undo
+   * @param {boolean} skipBatching - If true, skips WorldEdit batching optimization
+   * @param {Object} buildContext - Optional context (cursor, builder state)
+   */
+  async executeVanillaBlocks(blocks, startPos, buildHistory, skipBatching = false, buildContext = null) {
+    if (!blocks || blocks.length === 0) return;
+
+    // OPTIMIZATION: Ensure blocks are placed in an efficient order (Bottom-Up)
+    // Minimizes bot movement and prevents floating block errors
+    blocks = this.optimizeBuildOrder(blocks, startPos);
+
+    // OPTIMIZATION: Auto-Batching for WorldEdit
+    // Detects continuous runs of blocks and uses WorldEdit to place them instantly
+    // Skip batching if called as a fallback from a failed WorldEdit operation
+    if (!skipBatching && this.worldEditEnabled && blocks.length > 5) {
+      try {
+        const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(blocks, startPos);
+
+        if (weOperations.length > 0) {
+          const batchedBlocks = blocks.length - remainingBlocks.length;
+          console.log(`    → Optimized: Batching ${batchedBlocks} blocks into ${weOperations.length} WorldEdit ops`);
+
+          // Record batching metrics
+          buildMetrics.recordBatching(blocks.length, batchedBlocks, weOperations.length);
+
+          for (const op of weOperations) {
+            if (!this.building) break;
+
+            // Execute WE op (selection + set)
+            // Coordinates from batching are RELATIVE to startPos, so we must add startPos
+            const from = {
+              x: startPos.x + op.from.x,
+              y: startPos.y + op.from.y,
+              z: startPos.z + op.from.z
+            };
+            const to = {
+              x: startPos.x + op.to.x,
+              y: startPos.y + op.to.y,
+              z: startPos.z + op.to.z
+            };
+
+            await this.worldEdit.createSelection(from, to);
+            await this.worldEdit.fillSelection(op.block);
+
+            // Track stats
+            if (this.currentBuild) {
+              this.currentBuild.blocksPlaced += op.count;
+              this.currentBuild.worldEditOpsExecuted++;
+            }
+
+            // Add to WE history
+            this.worldEditHistory.push({
+              step: { op: 'we_fill', block: op.block, ...op }, // Mock step for history
+              startPos: { x: 0, y: 0, z: 0 }, // Relative to 0 since ops are absolute
+              timestamp: Date.now()
+            });
+            // Record WE operation for metrics
+            buildMetrics.recordWorldEditOp('we_fill');
+
+            // Rate limiting: Delay between batches to prevent server kick (ECONNRESET)
+            // Reduced from 500ms to 300ms for better performance
+            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 300);
+          }
+
+          // Continue with only the non-batched blocks
+          blocks = remainingBlocks;
+          await this.worldEdit.clearSelection();
+        }
+      } catch (batchError) {
+        console.warn(`    ⚠ Batching optimization failed, falling back to single blocks: ${batchError.message}`);
+        // Fallback: blocks array remains unchanged, process singly
+      }
+    }
+
+    // Execute block placements with rate limiting
+    if (this.currentBuild && this.currentBuild.blocksPlaced + blocks.length > SAFETY_LIMITS.maxBlocks) {
+      throw new Error(`Build exceeds max block limit (${SAFETY_LIMITS.maxBlocks})`);
+    }
+
+    for (const blockPlacement of blocks) {
+      if (!this.building) break;
+
+      const worldPos = {
+        x: startPos.x + blockPlacement.x,
+        y: startPos.y + blockPlacement.y,
+        z: startPos.z + blockPlacement.z
+      };
+
+      let success = false;
+      try {
+        // Get current block at position for undo
+        const currentBlock = safeBlockAt(this.bot, new Vec3(worldPos.x, worldPos.y, worldPos.z));
+
+        buildHistory.push({
+          pos: worldPos,
+          previousBlock: currentBlock ? currentBlock.name : 'air'
+        });
+
+        // Use retry logic with pathfinding
+        success = await this.placeBlockWithRetry(worldPos, blockPlacement.block);
+      } catch (placeError) {
+        console.error(`Unexpected error placing block at ${worldPos.x},${worldPos.y},${worldPos.z}: ${placeError.message}`);
+        success = false;
+      }
+
+      if (success) {
+        if (this.currentBuild) this.currentBuild.blocksPlaced++;
+      } else {
+        if (this.currentBuild) this.currentBuild.blocksFailed++;
+        console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z}`);
+
+        // Abort threshold: Stop build if too many blocks are failing
+        if (this.currentBuild) {
+          const totalAttempted = this.currentBuild.blocksPlaced + this.currentBuild.blocksFailed;
+          const failurePercent = (this.currentBuild.blocksFailed / totalAttempted) * 100;
+          const maxFailedPercent = SAFETY_LIMITS.maxFailedBlocksPercent || 25;
+
+          if (totalAttempted >= 10 && failurePercent > maxFailedPercent) {
+            throw new Error(`Build aborted: ${failurePercent.toFixed(1)}% of blocks failed (threshold: ${maxFailedPercent}%). Check bot position and permissions.`);
+          }
+        }
+      }
+
+      buildMetrics.recordVanillaOperation();
+
+      // Rate limiting
+      await this.sleep(this.getPlacementDelayMs());
+    }
   }
 
   /**
@@ -437,101 +580,32 @@ export class Builder {
    * @returns {Promise<boolean>} True if placement succeeded
    */
   async placeBlockWithRetry(pos, blockType, maxRetries = 3, skipRangeCheck = false) {
-    const delays = [50, 100, 200]; // Exponential backoff delays in ms
+    if (!this.building) return false;
 
-    // Self-collision check: Move bot if it's standing where we want to place a block
-    // P0 Fix: If we have remote building access, we don't need to be close, so skip range checks
-    if (this.hasSetblockAccess || this.worldEditEnabled) {
-      skipRangeCheck = true;
-    }
+    // Skip pathfinding if we have /setblock access (commands work at any distance)
+    // Only use pathfinding for physical block placement (survival mode)
+    const needsPhysicalRange = !this.hasSetblockAccess && !this.worldEditEnabled;
 
-    if (!skipRangeCheck && this.bot?.entity?.position && this.pathfindingHelper?.isAvailable()) {
-      const botPos = this.bot.entity.position;
-      const botX = Math.floor(botPos.x);
-      const botY = Math.floor(botPos.y);
-      const botZ = Math.floor(botPos.z);
-
-      // Check if bot is standing on or in the target block position
-      const blocksPlacement = (botX === pos.x && botY === pos.y && botZ === pos.z);
-      const standsOnBlock = (botX === pos.x && botY === pos.y - 1 && botZ === pos.z);
-
-      if (blocksPlacement || standsOnBlock) {
-        console.log(`  Bot collision at ${pos.x},${pos.y},${pos.z} (bot at ${botX},${botY},${botZ}), moving away...`);
-
-        // Move bot to a safe position away from the block
-        const safePos = {
-          x: pos.x + 2,
-          y: pos.y,
-          z: pos.z
-        };
-
-        try {
-          // Directly use pathfinder to move (ensures goto is always called)
-          const goal = new goals.GoalNear(safePos.x, safePos.y, safePos.z, 1);
-          await this.bot.pathfinder.goto(goal);
-        } catch (error) {
-          console.warn(`  Failed to move bot away from collision: ${error.message}`);
-        }
+    if (needsPhysicalRange && this.pathfindingHelper && !skipRangeCheck) {
+      const targetPos = new Vec3(pos.x, pos.y, pos.z);
+      const inRange = await this.pathfindingHelper.ensureInRange(targetPos);
+      if (!inRange) {
+        console.warn(`    ⚠ Bot cannot reach position ${pos.x}, ${pos.y}, ${pos.z}`);
+        return false;
       }
     }
 
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (let i = 0; i < maxRetries; i++) {
+      if (!this.building) return false;
       try {
-        // Check if in range using station manager (fast check, no pathfinding)
-        let inRange = true;
-        if (!skipRangeCheck && this.stationManager) {
-          inRange = this.stationManager.isBlockInReach(pos);
-          if (!inRange) {
-            // Only use pathfinding as fallback if station manager isn't being used
-            if (!this.usingStationBasedMovement && this.pathfindingHelper.isAvailable()) {
-              inRange = await this.pathfindingHelper.ensureInRange(pos);
-            }
-            if (!inRange) {
-              console.warn(`  Bot cannot reach position ${pos.x}, ${pos.y}, ${pos.z}`);
-            }
-          }
-        }
-
-        // Attempt to place the block
         await this.placeBlock(pos, blockType);
-
-        // Optimization: In creative mode, skip verification for speed after placing
-        // ONLY if position was verified in-range
-        if (this.inventoryManager.checkCreativeMode() && inRange) {
-          return true;
-        }
-
-        // Verify placement
-        await this.sleep(50); // Small delay for block update
-        const placedBlock = safeBlockAt(this.bot, new Vec3(pos.x, pos.y, pos.z));
-
-        // Handle block states - compare base block name (before '[' if present)
-        const expectedBlockName = blockType.split('[')[0];
-        const actualBlockName = placedBlock ? (placedBlock.name || 'air') : 'air';
-
-        if (actualBlockName === expectedBlockName || actualBlockName === blockType) {
-          return true; // Success
-        }
-
-        // Block not verified, retry
-        if (attempt < maxRetries - 1) {
-          const delay = delays[attempt] || 200;
-          console.warn(`  Block placement not verified, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
-          await this.sleep(delay);
-        }
-
-      } catch (error) {
-        if (attempt < maxRetries - 1) {
-          const delay = delays[attempt] || 200;
-          console.warn(`  Block placement failed: ${error.message}, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
-          await this.sleep(delay);
-        } else {
-          throw error; // Final attempt failed
-        }
+        return true;
+      } catch (err) {
+        const backoff = Math.pow(2, i) * 100;
+        if (i < maxRetries - 1) await this.sleep(backoff);
       }
     }
-
-    return false; // All retries exhausted
+    return false;
   }
 
   /**
@@ -569,6 +643,25 @@ export class Builder {
 
       // Note: Blueprint should already contain native WorldEdit operations
       // No post-processing optimization needed
+
+      // P0 Fix: Sanitize Blueprint (Typo fix & Sorting)
+      sanitizer.sanitize(blueprint);
+
+      // P0 Fix: Grounding Logic (Snap to ground if floating)
+      let initialBlock = safeBlockAt(this.bot, new Vec3(startPos.x, startPos.y - 1, startPos.z));
+      if (!initialBlock || initialBlock.name === 'air') {
+        console.log('  ⚠ Starting above air. Searching for ground...');
+        for (let dy = 1; dy <= 10; dy++) {
+          const checkY = startPos.y - 1 - dy;
+          const ground = safeBlockAt(this.bot, new Vec3(startPos.x, checkY, startPos.z));
+          if (ground && ground.name !== 'air') {
+            console.log(`    ✓ Found ground at Y=${checkY}. Adjusting start height.`);
+            startPos.y = checkY + 1;
+            break;
+          }
+        }
+      }
+
       console.log('Starting build execution...');
       console.log(`  Location: ${startPos.x}, ${startPos.y}, ${startPos.z}`);
       console.log(`  Total steps: ${blueprint.steps.length}`);
@@ -620,6 +713,10 @@ export class Builder {
       // Start performance metrics tracking
       buildMetrics.startBuild();
 
+      // Record dimensions and palette for metrics
+      buildMetrics.recordDimensions(blueprint.size);
+      buildMetrics.recordPalette(blueprint.palette);
+
       // P0 Fix: Initialize Cursor and Context
       this.cursor = new BuildCursor(startPos);
 
@@ -640,6 +737,12 @@ export class Builder {
 
       // P0 Fix: Auto-Clear Area (also clears obstructions)
       await this.autoClearArea(blueprint, startPos);
+
+      // Safety delay: Wait for WorldEdit server-side processing to complete
+      // Prevents race condition where build starts before area is fully cleared
+      if (this.worldEditEnabled) {
+        await this.sleep(SAFETY_LIMITS.worldEdit?.postClearDelayMs || 500);
+      }
 
       const resolveBlock = (blockName) => {
         if (!blockName) return 'air';
@@ -696,81 +799,86 @@ export class Builder {
           worldEditOps: this.currentBuild.worldEditOpsExecuted
         });
 
-        // UNIVERSAL OPS HANDLER (box, wall, outline, fill, hollow_box)
-        if (['box', 'wall', 'outline', 'fill', 'hollow_box'].includes(step.op)) {
-          // These are the new universal ops that handle their own dispatch
-          const opHandler = OPERATION_MAP[step.op];
+        const operation = OPERATION_MAP[step.op];
+
+        // Check for Organic Operations (VoxelSniper)
+        const opMeta = OPERATIONS_REGISTRY[step.op];
+        if (opMeta && opMeta.type === 'organic') {
+          console.log(`    → Detected Organic Operation: ${step.op}`);
           try {
-            const result = opHandler(step, buildContext);
-
-            // The result can be a WorldEdit descriptor OR a list of blocks
-            if (result.type === 'worldedit') {
-              // Execute WE
-              await this.executeWorldEditDescriptor(result, startPos);
-            } else if (Array.isArray(result)) {
-              // Execute Vanilla with smart batching
-              // Pixel art now uses 2D rectangle optimization (greedy-rectangles.js)
-              // skipBatching only if explicitly disabled in config
-              const skipBatching = SAFETY_LIMITS.pixelArtBatching === false && step.op === 'pixel_art';
-              await this.executeVanillaBlocks(result, startPos, buildHistory, skipBatching);
-            }
-          } catch (err) {
-            console.error(`Universal Op Error: ${err.message}`);
-          }
-          continue;
-        }
-
-        // CURSOR OPS
-        if (step.op === 'move') {
-          this.cursor.move(step.offset);
-          continue;
-        }
-        if (step.op === 'cursor_reset') {
-          this.cursor.reset();
-          continue;
-        }
-
-        // Legacy site prep block removed (handled by autoClearArea)
-
-        // Check if this is a WorldEdit operation
-        if (isWorldEditOperation(step.op)) {
-          try {
-            let weSuccess = false;
-            // Special handling for organic operations (VoxelSniper) vs Structural (FAWE)
-            if (step.command === 'grow_tree' || step.command === 'smooth') {
-              await this.executeOrganicOperation(step, startPos);
-              weSuccess = true;
-            } else {
-              await this.executeWorldEditOperation(step, startPos);
-              weSuccess = true;
-            }
-
-            // P0 Fix: Track WE operation for undo (only on SUCCESS)
-            if (weSuccess) {
-              this.worldEditHistory.push({
-                step,
-                startPos,
-                timestamp: Date.now()
-              });
+            await this.executeOrganicOperation(step, startPos);
+            // Track organic ops in history too (VoxelSniper usually doesn't undo well via core WE, but we track it)
+            this.worldEditHistory.push({
+              step,
+              startPos,
+              timestamp: Date.now(),
+              type: 'organic'
+            });
+            if (this.currentBuild) {
               this.currentBuild.worldEditOpsExecuted++;
             }
+            buildMetrics.recordWorldEditOp(step.op);
           } catch (err) {
-            // console.error(`WorldEdit Op Error: ${err.message}`);
-            // P0 Fix: Attempt manual fallback if available in registry
-            const opMeta = OPERATIONS_REGISTRY[step.op];
-            if (opMeta && opMeta.fallback) {
-              console.log(`    → Falling back to vanilla: ${opMeta.fallback}`);
-              const fallbackStep = { ...step, op: opMeta.fallback };
-              // Ensure skipBatching=true and NO history push for the failed WE op
-              await this.executeVanillaOperation(fallbackStep, startPos, buildHistory, true, buildContext);
-              this.currentBuild.fallbacksUsed++;
-            } else {
+            console.error(`Organic Op Error: ${err.message}`);
+            if (this.currentBuild) {
               this.currentBuild.blocksFailed++;
             }
           }
+          this.stateManager.completeStep(i);
+          continue;
+        }
+
+        // Generic Operation Dispatcher
+        if (operation) {
+          try {
+            const result = operation(step, buildContext);
+
+            if (result && result.type === 'worldedit') {
+              // WorldEdit Operation (Descriptor-based)
+              result.step = step; // Attach original step for tracking
+              await this.executeWorldEditDescriptor(result, startPos);
+            } else if (Array.isArray(result)) {
+              // Vanilla Operation (Block-based)
+              const skipBatching = SAFETY_LIMITS.pixelArtBatching === false && step.op === 'pixel_art';
+              await this.executeVanillaBlocks(result, startPos, buildHistory, skipBatching, buildContext);
+            } else {
+              // Fallback for simple vanilla operations
+              await this.executeVanillaOperation(step, startPos, buildHistory, false, buildContext);
+            }
+          } catch (err) {
+            console.error(`Operation Error (${step.op}): ${err.message}`);
+
+            // Fatal error: abort build
+            if (err.message.includes('Build aborted')) {
+              throw err;
+            }
+
+            // Attempt fallback if available in registry
+            const opMetaFallback = OPERATIONS_REGISTRY[step.op];
+            if (opMetaFallback && opMetaFallback.fallback) {
+              console.log(`    → Falling back to vanilla: ${opMetaFallback.fallback}`);
+              try {
+                const fallbackStep = { ...step, op: opMetaFallback.fallback };
+                await this.executeVanillaOperation(fallbackStep, startPos, buildHistory, true, buildContext);
+                if (this.currentBuild) {
+                  this.currentBuild.fallbacksUsed++;
+                }
+              } catch (fallbackErr) {
+                if (this.currentBuild) {
+                  this.currentBuild.blocksFailed++;
+                }
+              }
+            } else {
+              if (this.currentBuild) {
+                this.currentBuild.blocksFailed++;
+              }
+            }
+          }
         } else {
-          // Vanilla operation
-          await this.executeVanillaOperation(step, startPos, buildHistory, false, buildContext);
+          console.warn(`Warning: Unknown operation ${step.op}`);
+          if (this.currentBuild) {
+            this.currentBuild.blocksSkipped++;
+          }
         }
 
         // Mark step as completed in state
@@ -823,6 +931,9 @@ export class Builder {
       // Generate structured build report
       this.lastBuildReport = this.generateBuildReport(blueprint, startPos, duration, buildHistory);
 
+      // P0 Fix: Verify build success
+      await this.verifyBuild(blueprint, startPos);
+
     } catch (error) {
       console.error(`Build execution failed: ${error.message}`);
       // Mark build as failed in state manager
@@ -837,40 +948,7 @@ export class Builder {
   }
 
   /**
-   * Resume an interrupted build
-   * @returns {Promise<boolean>} True if build resumed successfully
-   */
-  async resumeBuild() {
-    const resumeData = this.stateManager.prepareBuildResume();
-
-    if (!resumeData) {
-      console.log('No incomplete build found to resume');
-      return false;
-    }
-
-    console.log(`Resuming build ${resumeData.buildId}...`);
-    console.log(`  Resuming from step ${resumeData.resumeFromStep}`);
-    console.log(`  Blocks already placed: ${resumeData.blocksPlacedSoFar}`);
-
-    // Restore undo history
-    this.worldEditHistory = resumeData.worldEditHistory || [];
-
-    // The blueprint needs to be reconstructed or passed
-    // For now, just return the resume data
-    return resumeData;
-  }
-
-  /**
-   * Get list of resumable builds
-   * @returns {Array} List of incomplete builds
-   */
-  getResumableBuilds() {
-    return this.stateManager.listSavedBuilds()
-      .filter(b => b.status === 'in_progress');
-  }
-
-  /**
-   * Generate structured build report for debugging/logging
+   * Generate structured build report
    */
   generateBuildReport(blueprint, startPos, duration, buildHistory) {
     const report = {
@@ -891,19 +969,18 @@ export class Builder {
         fallbacksUsed: this.currentBuild?.fallbacksUsed || 0,
         vanillaBlocks: buildHistory.length
       },
-      success: !this.currentBuild?.warnings?.length,
+      success: !this.currentBuild?.warnings?.length && (this.currentBuild?.blocksFailed || 0) === 0,
       warnings: this.currentBuild?.warnings || [],
       metrics: {
         blocksPerSecond: this.currentBuild?.blocksPlaced / parseFloat(duration) || 0
       }
     };
 
-    // Log report summary
     console.log('┌─────────────────────────────────────────────────────────');
     console.log('│ BUILD REPORT');
     console.log('├─────────────────────────────────────────────────────────');
     console.log(`│ Type: ${report.blueprint.buildType}`);
-    console.log(`│ Size: ${report.blueprint.size.width}x${report.blueprint.size.height}x${report.blueprint.size.depth}`);
+    console.log(`│ Size: ${report.blueprint.size?.width || 0}x${report.blueprint.size?.height || 0}x${report.blueprint.size?.depth || 0}`);
     console.log(`│ Duration: ${report.duration}s`);
     console.log(`│ Blocks: ${report.execution.blocksPlaced} (${report.metrics.blocksPerSecond.toFixed(1)}/s)`);
     console.log(`│ Success: ${report.success ? '✓' : '⚠'}`);
@@ -913,290 +990,179 @@ export class Builder {
   }
 
   /**
-   * Execute WorldEdit operation
+   * Post-Build Verification: "The Eye"
+   * Randomly samples blocks to verify if they were actually placed.
+   * Helps detect silent failures (e.g. WorldEdit lag lag or permissions).
    */
-  async executeWorldEditOperation(step, startPos) {
-    if (!this.worldEditEnabled) {
-      throw new Error('WorldEdit not available');
+  async verifyBuild(blueprint, startPos) {
+    console.log('    → Verifying build integrity (The Eye)...');
+
+    // Scale sample size: 2% of total steps, min 10, max 50
+    const totalSteps = blueprint.steps.length;
+    const sampleSize = Math.max(10, Math.min(50, Math.ceil(totalSteps * 0.02)));
+
+    let mismatches = 0;
+    let totalChecked = 0;
+    let missingBlocks = 0;
+
+    // Collect all expected blocks from steps
+    const expectedBlocks = [];
+    const resolveBlock = (b) => {
+      if (b && b.startsWith('$') && blueprint.palette) {
+        return blueprint.palette[b.substring(1)] || 'stone';
+      }
+      return b || 'air';
+    };
+
+    for (const step of blueprint.steps) {
+      if (step.op === 'set' && step.block) {
+        expectedBlocks.push({ x: step.pos.x, y: step.pos.y, z: step.pos.z, block: resolveBlock(step.block) });
+      } else if (['fill', 'box', 'we_fill'].includes(step.op) && step.from && step.to) {
+        // Pick a few points for regions
+        const midX = Math.floor((step.from.x + step.to.x) / 2);
+        const midY = Math.floor((step.from.y + step.to.y) / 2);
+        const midZ = Math.floor((step.from.z + step.to.z) / 2);
+        expectedBlocks.push({ x: midX, y: midY, z: midZ, block: resolveBlock(step.block) });
+
+        // Add corners too for better coverage
+        expectedBlocks.push({ x: step.from.x, y: step.from.y, z: step.from.z, block: resolveBlock(step.block) });
+        expectedBlocks.push({ x: step.to.x, y: step.to.y, z: step.to.z, block: resolveBlock(step.block) });
+      } else if (step.op === 'pixel_art' && step.grid) {
+        // Sample from the pixel art generator logic
+        // Note: pixelArt() returns positions relative to step.base.
+        // If step.base is itself a relative offset (e.g., {x:0, y:0, z:0}), 
+        // then the returned positions are already relative and should be used directly.
+        const { pixelArt } = await import('../operations/pixel-art.js');
+        const pixels = pixelArt(step);
+        // Add a random subset of pixels
+        const sampledPixels = pixels.sort(() => 0.5 - Math.random()).slice(0, 5);
+        for (const p of sampledPixels) {
+          // Pixels from pixelArt are relative to step.base, which is typically {0,0,0} or a small offset.
+          // So they should be used directly as relative offsets from startPos.
+          expectedBlocks.push({
+            x: p.x,
+            y: p.y,
+            z: p.z,
+            block: p.block
+          });
+        }
+      }
     }
 
-    const operation = OPERATION_MAP[step.op];
-    if (!operation) {
-      throw new Error(`Unknown operation: ${step.op}`);
+    if (expectedBlocks.length === 0) {
+      console.log('      (No verifiable blocks found in blueprint)');
+      return;
     }
 
-    // Get operation descriptor
-    const descriptor = operation(step);
+    // Shuffle and pick sampleSize
+    const samples = expectedBlocks.sort(() => 0.5 - Math.random()).slice(0, sampleSize);
 
-    if (descriptor.type !== 'worldedit') {
-      throw new Error('Not a WorldEdit operation');
+    for (const expected of samples) {
+      const worldPos = new Vec3(
+        Math.floor(startPos.x + expected.x),
+        Math.floor(startPos.y + expected.y),
+        Math.floor(startPos.z + expected.z)
+      );
+
+      // Move closer if needed for chunk loading
+      if (this.bot.entity && this.bot.entity.position.distanceTo(worldPos) > 32) {
+        await this.teleportAndVerify(worldPos);
+      }
+
+      const actual = safeBlockAt(this.bot, worldPos);
+      if (actual) {
+        totalChecked++;
+        const expectedName = expected.block.split('[')[0]; // Strip block states
+
+        // Detection Logic:
+        // 1. If we expected solid but got air -> Missing block
+        // 2. If we expected block A but got block B -> Wrong block
+        if (actual.name !== expectedName) {
+          if (expectedName !== 'air' && (actual.name === 'air' || actual.name === 'void_air' || actual.name === 'cave_air')) {
+            missingBlocks++;
+            mismatches++;
+            if (DEBUG) console.log(`      Mismatch at ${worldPos.x},${worldPos.y},${worldPos.z}: MISSING (Expected ${expectedName})`);
+          } else if (expectedName !== 'air') {
+            mismatches++;
+            if (DEBUG) console.log(`      Mismatch at ${worldPos.x},${worldPos.y},${worldPos.z}: WRONG BLOCK (Expected ${expectedName}, Got ${actual.name})`);
+          }
+        }
+      }
     }
 
-    console.log(`    → Using WorldEdit (estimated: ${descriptor.estimatedBlocks} blocks)`);
+    if (totalChecked > 0) {
+      const confidence = ((totalChecked - mismatches) / totalChecked) * 100;
+      console.log(`      ✓ Verification Confidence: ${confidence.toFixed(1)}% (${totalChecked - mismatches}/${totalChecked})`);
+      if (missingBlocks > 0) {
+        console.warn(`      ⚠ Detected ${missingBlocks} missing blocks in sample!`);
+      }
 
-    // Execute WorldEdit command sequence based on command type
-    switch (descriptor.command) {
-      case 'fill':
-        await this.executeWorldEditFill(descriptor, startPos);
-        break;
-
-      case 'walls':
-        await this.executeWorldEditWalls(descriptor, startPos);
-        break;
-
-      case 'pyramid':
-        await this.executeWorldEditPyramid(descriptor, startPos);
-        break;
-
-      case 'cylinder':
-        await this.executeWorldEditCylinder(descriptor, startPos);
-        break;
-
-      case 'sphere':
-        await this.executeWorldEditSphere(descriptor, startPos);
-        break;
-
-      case 'replace':
-        await this.executeWorldEditReplace(descriptor, startPos);
-        break;
-
-      default:
-        throw new Error(`Unknown WorldEdit command: ${descriptor.command}`);
+      if (confidence < 70) {
+        console.warn('      ⚠ Low verification confidence! Build may be incomplete or corrupted.');
+        if (this.currentBuild) {
+          this.currentBuild.warnings.push({
+            step: 'verify',
+            errorType: 'LOW_CONFIDENCE',
+            message: `Verification confidence only ${confidence.toFixed(1)}%. ${missingBlocks} blocks missing in sample.`
+          });
+        }
+      }
     }
-
-    this.currentBuild.blocksPlaced += descriptor.estimatedBlocks;
   }
 
   /**
-   * Execute Organic/VoxelSniper Operation
-   */
-  async executeOrganicOperation(step, startPos) {
-    if (!this.worldEditEnabled) throw new Error("VoxelSniper requires plugin access");
-
-    const worldPos = this.calculateWorldPosition(step.pos || step.center || { x: 0, y: 0, z: 0 }, startPos);
-
-    // 1. Ensure Bot has the VoxelSniper Tool (Arrow)
-    let arrow = this.bot.inventory.findInventoryItem('arrow');
-    if (!arrow) {
-      console.warn("⚠ No arrow found for VoxelSniper brush. Attempting to use Gunpowder or skipping.");
-      // Ideally we'd give the bot an arrow here if in creative, but let's assume availability or fallback
-    } else {
-      await this.bot.equip(arrow, 'hand');
-      await this.bot.waitForTicks(2); // Optimization: Ensure held
-    }
-
-    // 2. Aim at the target
-    await this.bot.lookAt(new Vec3(worldPos.x, worldPos.y, worldPos.z));
-
-    // 3. Execute Brush Command
-    if (step.command === 'grow_tree') {
-      const treeType = step.type || 'oak';
-      // /b forest sphere [height] [radius] [material]
-      // Defaulting to standard forest brush params
-      const cmd = `/brush forest sphere 5 1 ${treeType}`;
-      console.log(`    → VoxelSniper: Planting ${treeType} tree`);
-      await this.sendPluginCommand(cmd);
-    } else if (step.command === 'smooth') {
-      // /b bb (Blend Ball)
-      console.log(`    → VoxelSniper: Smoothing area`);
-      await this.sendPluginCommand('/brush bb');
-    }
-
-    // 4. Trigger Brush (Right Click)
-    this.bot.activateItem();
-    await this.bot.waitForTicks(5);
-  }
-
-  /**
-   * Helper to send plugin command
-   */
-  async sendPluginCommand(cmd) {
-    if (this.worldEditEnabled && this.worldEdit) {
-      // Use executor for tracking, undo history, and rate limits
-      await this.worldEdit.executeCommand(cmd);
-    } else if (this.bot.chat) {
-      this.bot.chat(cmd);
-      await this.sleep(100);
-    }
-  }
-
-  /**
-   * Execute a WorldEdit descriptor returned by universal ops
+   * Execute WorldEdit Descriptor
+   * Dispatches to specific WorldEdit execution methods based on command
    */
   async executeWorldEditDescriptor(descriptor, startPos) {
-    if (!this.worldEditEnabled) throw new Error("WorldEdit required but not available");
+    if (!descriptor || descriptor.type !== 'worldedit') return;
 
-    // Commands map to executor methods
-    switch (descriptor.command) {
-      case 'fill':
-        await this.executeWorldEditFill(descriptor, startPos);
-        break;
-      case 'walls':
-        await this.executeWorldEditWalls(descriptor, startPos);
-        break;
-      // ... expand as needed
-      default:
-        console.warn(`Unsupported WE command in descriptor: ${descriptor.command}`);
-    }
-    this.currentBuild.worldEditOpsExecuted++;
-  }
-
-  /**
-   * Execute raw vanilla blocks list (refactored from executeVanillaOperation)
-   * Uses station-based movement for efficiency when pathfinder is available
-   */
-  async executeVanillaBlocks(blocks, startPos, buildHistory, skipBatching = false) {
-    // Optimize build order before execution
-    const optimizedBlocks = this.optimizeBuildOrder(blocks, startPos);
-
-    // OPTIMIZATION: Auto-Batching for WorldEdit
-    // Skip if explicitly requested (e.g. for pixel art)
-    if (!skipBatching && this.worldEditEnabled && optimizedBlocks.length > 5) {
-      try {
-        const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(optimizedBlocks, startPos);
-        if (weOperations.length > 0) {
-          // ... (Same batching execution logic)
-          for (const op of weOperations) {
-            if (!this.building) break;
-            await this.worldEdit.createSelection(op.from, op.to);
-            await this.worldEdit.fillSelection(op.block);
-            this.currentBuild.blocksPlaced += op.count;
-            this.currentBuild.worldEditOpsExecuted++;
-            await this.sleep(300);
-
-            // Emit progress update
-            this.emitProgressUpdate();
-          }
-          blocks = remainingBlocks;
-          await this.worldEdit.clearSelection();
-        }
-      } catch (e) {
-        console.warn('Batching failed during universal op');
-      }
-    } else {
-      blocks = optimizedBlocks;
-    }
-
-    // Use station-based movement if we have enough blocks and pathfinder available
-    if (blocks.length > 10 && this.stationManager.isAvailable()) {
-      await this.executeBlocksWithStations(blocks, startPos, buildHistory);
-    } else {
-      // Fallback: traditional per-block placement
-      await this.executeBlocksSequentially(blocks, startPos, buildHistory);
-    }
-  }
-
-  /**
-   * Execute blocks using station-based movement (reduced pathfinding)
-   * Moves to calculated vantage points, then places all reachable blocks
-   */
-  async executeBlocksWithStations(blocks, startPos, buildHistory) {
-    // Calculate optimal build stations
-    const stations = this.stationManager.calculateBuildStations(blocks, startPos);
-    this.usingStationBasedMovement = true;
-
-    console.log(`  Using station-based movement: ${stations.length} stations for ${blocks.length} blocks`);
-
-    for (let i = 0; i < stations.length; i++) {
-      if (!this.building) break;
-
-      const station = stations[i];
-      console.log(`  Station ${i + 1}/${stations.length}: ${station.blocks.length} blocks`);
-
-      // Move to station
-      const moved = await this.stationManager.moveToStation(station);
-      if (!moved) {
-        console.warn(`  Failed to reach station ${i + 1}, attempting blocks anyway`);
+    try {
+      switch (descriptor.command) {
+        case 'fill':
+          await this.executeWorldEditFill(descriptor, startPos);
+          break;
+        case 'walls':
+          await this.executeWorldEditWalls(descriptor, startPos);
+          break;
+        case 'pyramid':
+          await this.executeWorldEditPyramid(descriptor, startPos);
+          break;
+        case 'cylinder':
+          await this.executeWorldEditCylinder(descriptor, startPos);
+          break;
+        case 'sphere':
+          await this.executeWorldEditSphere(descriptor, startPos);
+          break;
+        case 'replace':
+          await this.executeWorldEditReplace(descriptor, startPos);
+          break;
+        default:
+          throw new Error(`Unknown WorldEdit command: ${descriptor.command}`);
       }
 
-      // Place all blocks reachable from this station
-      for (const block of station.blocks) {
-        if (!this.building) break;
-
-        const worldPos = {
-          x: block.worldX,
-          y: block.worldY,
-          z: block.worldZ
-        };
-
-        try {
-          // skipRangeCheck=true since we already moved to station
-          const success = await this.placeBlockWithRetry(worldPos, block.block, 3, true);
-
-          if (success) {
-            this.currentBuild.blocksPlaced++;
-          } else {
-            this.currentBuild.blocksFailed++;
-          }
-
-          this.emitProgressUpdate();
-          await this.sleep(this.getPlacementDelayMs());
-        } catch (err) {
-          this.currentBuild.blocksFailed++;
-          console.error(`Block placement error at ${worldPos.x},${worldPos.y},${worldPos.z}: ${err.message}`);
-        }
+      // Track SUCCESSFUL execution in history
+      this.worldEditHistory.push({
+        step: descriptor.step || descriptor, // Use original step so it has op name for tracking
+        startPos,
+        timestamp: Date.now(),
+        type: 'worldedit'
+      });
+      if (this.currentBuild) {
+        this.currentBuild.worldEditOpsExecuted++;
       }
-    }
+      buildMetrics.recordWorldEditOp(descriptor.step?.op || `we_${descriptor.command}`);
 
-    this.usingStationBasedMovement = false;
-    this.stationManager.reset();
-  }
-
-  /**
-   * Execute blocks sequentially (traditional per-block approach)
-   * Used as fallback when station-based movement isn't available
-   */
-  async executeBlocksSequentially(blocks, startPos, buildHistory) {
-    for (const blockPlacement of blocks) {
-      if (!this.building) break;
-      const worldPos = this.calculateWorldPosition(blockPlacement, startPos);
-
-      try {
-        const success = await this.placeBlockWithRetry(worldPos, blockPlacement.block);
-
-        if (success) {
-          this.currentBuild.blocksPlaced++;
-        } else {
-          this.currentBuild.blocksFailed++;
-          console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z} after retries`);
-        }
-
-        this.emitProgressUpdate();
-        await this.sleep(this.getPlacementDelayMs());
-      } catch (err) {
-        this.currentBuild.blocksFailed++;
-        console.error(`Block placement error at ${worldPos.x},${worldPos.y},${worldPos.z}: ${err.message}`);
-      }
+    } catch (err) {
+      console.error(`WorldEdit Execution Error (${descriptor.command}): ${err.message}`);
+      throw err; // Re-throw so caller can handle fallback
     }
   }
 
-  /**
-   * Emit progress update if interval reached
-   */
-  emitProgressUpdate() {
-    const totalBlocks = this.currentBuild.blocksPlaced + this.currentBuild.blocksFailed + this.currentBuild.blocksSkipped;
-
-    if (totalBlocks - this.currentBuild.lastProgressUpdate >= this.progressUpdateInterval) {
-      const elapsed = (Date.now() - this.currentBuild.startTime) / 1000;
-      const rate = this.currentBuild.blocksPlaced / elapsed || 0;
-
-      // Estimate remaining time (rough estimate)
-      // Note: ETA doesn't account for WorldEdit operations which are typically much faster
-      // than individual block placement. Actual completion may be faster than estimated.
-      const estimatedTotal = this.currentBuild.blueprint?.steps?.length || totalBlocks;
-      const remaining = Math.max(0, estimatedTotal - totalBlocks);
-      const eta = remaining > 0 && rate > 0 ? remaining / rate : 0;
-
-      const percentage = estimatedTotal > 0 ? ((totalBlocks / estimatedTotal) * 100).toFixed(1) : 0;
-
-      console.log(`  Progress: ${totalBlocks} blocks (${percentage}%) | Placed: ${this.currentBuild.blocksPlaced} | Failed: ${this.currentBuild.blocksFailed} | Rate: ${rate.toFixed(1)}/s | ETA: ${eta.toFixed(0)}s`);
-
-      this.currentBuild.lastProgressUpdate = totalBlocks;
-    }
-  }
+  // ...
 
   /**
-   * Execute WorldEdit fill command
+   * Execute WorldEdit fill command (Adaptive Safe Fill)
    */
   async executeWorldEditFill(descriptor, startPos) {
     const worldFrom = {
@@ -1211,13 +1177,12 @@ export class Builder {
       z: startPos.z + descriptor.to.z
     };
 
-    await this.worldEdit.createSelection(worldFrom, worldTo);
-    await this.worldEdit.fillSelection(descriptor.block);
-    await this.worldEdit.clearSelection();
+    // Use safe fill to handle slicing automatically
+    await this.worldEdit.performSafeFill(worldFrom, worldTo, descriptor.block);
   }
 
   /**
-   * Execute WorldEdit walls command
+   * Execute WorldEdit walls command (Adaptive Safe Walls)
    */
   async executeWorldEditWalls(descriptor, startPos) {
     const worldFrom = {
@@ -1232,9 +1197,7 @@ export class Builder {
       z: startPos.z + descriptor.to.z
     };
 
-    await this.worldEdit.createSelection(worldFrom, worldTo);
-    await this.worldEdit.createWalls(descriptor.block);
-    await this.worldEdit.clearSelection();
+    await this.worldEdit.performSafeWalls(worldFrom, worldTo, descriptor.block);
   }
 
   /**
@@ -1299,6 +1262,11 @@ export class Builder {
     console.warn(`    ⚠ Teleport position mismatch (may still work)`);
     return true;
   }
+
+  /**
+   * Execute WorldEdit cancel
+   */
+  // ...
 
   /**
    * Execute WorldEdit pyramid command
@@ -1387,6 +1355,68 @@ export class Builder {
   }
 
   /**
+   * Execute organic operation (VoxelSniper brush commands)
+   * Handles operations like smooth, grow_tree that use VoxelSniper brushes
+   * @param {Object} step - Operation step with parameters
+   * @param {Object} startPos - Build start position
+   */
+  async executeOrganicOperation(step, startPos) {
+    // Check if we have an arrow for brush activation
+    const arrow = this.bot.inventory?.findInventoryItem?.('arrow');
+    if (!arrow) {
+      console.warn('    ⚠ No arrow in inventory for VoxelSniper brush - skipping organic operation');
+      return;
+    }
+
+    // Equip the arrow
+    await this.bot.equip(arrow, 'hand');
+
+    // Calculate world position
+    const worldPos = {
+      x: startPos.x + (step.center?.x || step.pos?.x || 0),
+      y: startPos.y + (step.center?.y || step.pos?.y || 0),
+      z: startPos.z + (step.center?.z || step.pos?.z || 0)
+    };
+
+    // Teleport to position for brush operation
+    await this.teleportAndVerify(worldPos);
+
+    // Configure brush based on operation type
+    switch (step.op) {
+      case 'smooth':
+        // VoxelSniper blend ball brush
+        this.bot.chat(`/b bb`);
+        await this.sleep(100);
+        this.bot.chat(`/b ${step.radius || 5}`);
+        await this.sleep(100);
+        break;
+
+      case 'grow_tree':
+        // VoxelSniper tree brush
+        const treeType = step.type || 'oak';
+        this.bot.chat(`/b t ${treeType}`);
+        await this.sleep(100);
+        break;
+
+      default:
+        console.warn(`    ⚠ Unknown organic operation: ${step.op}`);
+        return;
+    }
+
+    // Look at target position and activate brush
+    const Vec3 = (await import('vec3')).default;
+    const targetPos = new Vec3(worldPos.x, worldPos.y, worldPos.z);
+    await this.bot.lookAt(targetPos);
+    await this.sleep(50);
+
+    // Activate the brush (right-click with arrow)
+    this.bot.activateItem();
+    await this.sleep(200);
+
+    console.log(`    ✓ Organic operation ${step.op} executed at (${worldPos.x}, ${worldPos.y}, ${worldPos.z})`);
+  }
+
+  /**
    * Execute vanilla operation (existing + new detail ops)
    */
   async executeVanillaOperation(step, startPos, buildHistory, skipBatching = false, context = null) {
@@ -1401,7 +1431,7 @@ export class Builder {
     let blocksOrDescriptor;
     try {
       // Pass context if available (needed for universal ops)
-      // If skipBatching is true (usually a WE fallback), force worldEditEnabled to false 
+      // If skipBatching is true (usually a WE fallback), force worldEditEnabled to false
       // so universal ops don't return another WE descriptor.
       const opContext = context ? {
         ...context,
@@ -1425,8 +1455,12 @@ export class Builder {
           else if (descriptor.command === 'cylinder') await this.executeWorldEditCylinder(descriptor, startPos);
           else if (descriptor.command === 'sphere') await this.executeWorldEditSphere(descriptor, startPos);
 
-          this.currentBuild.blocksPlaced += (descriptor.estimatedBlocks || 0);
-          this.currentBuild.worldEditOpsExecuted++;
+          if (this.currentBuild) {
+            this.currentBuild.blocksPlaced += (descriptor.estimatedBlocks || 0);
+            this.currentBuild.worldEditOpsExecuted++;
+          }
+          // Record WE operation for metrics
+          buildMetrics.recordWorldEditOp(`we_${descriptor.command}`);
 
           return; // Successfully executed as WorldEdit
         }
@@ -1445,101 +1479,8 @@ export class Builder {
     }
 
     // Ensure blocks is an array before processing
-    let blocks = Array.isArray(blocksOrDescriptor) ? blocksOrDescriptor : [];
-
-    // OPTIMIZATION: Auto-Batching for WorldEdit
-    // Detects continuous runs of blocks and uses WorldEdit to place them instantly
-    // Skip batching if called as a fallback from a failed WorldEdit operation
-    if (!skipBatching && this.worldEditEnabled && blocks.length > 5) {
-      try {
-        const { weOperations, remainingBlocks } = this.batchBlocksToWorldEdit(blocks, startPos);
-
-        if (weOperations.length > 0) {
-          const batchedBlocks = blocks.length - remainingBlocks.length;
-          console.log(`    → Optimized: Batching ${batchedBlocks} blocks into ${weOperations.length} WorldEdit ops`);
-
-          // Record batching metrics
-          buildMetrics.recordBatching(blocks.length, batchedBlocks, weOperations.length);
-
-          for (const op of weOperations) {
-            if (!this.building) break;
-
-            // Execute WE op (selection + set)
-            // Coordinates are already absolute in the op
-            const from = op.from;
-            const to = op.to;
-
-            await this.worldEdit.createSelection(from, to);
-            await this.worldEdit.fillSelection(op.block);
-
-            // Track stats
-            this.currentBuild.blocksPlaced += op.count;
-            this.currentBuild.worldEditOpsExecuted++;
-
-            // Add to WE history
-            this.worldEditHistory.push({
-              step: { op: 'we_fill', block: op.block, ...op }, // Mock step for history
-              startPos: { x: 0, y: 0, z: 0 }, // Relative to 0 since ops are absolute
-              timestamp: Date.now()
-            });
-
-            // Rate limiting: Delay between batches to prevent server kick (ECONNRESET)
-            // Reduced from 500ms to 300ms for better performance
-            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 300);
-          }
-
-          // Continue with only the non-batched blocks
-          blocks = remainingBlocks;
-          await this.worldEdit.clearSelection();
-        }
-      } catch (batchError) {
-        console.warn(`    ⚠ Batching optimization failed, falling back to single blocks: ${batchError.message}`);
-        // Fallback: blocks array remains unchanged, process singly
-      }
-    }
-
-    // Execute block placements with rate limiting
-    if (this.currentBuild.blocksPlaced + blocks.length > SAFETY_LIMITS.maxBlocks) {
-      throw new Error(`Build exceeds max block limit (${SAFETY_LIMITS.maxBlocks})`);
-    }
-
-    for (const blockPlacement of blocks) {
-      if (!this.building) break;
-
-      const worldPos = {
-        x: startPos.x + blockPlacement.x,
-        y: startPos.y + blockPlacement.y,
-        z: startPos.z + blockPlacement.z
-      };
-
-      try {
-        // Get current block at position for undo
-        const currentBlock = this.bot.blockAt(new Vec3(worldPos.x, worldPos.y, worldPos.z));
-
-        buildHistory.push({
-          pos: worldPos,
-          previousBlock: currentBlock ? currentBlock.name : 'air'
-        });
-
-        // Use retry logic with pathfinding
-        const success = await this.placeBlockWithRetry(worldPos, blockPlacement.block);
-
-        if (success) {
-          this.currentBuild.blocksPlaced++;
-        } else {
-          this.currentBuild.blocksFailed++;
-          console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z} after retries`);
-        }
-
-        buildMetrics.recordVanillaOperation();
-
-        // Rate limiting
-        await this.sleep(this.getPlacementDelayMs());
-      } catch (placeError) {
-        this.currentBuild.blocksFailed++;
-        console.error(`Failed to place block at ${worldPos.x},${worldPos.y},${worldPos.z}: ${placeError.message}`);
-      }
-    }
+    const blocks = Array.isArray(blocksOrDescriptor) ? blocksOrDescriptor : [];
+    await this.executeVanillaBlocks(blocks, startPos, buildHistory, skipBatching, context);
   }
 
   /**
@@ -1579,9 +1520,18 @@ export class Builder {
    */
   async placeBlock(pos, blockType) {
     const target = new Vec3(pos.x, pos.y, pos.z);
-    const existing = this.bot.blockAt(target);
 
-    if (existing && existing.name === blockType) {
+    // Check if block already exists to avoid redundant calls
+    const existing = safeBlockAt(this.bot, target);
+    if (existing && existing.name === blockType.split('[')[0]) {
+      return;
+    }
+
+    // P0 Fix: Prioritize /setblock if we have access (much faster, infinite range)
+    if (this.hasSetblockAccess && typeof this.bot.chat === 'function') {
+      this.bot.chat(`/setblock ${Math.floor(pos.x)} ${Math.floor(pos.y)} ${Math.floor(pos.z)} ${blockType}`);
+      // Small delay to prevent command flooding
+      await this.sleep(10);
       return;
     }
 
@@ -1591,14 +1541,13 @@ export class Builder {
     }
 
     if (typeof this.bot.chat === 'function') {
-      // Requires server permissions for /setblock.
+      // Fallback for when setBlock isn't available but user might have manual op perms
       this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${blockType}`);
-      // Add small delay to ensure command is sent
       await this.sleep(50);
       return;
     }
 
-    throw new Error('No supported block placement method available');
+    throw new Error('No supported block placement method available (no setBlock and no chat access)');
   }
 
   /**

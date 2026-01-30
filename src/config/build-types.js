@@ -395,7 +395,17 @@ export const BUILD_TYPES = {
     dimensions: {
       small: { width: 7, height: 6, depth: 7 },
       medium: { width: 11, height: 8, depth: 9 },
-      large: { width: 15, height: 10, depth: 12 }
+      large: { width: 15, height: 10, depth: 12 },
+      massive: { width: 25, height: 15, depth: 20 },
+      colossal: { width: 40, height: 25, depth: 35 }
+    },
+    buildPhases: {
+      required: true,
+      phases: [
+        { name: 'silhouette', ops: ['we_fill', 'hollow_box', 'box', 'wall'] },
+        { name: 'secondary', ops: ['roof_gable', 'roof_hip', 'roof_flat', 'fill'] },
+        { name: 'detail', ops: ['door', 'window_strip', 'set', 'stairs', 'slab'] }
+      ]
     },
     materials: {
       styles: {
@@ -426,7 +436,17 @@ export const BUILD_TYPES = {
     dimensions: {
       small: { width: 5, height: 15, depth: 5 },
       medium: { width: 7, height: 25, depth: 7 },
-      large: { width: 9, height: 40, depth: 9 }
+      large: { width: 9, height: 40, depth: 9 },
+      massive: { width: 15, height: 80, depth: 15 },
+      colossal: { width: 25, height: 150, depth: 25 }
+    },
+    buildPhases: {
+      required: true,
+      phases: [
+        { name: 'silhouette', ops: ['we_cylinder', 'we_fill', 'hollow_box', 'wall'] },
+        { name: 'secondary', ops: ['spiral_staircase', 'roof_gable', 'roof_hip'] },
+        { name: 'detail', ops: ['window_strip', 'door', 'set', 'balcony'] }
+      ]
     },
     materials: {
       styles: {
@@ -453,11 +473,21 @@ export const BUILD_TYPES = {
     keywords: ['castle', 'fortress', 'fort', 'citadel', 'stronghold', 'keep', 'palace'],
     styleKeywords: ['gothic', 'medieval', 'dark', 'sandstone', 'nether', 'ice', 'fantasy', 'ruins', 'ancient'],
     description: 'Large defensive structure with walls and towers',
-    primaryOperations: ['we_walls', 'we_fill', 'hollow_box', 'fill'],
+    primaryOperations: ['we_walls', 'we_fill', 'we_cylinder', 'hollow_box', 'fill'],
     dimensions: {
       small: { width: 25, height: 15, depth: 25 },
       medium: { width: 40, height: 20, depth: 40 },
-      large: { width: 60, height: 30, depth: 60 }
+      large: { width: 60, height: 30, depth: 60 },
+      massive: { width: 100, height: 50, depth: 100 },
+      colossal: { width: 150, height: 80, depth: 150 }
+    },
+    buildPhases: {
+      required: true,
+      phases: [
+        { name: 'silhouette', ops: ['we_walls', 'we_fill', 'we_cylinder', 'hollow_box', 'wall'] },
+        { name: 'secondary', ops: ['we_cylinder', 'fill', 'roof_gable'] },
+        { name: 'detail', ops: ['door', 'window_strip', 'set', 'stairs', 'balcony'] }
+      ]
     },
     materials: {
       styles: {
@@ -491,11 +521,21 @@ export const BUILD_TYPES = {
     name: 'Tree/Organic',
     keywords: ['tree', 'oak', 'birch', 'spruce', 'willow', 'cherry', 'bonsai', 'giant tree', 'world tree', 'jungle tree', 'dark oak'],
     description: 'Natural tree structure with trunk and canopy - supports multiple tree types',
-    primaryOperations: ['we_fill', 'fill', 'line', 'set'],  // REMOVED: we_cylinder, we_sphere (unnatural)
+    primaryOperations: ['we_sphere', 'we_cylinder', 'we_fill', 'fill', 'line', 'set'],
     dimensions: {
-      small: { width: 7, height: 10, depth: 7 },
-      medium: { width: 15, height: 25, depth: 15 },
-      large: { width: 30, height: 50, depth: 30 }
+      small: { width: 10, height: 15, depth: 10 },
+      medium: { width: 25, height: 40, depth: 25 },
+      large: { width: 50, height: 80, depth: 50 },
+      massive: { width: 80, height: 120, depth: 80 },
+      colossal: { width: 120, height: 180, depth: 120 }
+    },
+    buildPhases: {
+      required: true,
+      phases: [
+        { name: 'silhouette', ops: ['we_sphere', 'we_cylinder', 'we_fill', 'box', 'wall'] },
+        { name: 'secondary', ops: ['we_fill', 'fill', 'hollow_box'] },
+        { name: 'detail', ops: ['set', 'line', 'stairs', 'slab', 'door'] }
+      ]
     },
     materials: {
       styles: {
@@ -556,12 +596,13 @@ export const BUILD_TYPES = {
     features: ['trunk', 'branches', 'canopy', 'asymmetric_shape', 'natural_variation'],
     buildOrder: ['trunk (tapered)', 'primary_branches', 'secondary_branches', 'main_canopy', 'detail_leaves'],
     tips: [
-      'NEVER use we_sphere or we_cylinder - they create unnatural geometric shapes',
-      'Use we_fill for trunk sections and leaf volumes',
-      'Use line for individual branches',
-      'Randomize branch angles and lengths for natural look',
-      'Make canopy asymmetric (offset from center)',
-      'Vary leaf cluster sizes and positions'
+      'Use we_sphere for leaf clusters - layer multiple overlapping spheres for organic look',
+      'Use we_cylinder for trunk sections - taper radius from base to top',
+      'Build SILHOUETTE first with large volume ops, then add branches and details',
+      'Offset canopy clusters asymmetrically for natural appearance',
+      'Vary leaf cluster sizes and positions',
+      'For massive trees: use multiple overlapping spheres at different heights',
+      'Roots can use short cylinders or fills spreading from trunk base'
     ]
   },
 
@@ -984,20 +1025,25 @@ export function getRecommendedMaterials(buildType, style = null) {
 /**
  * Detect size modifier from prompt
  * @param {string} prompt - User's build request
- * @returns {Object} - { size: 'small'|'medium'|'large', matchedWord: string|null }
+ * @returns {Object} - { size: 'small'|'medium'|'large'|'massive'|'colossal', matchedWord: string|null }
  */
 export function detectSize(prompt) {
   const lowerPrompt = prompt.toLowerCase();
 
+  // Order matters: check more specific scales first
   const sizeKeywords = {
-    small: ['small', 'tiny', 'little', 'mini', 'simple', 'basic', 'compact', 'cozy'],
+    colossal: ['colossal', 'gigantic', 'epic', 'legendary', 'ancient', 'world tree', 'sky-high'],
+    massive: ['massive', 'huge', 'enormous', 'towering', 'soaring'],
+    large: ['large', 'big', 'giant', 'grand', 'detailed', 'elaborate', 'complex'],
     medium: ['medium', 'normal', 'standard', 'regular', 'average'],
-    large: ['large', 'big', 'huge', 'giant', 'massive', 'grand', 'epic', 'enormous', 'detailed', 'elaborate', 'complex']
+    small: ['small', 'tiny', 'little', 'mini', 'simple', 'basic', 'compact', 'cozy', 'miniature']
   };
 
-  for (const [size, keywords] of Object.entries(sizeKeywords)) {
+  // Check in priority order (colossal first, then massive, etc.)
+  for (const size of ['colossal', 'massive', 'large', 'medium', 'small']) {
+    const keywords = sizeKeywords[size];
     for (const keyword of keywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       if (regex.test(lowerPrompt)) {
         return { size, matchedWord: keyword };
       }

@@ -1,11 +1,11 @@
 {
-  "buildId": "e952a093-2501-477e-a319-c3d7935749b3",
-  "startedAt": "2026-01-28T17:11:54.658Z",
-  "lastUpdated": "2026-01-28T17:11:54.687Z",
+  "buildId": "ff7744d9-867c-4d2a-846d-af4580b02691",
+  "startedAt": "2026-01-29T14:50:42.343Z",
+  "lastUpdated": "2026-01-29T14:50:42.547Z",
   "startPos": {
-    "x": 0,
+    "x": 10,
     "y": 64,
-    "z": 0
+    "z": 10
   },
   "blueprint": {
     "size": {
@@ -29,6 +29,8 @@
   },
   "undoHistory": [],
   "worldEditHistory": [],
-  "status": "completed",
-  "completedAt": "2026-01-28T17:11:54.687Z"
+  "status": "failed",
+  "completedAt": "2026-01-29T14:50:42.504Z",
+  "failedAt": "2026-01-29T14:50:42.547Z",
+  "failureReason": "this.generateBuildReport is not a function"
 }

@@ -5,6 +5,8 @@ AI-powered Minecraft building assistant that safely converts natural language in
 ## Features
 
 - ✅ Natural language building commands
+- ✅ **Intent-based scaling** - "massive tree" (80-120 blocks), "colossal castle" (150+ blocks)
+- ✅ **Creative freedom** - Silhouette-first building with WorldEdit spheres/cylinders for organic shapes
 - ✅ Automated Pixel Art generation (deterministic RGB-to-block mapping)
 - ✅ Multi-stage LLM planning with safety validation
 - ✅ Schema-constrained generation (no hallucinated blocks)
@@ -142,6 +144,7 @@ Show available commands.
 Here are some example build commands:
 
 ```
+# Standard builds
 !build small wooden cottage with a red roof
 !build modern glass tower 20 blocks tall
 !build stone bridge 10 blocks long
@@ -149,6 +152,13 @@ Here are some example build commands:
 !build medieval watchtower with balcony
 !build pixel art charizard
 !build a statue of a dragon
+
+# Large-scale builds (with intent-based scaling)
+!build massive ancient oak tree          # 80-120 blocks tall
+!build colossal gothic castle            # 150+ blocks wide
+!build towering wizard tower             # 100+ blocks tall
+!build epic fantasy fortress             # Full-scale medieval complex
+!build legendary world tree              # Enormous organic structure
 ```
 
 ## Operations Reference
@@ -212,44 +222,48 @@ B.O.B uses a variety of operations to build structures efficiently. Operations a
 
 ### WorldEdit Operations (Requires Plugin)
 
-- **we_fill**: Large-scale fill (up to 50,000 blocks)
+- **we_fill**: Large-scale fill (up to 500,000 blocks)
   - Parameters: block, from {x,y,z}, to {x,y,z}, fallback {...}
-  - Limit: 50x50x50 max dimension per operation
+  - Limit: 250x250x250 max dimension per operation
 
 - **we_walls**: Creates hollow structures efficiently
   - Parameters: block, from {x,y,z}, to {x,y,z}, fallback {...}
-  - Limit: 50x50x50 max dimension per operation
+  - Limit: 250x250x250 max dimension per operation
 
 - **we_pyramid**: Creates pyramids or pyramid roofs
   - Parameters: block, base {x,y,z}, height, hollow (true/false), fallback {...}
-  - Limit: 50 block max height
+  - Limit: 250 block max height
 
-- **we_cylinder**: Creates cylindrical towers
+- **we_cylinder**: Creates cylindrical towers and tree trunks
   - Parameters: block, base {x,y,z}, radius, height, hollow, fallback {...}
-  - Limit: 25 block max radius (50 diameter), 50 block max height
+  - Limit: 125 block max radius (250 diameter)
+  - Great for: Tree trunks (taper radius from base to top), towers, pillars
 
-- **we_sphere**: Creates spherical domes
+- **we_sphere**: Creates spherical shapes and leaf clusters
   - Parameters: block, center {x,y,z}, radius, hollow, fallback {...}
-  - Limit: 25 block max radius (50 diameter)
+  - Limit: 125 block max radius (250 diameter)
+  - Great for: Tree canopy clusters, domes, organic shapes
 
 - **we_replace**: Replaces blocks in region
   - Parameters: from {x,y,z}, to {x,y,z}, fromBlock, toBlock
-  - Limit: 50x50x50 max dimension per operation
+  - Limit: 250x250x250 max dimension per operation
 
 ## Safety Features
 
-B.O.B includes multiple safety mechanisms:
+B.O.B includes multiple safety mechanisms while maximizing creative freedom:
 
 - **Block Allowlist**: Only uses blocks explicitly mentioned in the design plan
 - **JSON Schema Validation**: Ensures all outputs match expected structure
-- **Coordinate Bounds Checking**: Prevents out-of-bounds placements for all coordinate types (from, to, pos, base, center)
-- **Volume Limits**: Maximum 30,000 blocks per build
-- **Step Limits**: Maximum 1,000 operations per blueprint
+- **Coordinate Bounds Checking**: Prevents out-of-bounds placements for all coordinate types
+- **Hard Height Limit**: 256 blocks (Minecraft world ceiling) - enforced as error
+- **Soft Dimension Limits**: Width/depth over 300 blocks generates warnings (not errors)
+- **Step Limits**: Maximum 2,000 operations per blueprint (prevents infinite loops)
 - **Rate Limiting**: 50 blocks per second to prevent server lag
 - **Undo Support**: Full build history with one-command rollback
-- **WorldEdit Limits**: 50k blocks per selection, 100 commands per build, 50x50x50 max dimensions
+- **WorldEdit Limits**: 500k blocks per selection, 200 commands per build
 - **Error Classification**: Detailed error messages with suggested fixes for WorldEdit failures
 - **Fallback Tracking**: Automatic fallback to vanilla with detailed logging
+- **Build Metrics**: Full observability with dimensions, block counts, and WorldEdit usage
 
 ## Project Structure
 
@@ -379,30 +393,48 @@ Performance comparison:
 - **Typical house (500 blocks)**: 10 seconds (vanilla) vs <1 second (WorldEdit)
 - **Large castle (10,000 blocks)**: 3-4 minutes (vanilla) vs 5-10 seconds (WorldEdit)
 
-## Limitations
+## Capabilities & Limits
+
+### Intent-Based Scaling
+B.O.B supports natural language scale descriptors:
+| Descriptor | Size Range | Example |
+|------------|-----------|---------|
+| tiny/mini | 5-15 blocks | "tiny bonsai tree" |
+| small | 10-25 blocks | "small cottage" |
+| medium | 20-50 blocks | "house" (default) |
+| large | 40-80 blocks | "large castle" |
+| massive | 60-120 blocks | "massive oak tree" |
+| towering | 80-150 blocks | "towering wizard tower" |
+| colossal | 100-200+ blocks | "colossal fortress" |
 
 ### Vanilla Mode (without WorldEdit)
-- Maximum build size: 100x256x100 blocks
-- Maximum unique blocks: 15 per build
-- Maximum total blocks: 30,000
-- Maximum steps: 1,000 operations
+- Maximum build size: 2000x256x2000 blocks (soft limit, warnings only)
+- Maximum unique blocks: 30 per build
+- Maximum total blocks: 5,000,000
+- Maximum steps: 2,000 operations
 - Build rate: ~50 blocks/second
 - Chat command min delay: 500ms between commands
 - Requires line-of-sight and proximity for block placement (Mineflayer limitation)
 
 ### WorldEdit Mode (recommended)
-- Maximum build size: 100x256x100 blocks (overall structure)
-- Maximum WorldEdit selection: 50x50x50 blocks per operation
-- Maximum WorldEdit selection volume: 50,000 blocks per command
-- Maximum WorldEdit commands: 100 per build
+- Maximum build size: 2000x256x2000 blocks (soft limit)
+- Maximum WorldEdit selection: 250x250x250 blocks per operation
+- Maximum WorldEdit selection volume: 500,000 blocks per command
+- Maximum WorldEdit commands: 200 per build
 - WorldEdit command rate limit: 200ms minimum delay between commands
 - Build rate: ~25,000 blocks/second for large operations
 - Automatic fallback to vanilla if WorldEdit unavailable
 - Adaptive throttling on spam detection (increases delays up to 4x)
+- **Sphere/Cylinder support**: Perfect for organic builds (trees, towers)
 
-### General Limitations
+### Hard Limits (Safety)
+- Height: 256 blocks (Minecraft world ceiling)
+- Invalid block names are rejected
+- Step count enforced to prevent infinite loops
+
+### General Notes
 - Requires OP permissions or specific WorldEdit permissions
-- Complex organic shapes (curves, custom terrain) have limited support
+- **Organic shapes fully supported** with we_sphere and we_cylinder
 - Interior decoration not automated (furniture, lighting, etc.)
 - Quality validation requires 70% minimum score for feature completeness
 

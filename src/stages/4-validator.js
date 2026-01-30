@@ -540,16 +540,24 @@ function validateBuildTypeOperations(blueprint, analysis) {
 }
 
 /**
- * Validate coordinate bounds
+ * Check if coordinate is within bounds, with auto-expansion for slight overflows
  */
 function validateCoordinateBounds(blueprint, analysis) {
   const errors = [];
   const dimensions = blueprint.size || analysis?.hints?.dimensions;
+
   if (!dimensions) {
     errors.push('Missing blueprint size for bounds validation');
     return errors;
   }
-  const { width, depth, height } = dimensions;
+
+  // Track max observed coordinates
+  let maxX = dimensions.width;
+  let maxY = dimensions.height;
+  let maxZ = dimensions.depth;
+  let expanded = false;
+
+  const MAX_EXPANSION = 10; // Allow 10% or fixed block expansion
 
   for (let i = 0; i < (blueprint.steps || []).length; i++) {
     const step = blueprint.steps[i];
@@ -558,34 +566,58 @@ function validateCoordinateBounds(blueprint, analysis) {
     const coordKeys = ['from', 'to', 'pos', 'base', 'center'];
     for (const key of coordKeys) {
       if (step[key]) {
-        if (!isWithinBounds(step[key], width, height, depth)) {
-          errors.push(`Step ${i}: '${key}' coordinate out of bounds`);
+        if (step[key].x >= maxX) {
+          if (step[key].x < maxX + MAX_EXPANSION) { maxX = step[key].x + 1; expanded = true; }
+          else errors.push(`Step ${i}: '${key}.x' out of bounds (${step[key].x} >= ${dimensions.width})`);
         }
+        if (step[key].y >= maxY) {
+          if (step[key].y < maxY + MAX_EXPANSION) { maxY = step[key].y + 1; expanded = true; }
+          else errors.push(`Step ${i}: '${key}.y' out of bounds (${step[key].y} >= ${dimensions.height})`);
+        }
+        if (step[key].z >= maxZ) {
+          if (step[key].z < maxZ + MAX_EXPANSION) { maxZ = step[key].z + 1; expanded = true; }
+          else errors.push(`Step ${i}: '${key}.z' out of bounds (${step[key].z} >= ${dimensions.depth})`);
+        }
+
+        // Also check negatives (impossible in standard blueprints, but good safety)
+        if (step[key].x < 0) errors.push(`Step ${i}: '${key}.x' negative`);
+        if (step[key].y < 0) errors.push(`Step ${i}: '${key}.y' negative`);
+        if (step[key].z < 0) errors.push(`Step ${i}: '${key}.z' negative`);
       }
     }
 
-    // Check fallback coordinates if present
+    // Check fallback coordinates
     if (step.fallback) {
       for (const key of coordKeys) {
         if (step.fallback[key]) {
-          if (!isWithinBounds(step.fallback[key], width, height, depth)) {
-            errors.push(`Step ${i} fallback: '${key}' coordinate out of bounds`);
+          // Logic repeated for fallback, or just skip strict bounds on fallback if purely recovery? 
+          // Better to enforce bounds but allow expansion
+          if (step.fallback[key].x >= maxX) {
+            if (step.fallback[key].x < maxX + MAX_EXPANSION) { maxX = step.fallback[key].x + 1; expanded = true; }
+            else errors.push(`Step ${i} fallback: '${key}.x' out of bounds`);
+          }
+          if (step.fallback[key].y >= maxY) {
+            if (step.fallback[key].y < maxY + MAX_EXPANSION) { maxY = step.fallback[key].y + 1; expanded = true; }
+            else errors.push(`Step ${i} fallback: '${key}.y' out of bounds`);
+          }
+          if (step.fallback[key].z >= maxZ) {
+            if (step.fallback[key].z < maxZ + MAX_EXPANSION) { maxZ = step.fallback[key].z + 1; expanded = true; }
+            else errors.push(`Step ${i} fallback: '${key}.z' out of bounds`);
           }
         }
       }
     }
   }
 
-  return errors;
-}
+  // If we expanded safely, update the blueprint dimensions
+  if (expanded && errors.length === 0) {
+    if (DEBUG) console.log(`Auto-expanded blueprint size from ${dimensions.width}x${dimensions.height}x${dimensions.depth} to ${maxX}x${maxY}x${maxZ}`);
+    blueprint.size.width = maxX;
+    blueprint.size.height = maxY;
+    blueprint.size.depth = maxZ;
+  }
 
-/**
- * Check if coordinate is within bounds
- */
-function isWithinBounds(coord, width, height, depth) {
-  return coord.x >= 0 && coord.x < width &&
-    coord.y >= 0 && coord.y < height &&
-    coord.z >= 0 && coord.z < depth;
+  return errors;
 }
 
 /**
@@ -636,33 +668,41 @@ function validateFeatures(blueprint, analysis) {
 
 /**
  * Validate volume and step count limits
+ * NOTE: Width/depth limits are converted to warnings to allow creative freedom
+ * Only height > 256 (Minecraft world limit) and step count remain as hard errors
  */
 function validateLimits(blueprint) {
   const errors = [];
+  const warnings = [];
 
-  // Check step count (rough proxy for complexity)
+  // Check step count (rough proxy for complexity) - KEEP AS ERROR (safety)
   if ((blueprint.steps || []).length > SAFETY_LIMITS.maxSteps) {
     errors.push(`Too many steps (>${SAFETY_LIMITS.maxSteps})`);
   }
 
-  // Check total volume
+  // Check total volume - CONVERT TO WARNING for creative freedom
   const { width, height, depth } = blueprint.size || {};
   if (width && height && depth) {
     const volume = width * height * depth;
     if (volume > SAFETY_LIMITS.maxBlocks) {
-      errors.push(`Volume exceeds limit (${volume} > ${SAFETY_LIMITS.maxBlocks})`);
+      warnings.push(`Large build volume: ${volume.toLocaleString()} blocks (limit: ${SAFETY_LIMITS.maxBlocks.toLocaleString()})`);
     }
   }
 
   // Check dimension bounds
+  // WIDTH - CONVERT TO WARNING (allow creative large builds)
   if (width && width > SAFETY_LIMITS.maxWidth) {
-    errors.push(`Width exceeds limit (${width} > ${SAFETY_LIMITS.maxWidth})`);
+    warnings.push(`Wide build: ${width} blocks (soft limit: ${SAFETY_LIMITS.maxWidth})`);
   }
+
+  // DEPTH - CONVERT TO WARNING (allow creative large builds)
   if (depth && depth > SAFETY_LIMITS.maxDepth) {
-    errors.push(`Depth exceeds limit (${depth} > ${SAFETY_LIMITS.maxDepth})`);
+    warnings.push(`Deep build: ${depth} blocks (soft limit: ${SAFETY_LIMITS.maxDepth})`);
   }
+
+  // HEIGHT - KEEP AS ERROR (Minecraft world hard limit is 256)
   if (height && height > SAFETY_LIMITS.maxHeight) {
-    errors.push(`Height exceeds limit (${height} > ${SAFETY_LIMITS.maxHeight})`);
+    errors.push(`Height exceeds Minecraft world limit (${height} > ${SAFETY_LIMITS.maxHeight})`);
   }
 
   // Check palette size - handle both array and object formats
@@ -672,8 +712,17 @@ function validateLimits(blueprint) {
       : Object.keys(blueprint.palette).length;
 
     if (paletteSize > SAFETY_LIMITS.maxUniqueBlocks) {
-      errors.push(`Too many unique blocks in palette (${paletteSize} > ${SAFETY_LIMITS.maxUniqueBlocks})`);
+      warnings.push(`Large palette: ${paletteSize} unique blocks (limit: ${SAFETY_LIMITS.maxUniqueBlocks})`);
     }
+  }
+
+  // Log warnings but don't fail validation
+  if (warnings.length > 0 && DEBUG) {
+    console.log('┌─────────────────────────────────────────────────────────');
+    console.log('│ VALIDATOR: Dimension Warnings (not errors)');
+    console.log('├─────────────────────────────────────────────────────────');
+    warnings.forEach(w => console.log(`│ ⚠ ${w}`));
+    console.log('└─────────────────────────────────────────────────────────');
   }
 
   return errors;

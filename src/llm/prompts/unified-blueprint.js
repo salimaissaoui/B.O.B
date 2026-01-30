@@ -3,6 +3,8 @@
  * Single LLM call for complete executable blueprint
  */
 
+import { getCharacterPalettePrompt } from '../../config/character-palettes.js';
+
 /**
  * Check if this is a creative build type where LLM has block freedom
  */
@@ -14,111 +16,123 @@ function isCreativeBuild(buildType) {
  * Get build type-specific guidance
  */
 function getBuildTypeGuidance(buildType, hints) {
+  const isMassive = hints.size === 'massive' || hints.size === 'colossal' || hints.size === 'large';
+
+  const massiveGuidance = isMassive ? `
+=== MASSIVE SCALE ENABLED ===
+- You are authorized to build HUGE structures (50-100+ blocks).
+- USE WorldEdit operations (we_sphere, we_cylinder, we_fill, we_walls) for main shapes.
+- Do NOT build small boxy structures. Think grand scale.
+` : '';
+
+  // Universal design principles for visually impressive builds
+  const designPrinciples = `
+=== ARCHITECTURAL DESIGN PRINCIPLES (MANDATORY) ===
+1. DEPTH & LAYERING: Never flat walls. Add pillars, recesses, overhangs.
+2. MATERIAL VARIETY: Use 3-5 block types. Primary(60%), Secondary(25%), Accent(15%).
+3. PROPORTIONS: Roof ~1/3 height, windows ~1/4 wall height, pillars tapered.
+4. DECORATIVE DETAILS: Lanterns, flower pots, banners, shutters (trapdoors).
+5. NO PLAIN BOXES: Every surface needs visual interest.
+`;
+
   const guidance = {
     pixel_art: `
 === PIXEL ART BUILD ===
-⚠️ CRITICAL: You MUST use the "pixel_art" operation. Do NOT use fill/hollow_box/set operations.
-
-- SIZE LIMIT: Maximum 64x64 pixels. Keep it simple and iconic.
+⚠️ CRITICAL: You MUST use the "pixel_art" operation.
+- SIZE: Use 32x32 to 64x64 for detail.
 - VISUALIZATION: Imagine the sprite as ASCII art first.
 - ROW 0 is TOP of image. All rows MUST have the SAME length.
 - COMPRESSED FORMAT (REQUIRED):
-  - Output 'grid' as an array of strings (e.g. ["...###...", "...#O#..."])
+  - Output 'grid' as an array of strings
   - Output 'legend' object mapping chars to blocks
-- LEGEND (REQUIRED):
-  - '.' = air (transparent background)
+- LEGEND:
+  - '.' = air (transparent)
   - '#' = black_wool (outlines)
-  - Use single chars for all colors (O, Y, R, W, B, etc.)
-- CRITICAL: Every row must be the exact same length. Pad with '.' if needed.
-- OPERATION FORMAT:
-  {
-    "op": "pixel_art",
-    "base": {"x": 0, "y": 0, "z": 0},
-    "facing": "south",
-    "grid": ["row0", "row1", ...],
-    "legend": {".": "air", "#": "black_wool", ...}
-  }
+  - Use ANY block that matches the color (Concrete, Terracotta, Gold, etc.)
 `,
 
     statue: `
 === 3D STATUE BUILD ===
-- Use box for body volumes (solid structures)
-- Use wall for hollow volumes (if needed)
+${massiveGuidance}
 - Build from bottom up: base → body → limbs → head → details
-- Choose colors that match the character/subject
+- Use we_sphere/we_cylinder for organic shapes (muscles, head, limbs)
 - Use move operations to position each part relative to cursor
 `,
 
     tree: `
 === TREE BUILD ===
-BUILD A BEAUTIFUL ORGANIC TREE with these steps:
+${massiveGuidance}
+BUILD A NATURAL, ORGANIC TREE:
+1. TRUNK:
+   - Use we_cylinder (tapered radius) or solid box/we_fill
+   - Root base should be wider than top
 
-1. TRUNK (bottom to top):
-   - Use box for trunk sections
-   - Trunk should be 2-4 blocks wide at base, tapering to 1-2 at top
-   - Oak log for oak trees, spruce log for spruce, etc.
-   - Height: 8-15 blocks for medium tree, 15-25 for large
+2. BRANCHES:
+   - Angled outward from trunk
+   - Use we_cylinder or heavy lines
 
-2. MAIN BRANCHES (from trunk):
-   - Use box operations angled outward from trunk
-   - 3-5 main branches per tree
-   - Branches should be 1-2 blocks thick
-   - Offset each branch at different Y levels and directions
-
-3. CANOPY (leaves):
-   - Use multiple overlapping box operations
-   - Create 3-4 leaf clusters at different positions
-   - Each cluster: roughly spherical 4-7 blocks diameter
-   - Offset clusters so canopy looks natural, NOT perfectly symmetric
-   - Use oak_leaves, spruce_leaves, etc. matching the wood type
-
-4. ROOTS (optional for large trees):
-   - Use box for exposed roots at base spreading outward
-
-EXAMPLE OPERATIONS for a "big beautiful oak tree":
-  {"op": "box", "size": {"x": 2, "y": 12, "z": 2}, "block": "$primary"},
-  {"op": "move", "offset": {"x": 0, "y": 8, "z": 0}},
-  {"op": "box", "size": {"x": 4, "y": 1, "z": 1}, "block": "$primary"},
-  {"op": "box", "size": {"x": 10, "y": 5, "z": 10}, "block": "$secondary"}
+3. CANOPY (Leaves):
+   - CRITICAL: Use we_sphere for leaf clusters!
+   - Overlap multiple spheres for irregular, organic look
+   - Do NOT use a single box.
 `,
 
     house: `
-=== HOUSE BUILD ===
-- Foundation: box at ground level
-- Walls: wall operation (hollow box)
-- Door: door operation (auto creates 2-block tall)
-- Windows: window_strip for rows
-- Roof: roof_gable or roof_hip
-- Add details: porch, chimney, window frames
+=== HOUSE/MANSION BUILD ===
+${massiveGuidance}
+${designPrinciples}
+STRUCTURE:
+- Foundation: Stone base extending 1 block beyond walls
+- Walls: we_walls with pillar corners (oak_log or stone_bricks)
+- Roof: roof_gable with 1-2 block overhang
+DETAILS (required):
+- Porch with fence railings
+- Window frames (trapdoors/stairs)
+- Chimney with cobblestone + campfire
+- Flower boxes (trapdoors + flowers)
 `,
 
     castle: `
-=== CASTLE BUILD ===
-- Outer walls: wall operation or we_walls
-- Corner towers: we_cylinder or wall (hollow box)
-- Gatehouse: wall + door
-- Battlements: alternating blocks on wall tops
-- Keep: central building with roof
+=== CASTLE/FORTRESS BUILD ===
+${massiveGuidance}
+- Walls: we_walls or we_fill
+- Towers: we_cylinder (hollow) + roof cone (we_pyramid or manual)
+- Gatehouse: Massive entrance with doors
+- Keep: Central fortified structure
+- Battlements: Crenellations on top of walls
 `,
 
     tower: `
 === TOWER BUILD ===
-- Base foundation: box
-- Shaft: wall (hollow) or we_cylinder (hollow)
-- Interior: spiral_staircase (REQUIRED)
-- Windows: window_strip at regular intervals
-- Top: roof_gable or battlements
+${massiveGuidance}
+${designPrinciples}
+- Shaft: we_cylinder (hollow) or octagonal we_walls
+- Interior: spiral_staircase (central)
+- Levels: Multiple floors with windows
+- Top: Spire (we_pyramid), dome (we_sphere), or battlements
+`,
+
+    modern: `
+=== MODERN ARCHITECTURE ===
+${massiveGuidance}
+${designPrinciples}
+MODERN STYLE RULES:
+- Clean geometric shapes with asymmetric composition
+- Large glass facades (glass_pane walls, NOT scattered small windows)
+- Materials: white_concrete, quartz_block, glass, black_concrete trim
+- Cantilevered sections (overhangs without visible supports)
+- Flat or angular roofs with edge trim
+- NO traditional elements (no chimneys, no peaked roofs)
 `
   };
 
   return guidance[buildType] || `
 === STANDARD BUILD ===
-- Foundation → Walls → Features → Roof → Details
-- Use wall for hollow structures
-- Use box for solid volumes
-- Use door operation for doors
-- Use window_strip for windows
-- Use appropriate roof operation
+${massiveGuidance}
+${designPrinciples}
+- Create the structure with visual appeal
+- Use appropriate materials for the theme
+- Add decorative details and layering
 `;
 }
 
@@ -264,8 +278,8 @@ ${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it look good!'}
 /**
  * Main unified blueprint prompt
  */
-export function unifiedBlueprintPrompt(analysis, worldEditAvailable) {
-  const { userPrompt, buildType, theme, hints, quality } = analysis;
+export function unifiedBlueprintPrompt(analysis, worldEditAvailable, hasImage = false) {
+  const { userPrompt, buildType, theme, hints, quality, character } = analysis;
 
   const themeName = theme?.name || 'default';
   const themeSection = theme ? `
@@ -281,8 +295,21 @@ Theme materials:
   const qualitySection = getQualityGuidance(quality);
   const creativeBuild = isCreativeBuild(buildType);
 
+  // NEW: Character palette injection
+  const characterSection = getCharacterPalettePrompt(character);
+
+  const imageInstruction = hasImage ? `
+=== VISUAL ANALYSIS MODE ===
+An image has been provided.
+1. ANALYZE the image to understand the architectural style, proportions, and materials.
+2. REPLICATE the structure in the image as closely as possible using available blocks.
+3. IGNORE generic style rules if they conflict with the image.
+` : '';
+
   return `
 You are an expert Minecraft architect. Build: "${userPrompt}"
+${imageInstruction}
+${characterSection}
 
 BUILD TYPE: ${buildType.toUpperCase()}
 ${themeSection}
@@ -298,11 +325,24 @@ ${getBuildTypeGuidance(buildType, hints)}
 
 === BLOCK SELECTION (YOU DECIDE) ===
 ${creativeBuild ? `
-CREATIVE BUILD - Full Freedom:
+CREATIVE BUILD - AESTHETIC EXCELLENCE REQUIRED:
+${character ? '(Character palette provided above - USE IT!)' : `
 - Starting suggestions: ${hints.materials.primary}, ${hints.materials.secondary}
-- You may use ANY valid Minecraft 1.20.1 blocks
 - Choose colors/materials that best represent: "${userPrompt}"
-- Be creative! Don't limit yourself to suggested blocks
+`}
+
+=== AESTHETIC GUIDELINES ===
+BLOCK PRIORITY (in order of preference):
+1. CONCRETE - Smooth, vibrant, premium look. Use for main colors.
+2. TERRACOTTA - Muted, earthy tones. Use for skin, shading, browns.
+3. WOOL - Only when texture variety needed. Avoid mixing with concrete for same color.
+
+AVOID:
+- Mixing wool + concrete for the same color (inconsistent look)
+- Using dull blocks (dirt, cobblestone) for vibrant subjects
+- Default gray/stone when colorful blocks exist
+
+THINK PREMIUM: Would this look good in a Minecraft build showcase?
 ` : `
 STRUCTURED BUILD - Material Recommendations:
 - Primary: ${hints.materials.primary} (walls)
@@ -313,12 +353,42 @@ STRUCTURED BUILD - Material Recommendations:
 - You may adjust materials to fit the design
 `}
 
-=== DIMENSIONS (ADAPTIVE SCALING) ===
-Determine the natural size needed for high detail:
-- Simple objects (e.g. apple, ball): 16x16 - 32x32
-- Complex objects (e.g. dragon, castle): 48x48 - 80x80
-- Max Limit: 100x100x100 (Safety Cap)
-- DO NOT artificially squash the build. Use the space needed for quality.
+=== DIMENSIONS (INTENT-BASED SCALING) ===
+Scale based on user intent - bigger is often better for impressive builds:
+- "tiny/small" builds: 10-25 blocks
+- "medium/normal" builds: 25-50 blocks
+- "large/big" builds: 50-80 blocks
+- "massive/huge" builds: 80-120 blocks
+- "colossal/epic/legendary" builds: 120-200+ blocks
+- ONLY hard limit: height ≤ 256 (Minecraft world ceiling)
+- DO NOT artificially constrain yourself based on "typical" Minecraft builds
+
+=== CREATIVE FREEDOM CLAUSE ===
+PRIORITIZE VISUAL IMPACT over simplicity:
+- SILHOUETTE FIRST: Build overall shape/mass before any details
+- SCALE MATTERS: Bigger is often better for impressive builds
+- ASYMMETRY IS BEAUTIFUL: Avoid perfect symmetry for organic builds
+- NEGATIVE SPACE: Use air gaps, overhangs, recesses for depth
+- EXAGGERATED PROPORTIONS: Taller towers, wider bases, dramatic angles
+- DO NOT limit yourself based on old conventions - be creative!
+
+=== MANDATORY BUILD PHASES ===
+You MUST build in this order:
+
+PHASE 1 - SILHOUETTE (~40% of operations):
+- Establish overall shape and mass
+- Use: we_sphere, we_cylinder, we_fill, box, wall
+- This defines the build's profile from a distance
+
+PHASE 2 - SECONDARY FORMS (~35% of operations):
+- Major features and structural elements
+- Use: we_fill, fill, hollow_box
+- Branches, towers, major protrusions
+
+PHASE 3 - DETAILS (~25% of operations):
+- Fine details and finishing
+- Use: set, line, stairs, slab
+- Windows, doors, trim, decorations
 
 ${getWorldEditGuidance(worldEditAvailable)}
 
@@ -366,14 +436,50 @@ Example structure:
   ]
 }
 
-CRITICAL RULES:
-- Prefer "box", "wall", "outline" for structural elements
-- USE "pixel_art" operation for 2D sprites/images (MANDATORY for pixel_art buildType)
-- Use "$variables" for blocks whenever possible
-- Use "move" to position cursor before operations
-- All coordinates are relative to CURSOR position
-- Output ONLY valid JSON
-- For pixel_art: ALL rows must have EXACTLY the same length
+CRITICAL CONSTRAINTS – MUST FOLLOW:
+
+1. VALID OPERATIONS ONLY (use EXACTLY these names):
+   box, wall, outline, move, cursor_reset, pixel_art, 
+   we_fill, we_walls, we_sphere, we_cylinder, we_pyramid,
+   door, window_strip, roof_gable, roof_hip, roof_flat,
+   smart_wall, smart_floor, smart_roof, spiral_staircase,
+   set, line, fill, hollow_box, balcony, fence_connect, site_prep
+   
+   ❌ WRONG: "walls" (use "we_walls" or "wall")
+   ❌ WRONG: "cylinder" (use "we_cylinder")
+   ❌ WRONG: "pyramid" (use "we_pyramid")
+
+2. COORDINATES MUST BE >= 0:
+   All from.x, from.y, from.z, to.x, to.y, to.z, pos.x, etc. MUST be zero or positive.
+   Build origin (0,0,0) is the player's position.
+   ❌ WRONG: {"from": {"x": -5, "y": 0, "z": 0}}
+   ✅ RIGHT: {"from": {"x": 0, "y": 0, "z": 0}}
+
+3. USE SIZE OR FROM/TO – NOT BOTH:
+   Universal ops (box, wall) use "size" or "from"/"to", not both.
+
+4. REQUIRED PARAMS PER OPERATION:
+   - box/wall/outline: size OR (from + to), block
+   - we_sphere: center, radius, block, hollow
+   - we_cylinder: base, radius, height, block, hollow
+   - we_pyramid: base, height, block, hollow  
+   - we_fill/we_walls: from, to, block
+   - pixel_art: base, grid, legend, facing
+   - door: pos, block, facing
+   - window_strip: from, to, block
+   - roof_*: from, to, block (+ direction for gable)
+
+5. OUTPUT FORMAT:
+   - Output ONLY valid JSON (no markdown)
+   - For pixel_art: ALL rows must have EXACTLY the same length
+   - Use "$primary", "$secondary" etc. for themed blocks
+
+6. EFFICIENCY – FEWER OPERATIONS IS BETTER:
+   - Prefer ONE large we_fill over MANY small set operations
+   - Use we_sphere/we_cylinder for organic shapes, not many boxes
+   - Use we_walls for hollow structures, not 4 separate wall ops
+   - A good build has 10-50 operations, not 500+
+   - ALWAYS use WorldEdit ops (we_*) for volumes > 10 blocks
 `;
 }
 

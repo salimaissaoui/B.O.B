@@ -18,21 +18,21 @@
 import { optimize2DRectangles, detectPlane } from './greedy-rectangles.js';
 
 export function optimizeBlockGroups(blocks, minBatchSize = 5, options = {}) {
-  // Check if blocks form a 2D plane (pixel art optimization)
-  if (options.use2DOptimization !== false && blocks.length > 10) {
-    const plane = detectPlane(blocks);
-    const zSet = new Set(blocks.map(b => b.z));
-    const ySet = new Set(blocks.map(b => b.y));
-    const xSet = new Set(blocks.map(b => b.x));
+    // Check if blocks form a 2D plane (pixel art optimization)
+    if (options.use2DOptimization !== false && blocks.length > 20) {
+        const plane = detectPlane(blocks);
+        const zSet = new Set(blocks.map(b => b.z));
+        const ySet = new Set(blocks.map(b => b.y));
+        const xSet = new Set(blocks.map(b => b.x));
 
-    // If one axis is constant, use 2D rectangle optimization
-    if (zSet.size === 1 || ySet.size === 1 || xSet.size === 1) {
-      return optimize2DRectangles(blocks, plane);
+        // If one axis is constant, use 2D rectangle optimization
+        if (zSet.size === 1 || ySet.size === 1 || xSet.size === 1) {
+            return optimize2DRectangles(blocks, plane);
+        }
     }
-  }
 
-  // Fall through to standard 1D optimization
-  return optimizeBlockGroups1D(blocks, minBatchSize);
+    // Fall through to standard 1D optimization
+    return optimizeBlockGroups1D(blocks, minBatchSize);
 }
 
 function optimizeBlockGroups1D(blocks, minBatchSize = 5) {

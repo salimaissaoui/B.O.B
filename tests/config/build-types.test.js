@@ -359,10 +359,20 @@ describe('detectSize', () => {
   
   test('detects large size', () => {
     expect(detectSize('build a large house').size).toBe('large');
-    expect(detectSize('make a huge castle').size).toBe('large');
     expect(detectSize('create a giant tower').size).toBe('large');
-    expect(detectSize('build an epic fortress').size).toBe('large');
-    expect(detectSize('make a massive palace').size).toBe('large');
+    expect(detectSize('build a big castle').size).toBe('large');
+  });
+
+  test('detects massive size', () => {
+    expect(detectSize('make a huge castle').size).toBe('massive');
+    expect(detectSize('make a massive palace').size).toBe('massive');
+    expect(detectSize('build an enormous tree').size).toBe('massive');
+  });
+
+  test('detects colossal size', () => {
+    expect(detectSize('build an epic fortress').size).toBe('colossal');
+    expect(detectSize('create a legendary castle').size).toBe('colossal');
+    expect(detectSize('build a colossal tree').size).toBe('colossal');
   });
   
   test('defaults to medium when no size specified', () => {
@@ -427,10 +437,10 @@ describe('analyzePrompt', () => {
   
   test('returns complete analysis for complex prompt', () => {
     const analysis = analyzePrompt('build a huge gothic castle');
-    
+
     expect(analysis.type.type).toBe('castle');
     expect(analysis.theme.theme).toBe('gothic');
-    expect(analysis.size.size).toBe('large');
+    expect(analysis.size.size).toBe('massive'); // 'huge' now maps to 'massive' scale
     expect(analysis.materials.primary).toBe('deepslate_bricks');
     expect(analysis.features).toContain('tall_spires'); // Theme feature
     expect(analysis.features).toContain('outer_walls'); // Type feature

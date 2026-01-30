@@ -340,7 +340,7 @@ const DEFAULT_LIMITS = {
     commandRateLimit: 10,
 
     /**
-     * Minimum delay between WorldEdit commands (milliseconds) (default: 200)
+     * Minimum delay between WorldEdit commands (milliseconds) (default: 400)
      *
      * Fixed delay between sequential WorldEdit commands.
      * Complements commandRateLimit for fine-grained control.
@@ -351,16 +351,16 @@ const DEFAULT_LIMITS = {
      * - Connection resets (ECONNRESET) from command flooding
      *
      * Recommended ranges:
-     * - Fast server: 100-200ms
-     * - Medium server: 200-500ms
-     * - Slow server: 500-1000ms
+     * - Fast server: 200-300ms
+     * - Medium server: 400-600ms
+     * - Slow server: 600-1000ms
      *
      * Impact: Directly affects build time (N commands * delay = total time)
      */
-    commandMinDelayMs: 250,
+    commandMinDelayMs: 400,
 
     /**
-     * Maximum total WorldEdit commands per build (default: 500)
+     * Maximum total WorldEdit commands per build (default: 2000)
      *
      * Safety limit to prevent runaway blueprint execution.
      *
@@ -368,10 +368,11 @@ const DEFAULT_LIMITS = {
      * - Small build: 10-50 commands
      * - Medium build: 50-200 commands
      * - Large build: 200-500 commands
+     * - Massive build: 500-2000 commands
      *
      * Impact if exceeded: Build execution fails with error
      */
-    maxCommandsPerBuild: 500,
+    maxCommandsPerBuild: 2000,
 
     /**
      * Auto-fallback to vanilla on WorldEdit error (default: true)
@@ -410,8 +411,39 @@ const DEFAULT_LIMITS = {
       'worldedit.selection',
       'worldedit.region.set',
       'worldedit.region.walls'
-    ]
+    ],
+
+    /**
+     * Delay after site clearing before build starts (milliseconds) (default: 500)
+     *
+     * Safety buffer to ensure WorldEdit server-side processing completes
+     * before block placement begins. Prevents race conditions where
+     * blocks are placed before the area is fully cleared.
+     *
+     * Increase this value on slower servers or if builds start
+     * before clearing visually completes.
+     *
+     * Impact: Adds delay to build start time, improves reliability
+     */
+    postClearDelayMs: 500
   },
+
+  /**
+   * Maximum percentage of failed blocks before aborting build (default: 25)
+   *
+   * If more than this percentage of blocks fail to place (unreachable,
+   * permission denied, etc.), the build aborts to prevent "broken" structures.
+   *
+   * Set to 100 to disable abort threshold (continue regardless of failures).
+   *
+   * Recommended ranges:
+   * - Strict: 10% (abort early on issues)
+   * - Normal: 25% (allow some failures)
+   * - Lenient: 50% (allow partial builds)
+   *
+   * Impact: Lower values abort builds faster on failure, higher values allow partial completion
+   */
+  maxFailedBlocksPercent: 25,
 
   /**
    * Minimum quality score for blueprint acceptance (default: 0.7 = 70%)
@@ -509,6 +541,7 @@ function mergeExternalConfig(defaults, external) {
     if (external.limits.maxBlocks !== undefined) merged.maxBlocks = external.limits.maxBlocks;
     if (external.limits.maxSteps !== undefined) merged.maxSteps = external.limits.maxSteps;
     if (external.limits.maxUniqueBlocks !== undefined) merged.maxUniqueBlocks = external.limits.maxUniqueBlocks;
+    if (external.limits.maxFailedBlocksPercent !== undefined) merged.maxFailedBlocksPercent = external.limits.maxFailedBlocksPercent;
   }
 
   if (external.performance) {
@@ -539,3 +572,9 @@ function mergeExternalConfig(defaults, external) {
 
 // Export merged configuration
 export const SAFETY_LIMITS = mergeExternalConfig(DEFAULT_LIMITS, externalConfig);
+
+/**
+ * Intent-based scale mapping for dimension scaling
+ * Re-exported from creative-scales.js for convenience
+ */
+export { INTENT_SCALE_MAP } from './creative-scales.js';

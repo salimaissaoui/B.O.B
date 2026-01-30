@@ -15,6 +15,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SPRITE_SOURCES, isSourceConfigured } from '../config/sprite-sources.js';
+import { quickBlockCleanup } from './palette-optimizer.js';
 
 /**
  * Search for a sprite reference image using PokeAPI
@@ -23,7 +24,10 @@ import { SPRITE_SOURCES, isSourceConfigured } from '../config/sprite-sources.js'
  */
 async function searchPokeAPI(subject) {
     try {
-        const pokemonName = subject.toLowerCase().replace(/[^a-z0-9]/g, '');
+        // PokeAPI uses lowercase with hyphens for special names (ho-oh, mime-jr, etc.)
+        // Only remove characters that aren't letters, numbers, or hyphens
+        const pokemonName = subject.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        console.log(`  → PokeAPI lookup: ${pokemonName}`);
         const response = await fetch(`${SPRITE_SOURCES.pokeApi.baseUrl}/pokemon/${pokemonName}`);
 
         if (!response.ok) return null;
@@ -107,14 +111,14 @@ export async function searchSpriteReference(subject) {
  * @param {string} subject - Subject name for context
  * @param {string} apiKey - Gemini API key (for fallback AI vision)
  * @param {Object} options - Processing options
- * @param {string} options.palette - 'full', 'basic', or 'wool' (default: 'full')
+ * @param {string} options.palette - 'vibrant' (default), 'full', 'basic', or 'wool'
  * @param {boolean} options.useLab - Use LAB color space (default: true)
  * @param {boolean} options.preferDeterministic - Try deterministic first (default: true)
  * @returns {Promise<Object>} - Grid and legend
  */
 export async function imageToPixelGrid(imageUrl, subject, apiKey, options = {}) {
     const {
-        palette = 'full',
+        palette = 'vibrant',  // Use vibrant palette for clean pixel art
         useLab = true,
         preferDeterministic = true
     } = options;
@@ -127,12 +131,15 @@ export async function imageToPixelGrid(imageUrl, subject, apiKey, options = {}) 
             console.log(`  → Using deterministic pixel processing (palette: ${palette})...`);
             const result = await processImageUrl(imageUrl, 64, 64, { palette, useLab });
 
+            // Clean up any ugly blocks that slipped through
+            const cleanedLegend = quickBlockCleanup(result.legend);
+
             return {
                 subject,
                 description: `Pixel art: ${subject}`,
                 width: result.width,
                 height: result.height,
-                legend: result.legend,
+                legend: cleanedLegend,
                 grid: result.grid
             };
         } catch (processorError) {
@@ -300,10 +307,21 @@ REQUIREMENTS:
    - Do NOT create tiny 5x5 icons - use the full space
    - Include key identifying features (face, wings, tail, etc.)
 
-2. PALETTE:
-   - Use standard Minecraft wool colors
+3.2 PALETTE (VIBRANT & ACCURATE):
+   - Use the FULL range of Minecraft 1.20 blocks to match colors accurately
+   - RED: Red Concrete, Red Wool, Red Glazed Terracotta, Red Nether Brick
+   - BLUE: Blue Concrete, Blue Wool, Lapis Block, Blue Ice
+   - GREEN: Lime Concrete, Green Wool, Emerald Block, Moss Block
+   - YELLOW: Yellow Concrete, Gold Block, Yellow Wool
+   - METALLIC: Iron Block, Gold Block, Copper Block
+   - EARTH: Terracotta colors, Brown Concrete, Mud
+   - Use Concrete for saturated/bright colors (cartoon look)
+   - Use Wool for softer textures
+   - Use Terracotta for muted/skin tones
    - Use '.' for transparent background
-   - use '#' for black outlines
+   - use '#' for black outlines (Black Concrete or Obsidian)
+
+4. OUTPUT FORMAT (JSON only):
 
 OUTPUT FORMAT (JSON only):
 {

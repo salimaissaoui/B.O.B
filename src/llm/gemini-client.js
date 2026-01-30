@@ -28,6 +28,7 @@ export class GeminiClient {
   async generateContent(options) {
     const {
       prompt,
+      images = [],
       temperature = 0.5,
       responseFormat = 'json'
     } = options;
@@ -35,8 +36,24 @@ export class GeminiClient {
     try {
       const label = 'content generation';
       const content = await this.requestWithRetry(label, async () => {
+
+        // Construct parts (Text + Images)
+        const parts = [{ text: prompt }];
+        if (images && Array.isArray(images)) {
+          images.forEach(img => {
+            if (img.mimeType && img.data) {
+              parts.push({
+                inlineData: {
+                  mimeType: img.mimeType,
+                  data: img.data
+                }
+              });
+            }
+          });
+        }
+
         const result = await this.model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          contents: [{ role: 'user', parts }],
           generationConfig: {
             temperature,
             maxOutputTokens: SAFETY_LIMITS.llmMaxOutputTokens || 8192,

@@ -127,8 +127,8 @@ function findMaximalRectangles(blocks, plane) {
     // Try to expand into a maximal rectangle starting from this block
     const rect = expandRectangle(block, blockSet, processed, plane);
 
-    if (rect.count >= 4) {
-      // Worth batching: 4+ blocks
+    if (rect.count >= 12) {
+      // Worth batching: 12+ blocks (justifies the overhead of 3-4 WE commands)
       rectangles.push(rect);
       // Mark all blocks in rectangle as processed
       markRectangleProcessed(rect, processed, plane);

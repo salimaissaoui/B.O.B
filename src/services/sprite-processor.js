@@ -119,6 +119,26 @@ const FULL_PALETTE = {
 const BASIC_PALETTE = { ...WOOL_COLORS, ...CONCRETE_COLORS };
 
 /**
+ * VIBRANT PALETTE - Best blocks for pixel art
+ * Prioritizes CONCRETE over wool, excludes ugly/dull blocks
+ * This is the DEFAULT for pixel art
+ */
+const VIBRANT_PALETTE = {
+  // CONCRETE FIRST (smooth, vibrant) - preferred for main colors
+  ...CONCRETE_COLORS,
+
+  // Add gold for bright yellow highlights
+  'gold_block': [246, 208, 61],
+
+  // Add some terracotta for skin tones and shading only
+  'orange_terracotta': [161, 83, 37],  // Skin tone
+  'brown_terracotta': [77, 51, 35],    // Dark brown
+  'white_terracotta': [209, 178, 161], // Light skin
+
+  // Exclude: end_stone, sandstone, redstone_block, wool, etc.
+};
+
+/**
  * Convert RGB to LAB color space for perceptually accurate comparison
  * Uses D65 illuminant
  */
@@ -186,12 +206,12 @@ function getPaletteLab(blockName, rgb) {
  * @param {number} g - Green (0-255)
  * @param {number} b - Blue (0-255)
  * @param {Object} options - Matching options
- * @param {string} options.palette - 'full', 'basic', or 'wool' (default: 'full')
+ * @param {string} options.palette - 'vibrant' (default), 'full', 'basic', or 'wool'
  * @param {boolean} options.useLab - Use LAB color space (default: true)
  * @returns {string} - Block name
  */
 function findClosestBlock(r, g, b, options = {}) {
-  const { palette = 'full', useLab = true } = options;
+  const { palette = 'vibrant', useLab = true } = options;
 
   // Select palette
   let paletteMap;
@@ -203,12 +223,15 @@ function findClosestBlock(r, g, b, options = {}) {
       paletteMap = BASIC_PALETTE;
       break;
     case 'full':
-    default:
       paletteMap = FULL_PALETTE;
+      break;
+    case 'vibrant':
+    default:
+      paletteMap = VIBRANT_PALETTE;
       break;
   }
 
-  let closestBlock = 'white_wool';
+  let closestBlock = 'white_concrete';
   let minDistance = Infinity;
 
   if (useLab) {
@@ -241,17 +264,16 @@ function findClosestBlock(r, g, b, options = {}) {
 }
 
 /**
- * Check if a color is mostly transparent or background
+ * Check if a color is actually transparent or background
+ * More conservative to avoid treating white-colored subjects (Lugia, etc.) as background
  */
-function isTransparent(r, g, b, a, bgThreshold = 245) {
-  // Check alpha channel
+function isTransparent(r, g, b, a) {
+  // Only alpha channel is reliable for transparency
   if (a !== undefined && a < 128) return true;
 
-  // Check if it's a near-white background (common in sprite sheets)
-  if (r > bgThreshold && g > bgThreshold && b > bgThreshold) return true;
-
-  // Check for pure white
-  if (r === 255 && g === 255 && b === 255) return true;
+  // Only treat pure white (255,255,255) as background if combined with semi-transparency
+  // This prevents white Pokemon like Lugia from being rendered as invisible
+  if (r === 255 && g === 255 && b === 255 && (a === undefined || a < 200)) return true;
 
   return false;
 }
@@ -262,12 +284,12 @@ function isTransparent(r, g, b, a, bgThreshold = 245) {
  * @param {number} targetWidth - Target width in blocks
  * @param {number} targetHeight - Target height in blocks
  * @param {Object} options - Processing options
- * @param {string} options.palette - 'full', 'basic', or 'wool'
+ * @param {string} options.palette - 'vibrant' (default), 'full', 'basic', or 'wool'
  * @param {boolean} options.useLab - Use LAB color space matching
  * @returns {Object} Grid and legend
  */
 export async function imageToGrid(imageBuffer, targetWidth = 64, targetHeight = 64, options = {}) {
-  const { palette = 'full', useLab = true } = options;
+  const { palette = 'vibrant', useLab = true } = options;
 
   // Dynamic import of sharp (only when needed)
   let sharp;
@@ -400,6 +422,7 @@ export {
   SPECIAL_BLOCKS,
   FULL_PALETTE,
   BASIC_PALETTE,
+  VIBRANT_PALETTE,
   findClosestBlock,
   rgbToLab,
   deltaE

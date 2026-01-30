@@ -21,7 +21,7 @@
     "maxSelectionVolume": 500000,
     "maxSelectionDimension": 250,
     "commandRateLimit": 10,
-    "commandMinDelayMs": 100,
+    "commandMinDelayMs": 350,
     "maxCommandsPerBuild": 500,
     "fallbackOnError": true
   },

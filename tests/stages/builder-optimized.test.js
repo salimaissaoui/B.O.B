@@ -12,16 +12,18 @@ function createMockBot(options = {}) {
 
     const bot = {
         chat: jest.fn((msg) => {
-            // Simulate WorldEdit responses
+            // Simulate WorldEdit responses matching expected ACK patterns
             if (msg.startsWith('//sel')) {
                 setTimeout(() => {
                     if (handlers['message']) {
-                        handlers['message'].forEach(h => h('Selection type: cuboid'));
+                        // Use pattern that matches: /cuboid.*left click|left click.*cuboid/i
+                        handlers['message'].forEach(h => h('Cuboid: Left click for position 1'));
                     }
                 }, 10);
             } else if (msg.startsWith('//pos1')) {
                 setTimeout(() => {
                     if (handlers['message']) {
+                        // Matches: lower.includes('set to') && !lower.includes('selection type')
                         handlers['message'].forEach(h => h('First position set to (0, 0, 0).'));
                     }
                 }, 10);
@@ -34,7 +36,7 @@ function createMockBot(options = {}) {
             } else if (msg.startsWith('//') || msg.startsWith('/tp')) {
                 setTimeout(() => {
                     if (handlers['message']) {
-                        handlers['message'].forEach(h => h("Operation completed (100 blocks changed)."));
+                        handlers['message'].forEach(h => h("100 blocks changed"));
                     }
                 }, 10);
             }
@@ -98,7 +100,8 @@ describe('Builder Optimized Logic (Task 3 & 4)', () => {
             const builderNo = new Builder(botNoArrow);
             builderNo.worldEditEnabled = true;
 
-            await builderNo.executeOrganicOperation({ command: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
+            // Use 'op' instead of 'command' - this matches how Builder dispatches operations
+            await builderNo.executeOrganicOperation({ op: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
             expect(botNoArrow.equip).not.toHaveBeenCalled();
 
             // Setup bot WITH an arrow
@@ -106,7 +109,7 @@ describe('Builder Optimized Logic (Task 3 & 4)', () => {
             const builderWith = new Builder(botWithArrow);
             builderWith.worldEditEnabled = true;
 
-            await builderWith.executeOrganicOperation({ command: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
+            await builderWith.executeOrganicOperation({ op: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
             expect(botWithArrow.equip).toHaveBeenCalledWith(expect.objectContaining({ name: 'arrow' }), 'hand');
             expect(botWithArrow.activateItem).toHaveBeenCalled(); // Triggered the brush
         });

@@ -273,15 +273,16 @@ describe('Coordinate Bounds Validation', () => {
 
 describe('WorldEdit Validation', () => {
   test('should reject WorldEdit selection exceeding volume limit', () => {
+    // Current maxSelectionVolume is 500,000 - use 100^3 = 1,000,000 to exceed it
     const blueprint = {
-      size: { width: 100, depth: 100, height: 100 },
+      size: { width: 150, depth: 150, height: 150 },
       palette: ['stone'],
       steps: [
         {
           op: 'we_fill',
           block: 'stone',
           from: { x: 0, y: 0, z: 0 },
-          to: { x: 60, y: 60, z: 60 },
+          to: { x: 99, y: 99, z: 99 },  // 100^3 = 1,000,000 blocks
           fallback: { op: 'fill', block: 'stone', from: { x: 0, y: 0, z: 0 }, to: { x: 5, y: 5, z: 5 } }
         }
       ]
@@ -294,15 +295,16 @@ describe('WorldEdit Validation', () => {
   });
 
   test('should reject WorldEdit selection exceeding dimension limit', () => {
+    // Current maxSelectionDimension is 250 - use 300 to exceed it
     const blueprint = {
-      size: { width: 100, depth: 100, height: 100 },
+      size: { width: 350, depth: 100, height: 100 },
       palette: ['stone'],
       steps: [
         {
           op: 'we_fill',
           block: 'stone',
           from: { x: 0, y: 0, z: 0 },
-          to: { x: 60, y: 5, z: 5 },
+          to: { x: 299, y: 5, z: 5 },  // 300 blocks on X axis exceeds 250 limit
           fallback: { op: 'fill', block: 'stone', from: { x: 0, y: 0, z: 0 }, to: { x: 5, y: 5, z: 5 } }
         }
       ]
@@ -339,16 +341,17 @@ describe('WorldEdit Validation', () => {
   });
 
   test('should validate cylinder dimensions', () => {
+    // Current maxSelectionDimension is 250 - use radius 150 (diameter 300) to exceed it
     const blueprint = {
-      size: { width: 100, depth: 100, height: 100 },
+      size: { width: 350, depth: 350, height: 350 },
       palette: ['stone'],
       steps: [
         {
           op: 'we_cylinder',
           block: 'stone',
-          base: { x: 50, y: 0, z: 50 },
-          radius: 30,
-          height: 60,
+          base: { x: 150, y: 0, z: 150 },
+          radius: 150,  // diameter 300 exceeds 250 limit
+          height: 100,
           hollow: false,
           fallback: { op: 'fill', block: 'stone', from: { x: 0, y: 0, z: 0 }, to: { x: 5, y: 5, z: 5 } }
         }
@@ -362,15 +365,16 @@ describe('WorldEdit Validation', () => {
   });
 
   test('should validate sphere radius', () => {
+    // Current maxSelectionDimension is 250 - use radius 150 (diameter 300) to exceed it
     const blueprint = {
-      size: { width: 100, depth: 100, height: 100 },
+      size: { width: 350, depth: 350, height: 350 },
       palette: ['stone'],
       steps: [
         {
           op: 'we_sphere',
           block: 'stone',
-          center: { x: 50, y: 50, z: 50 },
-          radius: 30,
+          center: { x: 150, y: 150, z: 150 },
+          radius: 150,  // diameter 300 exceeds 250 limit
           hollow: false,
           fallback: { op: 'fill', block: 'stone', from: { x: 0, y: 0, z: 0 }, to: { x: 5, y: 5, z: 5 } }
         }

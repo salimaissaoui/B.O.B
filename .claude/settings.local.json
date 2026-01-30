@@ -24,7 +24,8 @@
       "Bash(grep:*)",
       "Bash(npm run test:analyzer:*)",
       "Bash(npx jest --passWithNoTests)",
-      "Bash(NODE_OPTIONS='--experimental-vm-modules' npx jest:*)"
+      "Bash(NODE_OPTIONS='--experimental-vm-modules' npx jest:*)",
+      "Bash(dir:*)"
     ]
   }
 }

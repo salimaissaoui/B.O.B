@@ -20,8 +20,14 @@ function createMockBot(options = {}) {
         get position() {
             return {
                 ...position,
+                distanceTo: (other) => Math.sqrt(
+                    Math.pow(position.x - other.x, 2) +
+                    Math.pow(position.y - other.y, 2) +
+                    Math.pow(position.z - other.z, 2)
+                ),
                 clone: () => ({
-                    ...position, distanceTo: (other) => Math.sqrt(
+                    ...position,
+                    distanceTo: (other) => Math.sqrt(
                         Math.pow(position.x - other.x, 2) +
                         Math.pow(position.y - other.y, 2) +
                         Math.pow(position.z - other.z, 2)
