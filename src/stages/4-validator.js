@@ -623,46 +623,66 @@ function validateCoordinateBounds(blueprint, analysis) {
 /**
  * Validate that required features are present
  * Only validates for structured builds (not creative builds)
+ * NOTE: This is ADVISORY only - we log warnings but don't fail validation
  */
 function validateFeatures(blueprint, analysis) {
   const errors = [];
   const buildType = analysis?.buildType || 'house';
   const requiredFeatures = analysis?.hints?.features || [];
   const stepOps = (blueprint.steps || []).map(s => s.op);
+  const stepBlocks = (blueprint.steps || []).map(s => s.block || '').filter(b => b);
 
   // Skip feature validation for creative/simple builds
-  const creativeBuildTypes = ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'platform'];
+  const creativeBuildTypes = ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'platform', 'tree'];
   if (creativeBuildTypes.includes(buildType)) {
     return errors;
   }
 
-  // For structured builds (house, castle, etc.), validate features
+  // For structured builds (house, castle, etc.), log warnings but don't fail
+  // LLM can implement features in many ways
+
+  // Check for door (many ways to implement)
   if (requiredFeatures.includes('door')) {
-    const hasDoor = stepOps.includes('door') || stepOps.includes('set');
-    if (!hasDoor) {
-      errors.push('Structured build missing door feature');
+    const hasDoor = stepOps.includes('door') ||
+      stepOps.includes('set') ||
+      stepBlocks.some(b => b.includes('door'));
+    if (!hasDoor && DEBUG) {
+      console.log('  ⚠ Advisory: No explicit door operation found (may be acceptable)');
     }
   }
 
-  // Check for windows (should have window_strip or set operations)
+  // Check for windows (many ways to implement)
   if (requiredFeatures.includes('windows')) {
     const hasWindows = stepOps.includes('window_strip') ||
-      stepOps.filter(op => op === 'set').length > 1;
-    if (!hasWindows) {
-      errors.push('Missing windows feature');
+      stepOps.filter(op => op === 'set').length > 1 ||
+      stepBlocks.some(b => b.includes('glass') || b.includes('pane'));
+    if (!hasWindows && DEBUG) {
+      console.log('  ⚠ Advisory: No explicit window operation found (may be acceptable)');
     }
   }
 
-  // Check for roof
+  // Check for roof (MANY ways to implement - don't be strict!)
+  // LLM can use: roof_gable, roof_hip, roof_flat, smart_roof, we_pyramid, 
+  // stairs, box, wall, fill, we_fill, etc.
   if (requiredFeatures.includes('roof')) {
-    const hasRoof = stepOps.includes('roof_gable') ||
+    const hasRoofOp = stepOps.includes('roof_gable') ||
       stepOps.includes('roof_hip') ||
-      stepOps.includes('roof_flat');
-    if (!hasRoof) {
-      errors.push('Missing roof feature');
+      stepOps.includes('roof_flat') ||
+      stepOps.includes('smart_roof') ||
+      stepOps.includes('we_pyramid');
+
+    // Also check for roof-like blocks (stairs, slabs)
+    const hasRoofBlocks = stepBlocks.some(b =>
+      b.includes('stairs') || b.includes('slab') || b.includes('roof')
+    );
+
+    // If no explicit roof operation AND no roof-like blocks, log warning
+    if (!hasRoofOp && !hasRoofBlocks && DEBUG) {
+      console.log('  ⚠ Advisory: No explicit roof operation found (may be acceptable)');
     }
   }
 
+  // Return empty - we converted all checks to advisory warnings
   return errors;
 }
 

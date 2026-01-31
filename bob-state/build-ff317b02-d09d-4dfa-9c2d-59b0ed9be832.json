@@ -1,0 +1,57 @@
+{
+  "buildId": "ff317b02-d09d-4dfa-9c2d-59b0ed9be832",
+  "startedAt": "2026-01-31T15:10:30.522Z",
+  "lastUpdated": "2026-01-31T15:12:30.628Z",
+  "startPos": {
+    "x": -260,
+    "y": -60,
+    "z": -405
+  },
+  "blueprint": {
+    "buildType": "treehouse",
+    "size": {
+      "width": 65,
+      "height": 104,
+      "depth": 65
+    },
+    "palette": {
+      "log": "oak_log",
+      "leaves": "oak_leaves",
+      "planks": "oak_planks",
+      "fence": "oak_fence",
+      "stairs": "oak_stairs",
+      "lantern": "lantern",
+      "ladder": "ladder"
+    },
+    "stepsCount": 18
+  },
+  "progress": {
+    "currentStep": 18,
+    "blocksPlaced": 2,
+    "blocksFailed": 0,
+    "completedSteps": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "worldEditOps": 14
+  },
+  "undoHistory": [],
+  "worldEditHistory": [],
+  "status": "completed",
+  "completedAt": "2026-01-31T15:12:30.628Z"
+}

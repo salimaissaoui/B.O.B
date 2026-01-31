@@ -512,6 +512,200 @@ const DEFAULT_LIMITS = {
   pixelArtBatching: true,
 
   /**
+   * Multi-Step Planning Configuration
+   *
+   * Enables chain-of-thought decomposition for complex compound builds.
+   * Inspired by APT (Architectural Planning Transformer) research.
+   *
+   * When enabled, requests like "build a village with 5 houses" will:
+   * 1. First generate a high-level plan (layout, component list)
+   * 2. Then generate detailed blueprints for each component
+   * 3. Merge into a master blueprint with proper offsets
+   */
+  planning: {
+    /**
+     * Enable multi-step planning (default: true)
+     *
+     * When true: Complex builds use chain-of-thought decomposition
+     * When false: All builds use single-shot generation (legacy behavior)
+     */
+    enabled: true,
+
+    /**
+     * Maximum components in a compound build (default: 10)
+     *
+     * Limits the number of sub-structures in a single build request.
+     * Example: "village with houses" limited to 10 houses max.
+     *
+     * Impact: Prevents runaway planning for extremely complex requests
+     */
+    maxComponents: 10,
+
+    /**
+     * Maximum LLM calls per build (default: 15)
+     *
+     * Hard limit on total LLM invocations during planning + generation.
+     * Prevents infinite loops or excessive API costs.
+     *
+     * Typical usage:
+     * - Simple build: 1 call
+     * - Compound build (5 components): 6 calls (1 plan + 5 components)
+     */
+    maxLLMCalls: 15,
+
+    /**
+     * Trigger keywords for multi-step planning
+     *
+     * If the user prompt contains these words, multi-step mode activates.
+     */
+    triggerKeywords: ['village', 'city', 'complex', 'compound', 'multiple', 'collection']
+  },
+
+  /**
+   * Code Interpreter Configuration
+   *
+   * Allows LLM to output JavaScript-like code for algorithmic builds.
+   * Inspired by BuilderGPT/MCBench approach.
+   *
+   * ⚠️ SECURITY: Code runs in a sandboxed environment with strict limits.
+   */
+  codeInterpreter: {
+    /**
+     * Enable code-based blueprint generation (default: false)
+     *
+     * When true: LLM can output JS-like code for complex patterns
+     * When false: Only JSON blueprints are accepted
+     *
+     * ⚠️ Disabled by default for security. Enable only if needed.
+     */
+    enabled: false,
+
+    /**
+     * Maximum loop iterations (default: 10000)
+     *
+     * Prevents infinite loops in generated code.
+     * A 100x100 floor = 10,000 iterations.
+     */
+    maxIterations: 10000,
+
+    /**
+     * Execution timeout in milliseconds (default: 5000)
+     *
+     * Maximum time allowed for code execution.
+     */
+    timeoutMs: 5000,
+
+    /**
+     * Allowed function names in generated code
+     *
+     * Only these functions can be called from LLM-generated code.
+     * Any other function calls will throw a security error.
+     */
+    allowedFunctions: ['place', 'fill', 'line', 'sphere', 'cylinder', 'box', 'wall']
+  },
+
+  /**
+   * Memory Module Configuration
+   *
+   * Persistent storage for successful builds and learned patterns.
+   * Inspired by APT's memory module research findings.
+   */
+  memory: {
+    /**
+     * Enable memory/learning features (default: true)
+     */
+    enabled: true,
+
+    /**
+     * Maximum stored patterns (default: 100)
+     *
+     * Limits disk usage from pattern storage.
+     * Older, less-used patterns are automatically pruned.
+     */
+    maxPatterns: 100,
+
+    /**
+     * Pattern expiry in days (default: 90)
+     *
+     * Patterns not accessed within this period are deleted.
+     */
+    expiryDays: 90,
+
+    /**
+     * Storage directory for memory data
+     */
+    storagePath: './bob-memory',
+
+    /**
+     * Minimum quality score to save a pattern (default: 0.8)
+     *
+     * Only high-quality builds are remembered for future reference.
+     */
+    minQualityToSave: 0.8
+  },
+
+  /**
+   * Scaffolding Configuration (Survival Mode)
+   *
+   * Enables autonomous scaffolding for reaching high places.
+   * Inspired by APT's emergent scaffolding behavior.
+   */
+  scaffolding: {
+    /**
+     * Enable automatic scaffolding (default: true)
+     *
+     * When true: Bot builds temporary scaffolding to reach high blocks
+     * When false: Bot may fail to place blocks out of reach
+     */
+    enabled: true,
+
+    /**
+     * Maximum scaffolding height (default: 64)
+     *
+     * Prevents excessive scaffolding that could clutter the world.
+     */
+    maxHeight: 64,
+
+    /**
+     * Block to use for scaffolding (default: 'scaffolding')
+     *
+     * 'scaffolding' is ideal as it's easy to break and doesn't require support.
+     * Alternatives: 'dirt', 'cobblestone' (for servers without scaffolding)
+     */
+    scaffoldBlock: 'scaffolding',
+
+    /**
+     * Auto-cleanup after build (default: true)
+     *
+     * When true: Bot removes scaffolding after completing the build
+     * When false: Scaffolding remains (useful for debugging)
+     */
+    autoCleanup: true
+  },
+
+  /**
+   * Export Configuration
+   *
+   * Settings for exporting blueprints to external formats.
+   */
+  export: {
+    /**
+     * Enable schematic export (default: true)
+     */
+    enabled: true,
+
+    /**
+     * Output directory for exported files
+     */
+    outputPath: './exports',
+
+    /**
+     * Supported formats
+     */
+    formats: ['schem', 'mcfunction', 'litematic']
+  },
+
+  /**
    * Flag indicating this config can be customized via external file
    */
   isConfigurable: true

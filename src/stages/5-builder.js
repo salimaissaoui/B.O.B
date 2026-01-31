@@ -25,6 +25,7 @@ import { spiralStaircase } from '../operations/spiral-staircase.js';
 import { balcony } from '../operations/balcony.js';
 import { roofHip } from '../operations/roof-hip.js';
 import { pixelArt } from '../operations/pixel-art.js';
+import { threeDLayers } from '../operations/three-d-layers.js';
 import { smartWall } from '../operations/smart-wall.js';
 import { smartFloor } from '../operations/smart-floor.js';
 import { smartRoof } from '../operations/smart-roof.js';
@@ -122,6 +123,7 @@ const OPERATION_MAP = {
   balcony,
   roof_hip: roofHip,
   pixel_art: pixelArt,
+  three_d_layers: threeDLayers,
   smart_wall: smartWall,
   smart_floor: smartFloor,
   smart_roof: smartRoof,

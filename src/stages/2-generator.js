@@ -59,9 +59,10 @@ function generatePlatformBlueprint(analysis) {
  * @param {Object} analysis - Prompt analysis from Stage 1
  * @param {string} apiKey - Gemini API key
  * @param {boolean} worldEditAvailable - Whether WorldEdit is available
+ * @param {Object} reference - Reference analysis from Stage 0
  * @returns {Promise<Object>} - Complete blueprint
  */
-export async function generateBlueprint(analysis, apiKey, worldEditAvailable = false) {
+export async function generateBlueprint(analysis, apiKey, worldEditAvailable = false, reference = { hasReference: false }) {
   if (!analysis || typeof analysis !== 'object') {
     throw new Error('Invalid analysis: must be an object');
   }
@@ -139,26 +140,14 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     }
   }
 
-  // CHECK FOR IMAGE URL
-  const imageUrlMatch = userPrompt.match(/https?:\/\/\S+\.(jpg|jpeg|png|webp)/i);
-  let imagePayload = null;
-  if (imageUrlMatch) {
-    try {
-      console.log(`🖼 Visual Blueprint: Analyzing image ${imageUrlMatch[0]}...`);
-      const response = await fetch(imageUrlMatch[0]);
-      if (response.ok) {
-        const buffer = await response.arrayBuffer();
-        imagePayload = {
-          mimeType: response.headers.get('content-type') || 'image/jpeg',
-          data: Buffer.from(buffer).toString('base64')
-        };
-        console.log('✓ Image loaded successfully');
-      } else {
-        console.warn(`⚠ Failed to fetch image: ${response.statusText}`);
-      }
-    } catch (e) {
-      console.warn(`⚠ Failed to load image: ${e.message}`);
-    }
+  // Use image analysis from Stage 0 if available
+  const imagePayload = reference.hasReference ? reference.imagePayload : null;
+  const visualAnalysis = reference.hasReference ? reference.analysis : null;
+
+  // Add visual analysis results as a specific hint
+  if (visualAnalysis) {
+    analysis.hints.visualAnalysis = visualAnalysis;
+    console.log('  ✨ Integrating visual analysis into generation hints');
   }
 
   try {

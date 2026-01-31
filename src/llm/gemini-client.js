@@ -1,20 +1,43 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SAFETY_LIMITS } from '../config/limits.js';
+import { BaseLLMClient } from './base-client.js';
 
-export class GeminiClient {
-  constructor(apiKey) {
+/**
+ * Gemini LLM Client
+ *
+ * Implementation of BaseLLMClient for Google's Gemini models.
+ * Supports text generation, vision, and JSON output.
+ */
+export class GeminiClient extends BaseLLMClient {
+  constructor(apiKey, options = {}) {
+    super(options);
+
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is required');
     }
 
+    this.apiKey = apiKey;
+    this.modelName = options.model || 'gemini-2.0-flash';
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash'
+      model: this.modelName
     });
-    this.tokenUsage = {
-      totalPromptTokens: 0,
-      totalResponseTokens: 0
-    };
+  }
+
+  /**
+   * Get the model name/identifier
+   * @returns {string} Model name
+   */
+  getModelName() {
+    return this.modelName;
+  }
+
+  /**
+   * Check if this client supports vision/image input
+   * @returns {boolean} True if vision is supported
+   */
+  supportsVision() {
+    return true; // Gemini 2.0 Flash supports vision
   }
 
   /**

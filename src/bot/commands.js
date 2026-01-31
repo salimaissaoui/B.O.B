@@ -1,6 +1,11 @@
 import { analyzePrompt } from '../stages/1-analyzer.js';
+import { referenceStage } from '../stages/0-reference.js';
 import { generateBlueprint } from '../stages/2-generator.js';
 import { validateBlueprint } from '../stages/4-validator.js';
+import { exportBlueprint } from '../export/index.js';
+import { SAFETY_LIMITS } from '../config/limits.js';
+import { parseCoordinateFlags, stripCoordinateFlags, validateBoundingBox } from '../utils/coordinate-parser.js';
+import { getMemory } from '../memory/index.js';
 
 /**
  * Register chat commands for the bot
@@ -74,7 +79,34 @@ export function registerCommands(bot, builder, apiKey) {
         safeChat(bot, '  !build undo - Undo last build');
         safeChat(bot, '  !build status - Check build progress');
         safeChat(bot, '  !build resume - Resume interrupted build');
+        safeChat(bot, '  !build rate <1-5> - Rate last build');
         safeChat(bot, '  !build list - List saved builds');
+      }
+
+      // Rate command - provide feedback on last build
+      else if (message.startsWith('!build rate')) {
+        try {
+          const parts = message.slice(11).trim().split(/\s+/);
+          const rating = parts[0];
+          const comment = parts.slice(1).join(' ');
+
+          if (!rating) {
+            safeChat(bot, 'Usage: !build rate <1-5> [comment]');
+            return;
+          }
+
+          const memory = getMemory();
+          const result = memory.recordFeedback(rating, comment);
+
+          if (result.success) {
+            const stars = '⭐'.repeat(result.rating) + '☆'.repeat(5 - result.rating);
+            safeChat(bot, `✓ Thanks for the feedback! ${stars}`);
+          } else {
+            safeChat(bot, `✗ ${result.error}`);
+          }
+        } catch (error) {
+          safeChat(bot, `Rate failed: ${error.message}`);
+        }
       }
 
       // Resume command
@@ -194,6 +226,12 @@ export function registerCommands(bot, builder, apiKey) {
 
 /**
  * Handle the /build command
+ * 
+ * Supports flags:
+ *   --export schem    Export to .schem file instead of building
+ *   --export function Export to .mcfunction file
+ *   --at X,Y,Z        Build at specific coordinates
+ *   --to X2,Y2,Z2     Define bounding box (requires --at)
  */
 async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   if (builder.building) {
@@ -206,7 +244,38 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
     return;
   }
 
-  safeChat(bot, `Building: "${prompt}"...`);
+  // Parse export flag
+  let exportFormat = null;
+  let cleanPrompt = prompt;
+
+  const exportMatch = prompt.match(/--export\s+(schem|schematic|function|mcfunction)/i);
+  if (exportMatch) {
+    exportFormat = exportMatch[1].toLowerCase();
+    if (exportFormat === 'schematic') exportFormat = 'schem';
+    if (exportFormat === 'function') exportFormat = 'mcfunction';
+    cleanPrompt = prompt.replace(/--export\s+\w+/i, '').trim();
+  }
+
+  // Parse coordinate flags (--at X,Y,Z --to X2,Y2,Z2)
+  const coordFlags = parseCoordinateFlags(cleanPrompt);
+  cleanPrompt = stripCoordinateFlags(cleanPrompt);
+
+  // Validate bounding box if specified
+  if (coordFlags.boundingBox) {
+    const boxValidation = validateBoundingBox(coordFlags.boundingBox, SAFETY_LIMITS);
+    if (!boxValidation.valid) {
+      safeChat(bot, `✗ Invalid bounding box: ${boxValidation.errors[0]}`);
+      return;
+    }
+  }
+
+  if (exportFormat) {
+    safeChat(bot, `Generating blueprint for export (${exportFormat})...`);
+  } else if (coordFlags.position) {
+    safeChat(bot, `Building: "${cleanPrompt}" at ${coordFlags.position.x}, ${coordFlags.position.y}, ${coordFlags.position.z}...`);
+  } else {
+    safeChat(bot, `Building: "${cleanPrompt}"...`);
+  }
 
   try {
     // Stage 1: ANALYZER (lightweight, no LLM)
@@ -214,6 +283,13 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
     const analysis = analyzePrompt(prompt);
     console.log(`  Build Type: ${analysis.buildType} (${analysis.buildTypeInfo.confidence})`);
     console.log(`  Theme: ${analysis.theme?.name || 'default'}`);
+
+    // Stage 0: REFERENCE (Optional image analysis)
+    let reference = { hasReference: false };
+    if (analysis.imageSource?.hasImage) {
+      safeChat(bot, 'Stage 1.5: Analyzing visual reference...');
+      reference = await referenceStage(analysis, apiKey);
+    }
 
     // Stage 2: GENERATOR (single LLM call)
     safeChat(bot, 'Stage 2/3: Generating blueprint...');
@@ -223,7 +299,8 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
       blueprint = await generateBlueprint(
         analysis,
         apiKey,
-        builder.worldEditEnabled
+        builder.worldEditEnabled,
+        reference
       );
     } catch (genError) {
       console.error('Blueprint generation failed:', genError);
@@ -238,7 +315,7 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
     console.log(`  Steps: ${blueprint.steps.length} operations`);
 
     // Stage 3: VALIDATOR + EXECUTOR
-    safeChat(bot, 'Stage 3/3: Validating & building...');
+    safeChat(bot, 'Stage 3/3: Validating...');
     const validation = await validateBlueprint(blueprint, analysis, apiKey);
 
     if (!validation.valid) {
@@ -247,41 +324,74 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
       return;
     }
 
-    // Execute
-    // Try to build relative to the player who issued the command
-    let targetEntity = bot.entity;
-    let targetName = 'Bot';
-
-    if (username && bot.players[username] && bot.players[username].entity) {
-      targetEntity = bot.players[username].entity;
-      targetName = username;
-      console.log(`Building relative to player: ${username}`);
-    } else {
-      console.log('Player entity not found, building relative to bot');
+    // If export mode, write to file instead of building
+    if (exportFormat && SAFETY_LIMITS.export?.enabled !== false) {
+      try {
+        const timestamp = Date.now();
+        const filename = `${blueprint.buildType || 'build'}_${timestamp}`;
+        const exportPath = await exportBlueprint(validation.blueprint, exportFormat, filename);
+        safeChat(bot, `✓ Exported to: ${exportPath}`);
+        return;
+      } catch (exportError) {
+        console.error('Export failed:', exportError);
+        safeChat(bot, `✗ Export failed: ${exportError.message}`);
+        return;
+      }
     }
 
-    // Calculate position 5 blocks in front of the target based on yaw
-    const viewDir = {
-      x: -Math.sin(targetEntity.yaw),
-      z: -Math.cos(targetEntity.yaw)
-    };
+    // Execute live build
+    safeChat(bot, 'Building...');
 
-    // Offset 5 blocks forward
-    const startPos = targetEntity.position.offset(
-      viewDir.x * 5,
-      0,
-      viewDir.z * 5
-    );
+    let buildPos;
 
-    const buildPos = {
-      x: Math.floor(startPos.x),
-      y: Math.floor(startPos.y),
-      z: Math.floor(startPos.z)
-    };
+    // Use explicit coordinates if --at flag was provided
+    if (coordFlags.position) {
+      buildPos = coordFlags.position;
+      console.log(`Building at explicit position: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
+    } else {
+      // Try to build relative to the player who issued the command
+      let targetEntity = bot.entity;
+      let targetName = 'Bot';
+
+      if (username && bot.players[username] && bot.players[username].entity) {
+        targetEntity = bot.players[username].entity;
+        targetName = username;
+        console.log(`Building relative to player: ${username}`);
+      } else {
+        console.log('Player entity not found, building relative to bot');
+      }
+
+      // Calculate position 5 blocks in front of the target based on yaw
+      const viewDir = {
+        x: -Math.sin(targetEntity.yaw),
+        z: -Math.cos(targetEntity.yaw)
+      };
+
+      // Offset 5 blocks forward
+      const startPos = targetEntity.position.offset(
+        viewDir.x * 5,
+        0,
+        viewDir.z * 5
+      );
+
+      buildPos = {
+        x: Math.floor(startPos.x),
+        y: Math.floor(startPos.y),
+        z: Math.floor(startPos.z)
+      };
+    }
 
     safeChat(bot, `Starting build at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
 
     await builder.executeBlueprint(validation.blueprint, buildPos);
+
+    // Track in memory for feedback
+    try {
+      const memory = getMemory();
+      memory.trackLastBuild(validation.blueprint);
+    } catch (e) {
+      console.warn('Failed to track build in memory:', e.message);
+    }
 
     safeChat(bot, '✓ Build complete!');
   } catch (error) {

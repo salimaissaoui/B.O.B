@@ -309,6 +309,18 @@ export const OPERATIONS_REGISTRY = {
     description: 'Creates 2D pixel art from a grid'
   },
 
+  // NEW: 3D Layered Generation (Success Pattern from Pixel Art)
+  // Each layer is a 2D grid of characters representing blocks
+  // Index 0 is bottom layer (Y=0 relative to base)
+  three_d_layers: {
+    handler: 'three-d-layers',
+    type: 'vanilla',
+    avgBlocksPerOp: 1000,
+    complexity: 4,
+    requiredParams: ['base', 'layers', 'legend'],
+    description: 'Creates 3D structures from stacked 2D grids (slices)'
+  },
+
   // Smart Operations (High-Level Procedural Tools)
   //
   // SMART VS LEGACY OPERATIONS:

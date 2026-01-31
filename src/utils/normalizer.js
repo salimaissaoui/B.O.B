@@ -293,6 +293,44 @@ export function normalizeBlueprint(blueprint) {
         }
       }
     }
+
+    // 3. Auto-centering logic - detect bounds and shift for better alignment
+    // Find absolute bounds of all operations
+    const bounds = calculateAbsoluteBounds(normalized.steps);
+
+    if (bounds.minX !== Infinity) {
+      const shiftX = -bounds.minX;
+      const shiftZ = -bounds.minZ;
+      // We don't shift Y because builds should stay on their intended vertical level (grounding is handled elsewhere)
+
+      if (shiftX !== 0 || shiftZ !== 0) {
+        changes.push(`Auto-centering: shifting horizontally by (${shiftX}, ${shiftZ})`);
+        shiftCoordinates(normalized.steps, shiftX, 0, shiftZ);
+
+        // Update size to match bounding box + small padding
+        if (normalized.size) {
+          normalized.size.width = (bounds.maxX - bounds.minX) + 1;
+          normalized.size.depth = (bounds.maxZ - bounds.minZ) + 1;
+        }
+      }
+    }
+
+    // 4. Normalize negative coordinates (Safety check after shift/centering)
+    const safetyBounds = calculateAbsoluteBounds(normalized.steps);
+    if (safetyBounds.minX < 0 || safetyBounds.minY < 0 || safetyBounds.minZ < 0) {
+      const shiftX = safetyBounds.minX < 0 ? -safetyBounds.minX : 0;
+      const shiftY = safetyBounds.minY < 0 ? -safetyBounds.minY : 0;
+      const shiftZ = safetyBounds.minZ < 0 ? -safetyBounds.minZ : 0;
+
+      changes.push(`Safety shift: adjusting by (${shiftX}, ${shiftY}, ${shiftZ}) to prevent negative coordinates`);
+      shiftCoordinates(normalized.steps, shiftX, shiftY, shiftZ);
+
+      if (normalized.size) {
+        normalized.size.width += shiftX;
+        normalized.size.height += shiftY;
+        normalized.size.depth += shiftZ;
+      }
+    }
   }
 
   // Debug logging
@@ -320,4 +358,69 @@ export function normalizeBlueprint(blueprint) {
   }
 
   return { blueprint: normalized, changes, warnings, errors };
+}
+
+/**
+ * Calculate absolute bounds for all operations in a blueprint
+ */
+export function calculateAbsoluteBounds(steps) {
+  const coordKeys = ['from', 'to', 'pos', 'base', 'center'];
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+  for (const step of steps) {
+    for (const key of coordKeys) {
+      if (step[key]) {
+        const c = step[key];
+        if (typeof c.x === 'number') { minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x); }
+        if (typeof c.y === 'number') { minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y); }
+        if (typeof c.z === 'number') { minZ = Math.min(minZ, c.z); maxZ = Math.max(maxZ, c.z); }
+      }
+    }
+
+    // Handle specialist operations with radius or size
+    if (step.radius) {
+      const center = step.center || step.base || { x: 0, y: 0, z: 0 };
+      const r = step.radius;
+      minX = Math.min(minX, center.x - r); maxX = Math.max(maxX, center.x + r);
+      minY = Math.min(minY, center.y - r); maxY = Math.max(maxY, center.y + r);
+      minZ = Math.min(minZ, center.z - r); maxZ = Math.max(maxZ, center.z + r);
+    }
+
+    if (step.size) {
+      const base = step.from || { x: 0, y: 0, z: 0 };
+      minX = Math.min(minX, base.x); maxX = Math.max(maxX, base.x + step.size.x);
+      minY = Math.min(minY, base.y); maxY = Math.max(maxY, base.y + step.size.y);
+      minZ = Math.min(minZ, base.z); maxZ = Math.max(maxZ, base.z + step.size.z);
+    }
+  }
+
+  return { minX, minY, minZ, maxX, maxY, maxZ };
+}
+
+/**
+ * Shift all coordinates in a set of steps
+ */
+export function shiftCoordinates(steps, dx, dy, dz) {
+  const coordKeys = ['from', 'to', 'pos', 'base', 'center'];
+
+  for (const step of steps) {
+    for (const key of coordKeys) {
+      if (step[key]) {
+        if (typeof step[key].x === 'number') step[key].x += dx;
+        if (typeof step[key].y === 'number') step[key].y += dy;
+        if (typeof step[key].z === 'number') step[key].z += dz;
+      }
+    }
+    // Handle fallback coords
+    if (step.fallback) {
+      for (const key of coordKeys) {
+        if (step.fallback[key]) {
+          if (typeof step.fallback[key].x === 'number') step.fallback[key].x += dx;
+          if (typeof step.fallback[key].y === 'number') step.fallback[key].y += dy;
+          if (typeof step.fallback[key].z === 'number') step.fallback[key].z += dz;
+        }
+      }
+    }
+  }
 }

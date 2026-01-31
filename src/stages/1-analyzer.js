@@ -160,7 +160,21 @@ function enhancedBuildTypeDetection(prompt) {
     }
   }
 
-  // TREE DETECTION - organic builds
+  // TREEHOUSE DETECTION - must come BEFORE tree detection!
+  const treehousePatterns = [
+    /\btree\s*house\b/i,
+    /\btreehouse\b/i,
+    /\btree\s*fort\b/i,
+    /\btree\s*cabin\b/i
+  ];
+
+  for (const pattern of treehousePatterns) {
+    if (pattern.test(prompt)) {
+      return { type: 'treehouse', confidence: 'high', reason: 'Treehouse structure detected' };
+    }
+  }
+
+  // TREE DETECTION - organic builds (after treehouse check)
   const treePatterns = [
     /\btree\b/i,
     /\boak\s*tree\b/i,
@@ -235,11 +249,42 @@ function extractMaterial(prompt) {
 }
 
 /**
+ * Detect image URL or reference in prompt
+ */
+function extractImageSource(prompt) {
+  const urlRegex = /(https?:\/\/[^\s]+)/i;
+  const match = prompt.match(urlRegex);
+
+  if (match) {
+    return {
+      url: match[1],
+      hasImage: true
+    };
+  }
+
+  // Check for "from image" or similar but without URL (might be provided via separate mechanism later)
+  if (/\bfrom\s+(image|photo|picture)\b/i.test(prompt)) {
+    return {
+      url: null,
+      hasImage: true
+    };
+  }
+
+  return {
+    url: null,
+    hasImage: false
+  };
+}
+
+/**
  * Main analysis function
  */
 export function analyzePrompt(userPrompt) {
   // Use existing analysis from build-types.js
   const analysis = analyzeBuildTypes(userPrompt);
+
+  // Detect image source
+  const imageSource = extractImageSource(userPrompt);
 
   // Enhanced build type detection (checks for pixel_art, platform, tree first)
   const enhancedType = enhancedBuildTypeDetection(userPrompt);
@@ -309,6 +354,7 @@ export function analyzePrompt(userPrompt) {
     intentScale,  // Intent-based scale detection
     themeInference,  // Theme inference for palette
     character,  // NEW: Detected iconic character (if any)
+    imageSource, // NEW: Detected image URL or reference
     hints: {
       dimensions,
       materials,

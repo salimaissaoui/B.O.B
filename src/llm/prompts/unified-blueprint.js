@@ -9,7 +9,7 @@ import { getCharacterPalettePrompt } from '../../config/character-palettes.js';
  * Check if this is a creative build type where LLM has block freedom
  */
 function isCreativeBuild(buildType) {
-  return ['pixel_art', 'statue', 'character', 'art', 'sculpture'].includes(buildType);
+  return ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'three_d_layers'].includes(buildType);
 }
 
 /**
@@ -54,9 +54,11 @@ function getBuildTypeGuidance(buildType, hints) {
     statue: `
 === 3D STATUE BUILD ===
 ${massiveGuidance}
-- Build from bottom up: base → body → limbs → head → details
-- Use we_sphere/we_cylinder for organic shapes (muscles, head, limbs)
-- Use move operations to position each part relative to cursor
+ESTABLISH PROPORTIONS:
+1. FORM: Use we_sphere/we_cylinder for large muscle groups and limbs.
+2. DETAIL: Use "three_d_layers" for complex facial features or intricate armor.
+3. SILHOUETTE: Build from bottom up: base → legs → torso → arms → head.
+- Use move operations to position each part relative to cursor.
 `,
 
     tree: `
@@ -66,11 +68,9 @@ BUILD A NATURAL, ORGANIC TREE:
 1. TRUNK:
    - Use we_cylinder (tapered radius) or solid box/we_fill
    - Root base should be wider than top
-
 2. BRANCHES:
    - Angled outward from trunk
    - Use we_cylinder or heavy lines
-
 3. CANOPY (Leaves):
    - CRITICAL: Use we_sphere for leaf clusters!
    - Overlap multiple spheres for irregular, organic look
@@ -198,7 +198,8 @@ UNIVERSAL OPERATIONS (PREFER THESE - Cursor-aware, auto-optimized):
 
 SPECIALIST OPERATIONS:
 - pixel_art: 2D sprite. Params: base {x,y,z}, grid (array of strings), legend, facing
-  Example: {"op": "pixel_art", "base": {"x": 0, "y": 0, "z": 0}, "facing": "south", "grid": [...], "legend": {...}}
+- three_d_layers: 3D structured build. Success pattern from pixel art. Params: base {x,y,z}, layers (array of grids), legend
+  Example: {"op": "three_d_layers", "base": {"x": 0, "y": 0, "z": 0}, "layers": [[..grid..], [..grid..]], "legend": {...}}
 
 - spiral_staircase: Spiral stairs. Params: block (*_stairs), base {x,y,z}, height, radius
   Example: {"op": "spiral_staircase", "block": "oak_stairs", "base": {"x": 5, "y": 0, "z": 5}, "height": 10, "radius": 2}
@@ -248,6 +249,7 @@ QUALITY REQUIREMENTS:
 - Include ACCENT DETAILS - trim, molding, decorative elements
 - Use COMPLEMENTARY COLORS in your block palette
 - Add VISUAL INTEREST at every level of the build
+- FOR STATUES/CHARACTERS: Use "three_d_layers" for high-fidelity forms.
 
 QUALITY TIPS FROM DETECTED MODIFIERS (${quality.modifiers?.join(', ')}):
 ${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it impressive!'}
@@ -382,12 +384,12 @@ PHASE 1 - SILHOUETTE (~40% of operations):
 
 PHASE 2 - SECONDARY FORMS (~35% of operations):
 - Major features and structural elements
-- Use: we_fill, fill, hollow_box
+- Use: we_fill, fill, hollow_box, three_d_layers
 - Branches, towers, major protrusions
 
 PHASE 3 - DETAILS (~25% of operations):
 - Fine details and finishing
-- Use: set, line, stairs, slab
+- Use: set, line, stairs, slab, three_d_layers
 - Windows, doors, trim, decorations
 
 ${getWorldEditGuidance(worldEditAvailable)}
@@ -417,8 +419,8 @@ Example structure:
 
 === OUTPUT FORMAT ===
 {
-  "buildType": "${buildType}",
-  "theme": "${theme?.theme || 'default'}",
+  "buildType": "\${buildType}",
+  "theme": "\${theme?.theme || 'default'}",
   "description": "Brief description",
   "size": {"width": <number>, "height": <number>, "depth": <number>},
   "palette": {
@@ -439,7 +441,7 @@ Example structure:
 CRITICAL CONSTRAINTS – MUST FOLLOW:
 
 1. VALID OPERATIONS ONLY (use EXACTLY these names):
-   box, wall, outline, move, cursor_reset, pixel_art, 
+   box, wall, outline, move, cursor_reset, pixel_art, three_d_layers,
    we_fill, we_walls, we_sphere, we_cylinder, we_pyramid,
    door, window_strip, roof_gable, roof_hip, roof_flat,
    smart_wall, smart_floor, smart_roof, spiral_staircase,
@@ -465,13 +467,14 @@ CRITICAL CONSTRAINTS – MUST FOLLOW:
    - we_pyramid: base, height, block, hollow  
    - we_fill/we_walls: from, to, block
    - pixel_art: base, grid, legend, facing
+   - three_d_layers: base, layers, legend
    - door: pos, block, facing
    - window_strip: from, to, block
    - roof_*: from, to, block (+ direction for gable)
 
 5. OUTPUT FORMAT:
    - Output ONLY valid JSON (no markdown)
-   - For pixel_art: ALL rows must have EXACTLY the same length
+   - For pixel_art/three_d_layers: ALL rows must have EXACTLY the same length
    - Use "$primary", "$secondary" etc. for themed blocks
 
 6. EFFICIENCY – FEWER OPERATIONS IS BETTER:
