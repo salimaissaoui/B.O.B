@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "placement-plan-v2",
+  "title": "PlacementPlanV2",
+  "description": "Compiled execution plan with WorldEdit batches and vanilla placements",
+  "type": "object",
+  "required": ["version", "planId", "hash", "strategy", "worldEditBatches", "vanillaPlacements", "checkpoints", "stats"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "planId": {
+      "type": "string",
+      "description": "Reference to BuildPlanV2"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash for verification"
+    },
+    "strategy": {
+      "type": "object",
+      "required": ["preferWorldEdit", "batchSize", "checkpointInterval"],
+      "properties": {
+        "preferWorldEdit": { "type": "boolean" },
+        "batchSize": { "type": "integer", "minimum": 1 },
+        "checkpointInterval": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "worldEditBatches": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/WorldEditBatch" }
+    },
+    "vanillaPlacements": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/VanillaPlacement" }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Checkpoint" }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["worldEditCommands", "worldEditBlocks", "vanillaBlocks", "estimatedTime"],
+      "properties": {
+        "worldEditCommands": { "type": "integer", "minimum": 0 },
+        "worldEditBlocks": { "type": "integer", "minimum": 0 },
+        "vanillaBlocks": { "type": "integer", "minimum": 0 },
+        "estimatedTime": { "type": "number", "minimum": 0 }
+      }
+    }
+  },
+  "definitions": {
+    "WorldEditBatch": {
+      "type": "object",
+      "required": ["id", "command", "block", "estimatedBlocks"],
+      "properties": {
+        "id": { "type": "integer" },
+        "command": {
+          "type": "string",
+          "enum": ["set", "walls", "pyramid", "cylinder", "sphere", "replace"]
+        },
+        "from": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" },
+            "z": { "type": "integer" }
+          }
+        },
+        "to": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" },
+            "z": { "type": "integer" }
+          }
+        },
+        "center": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" },
+            "z": { "type": "integer" }
+          }
+        },
+        "base": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" },
+            "z": { "type": "integer" }
+          }
+        },
+        "block": { "type": "string" },
+        "params": { "type": "object" },
+        "estimatedBlocks": { "type": "integer", "minimum": 0 },
+        "checkpointAfter": { "type": "boolean" }
+      }
+    },
+    "VanillaPlacement": {
+      "type": "object",
+      "required": ["x", "y", "z", "block"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "z": { "type": "integer" },
+        "block": { "type": "string" },
+        "batchId": { "type": "integer" }
+      }
+    },
+    "Checkpoint": {
+      "type": "object",
+      "required": ["id", "description"],
+      "properties": {
+        "id": { "type": "integer" },
+        "afterBatch": { "type": "integer" },
+        "afterVanillaIndex": { "type": "integer" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

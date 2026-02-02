@@ -1,7 +1,11 @@
 import mineflayer from 'mineflayer';
 import pathfinderPlugin from 'mineflayer-pathfinder';
+import { ReconnectManager } from './reconnect-manager.js';
 
 const { pathfinder, Movements } = pathfinderPlugin;
+
+// Singleton reconnect manager
+let reconnectManager = null;
 
 /**
  * Create and configure a Mineflayer bot
@@ -72,3 +76,49 @@ export function createBot(config) {
 
   return bot;
 }
+
+/**
+ * Initialize the reconnect manager for automatic reconnection
+ * @param {Object} bot - Mineflayer bot instance
+ * @param {Object} builder - Builder instance
+ * @param {string} apiKey - API key for commands
+ * @param {Object} config - Bot configuration
+ * @param {Object} options - Additional options
+ * @returns {ReconnectManager} The reconnect manager instance
+ */
+export function initializeReconnectManager(bot, builder, apiKey, config, options = {}) {
+  reconnectManager = new ReconnectManager({
+    createBot,
+    config,
+    maxRetries: options.maxRetries || 10,
+    baseDelay: options.baseDelay || 5000,
+    maxDelay: options.maxDelay || 60000,
+    onReconnect: options.onReconnect || ((newBot, newBuilder, pendingResume) => {
+      console.log('  [Reconnect] Bot reconnected successfully');
+      if (pendingResume) {
+        console.log('  [Reconnect] Pending build can be resumed with !build resume');
+      }
+    }),
+    onGiveUp: options.onGiveUp || ((reason) => {
+      console.error(`  [Reconnect] Failed to reconnect after all attempts. Reason: ${reason}`);
+      console.error('  [Reconnect] Please restart B.O.B manually');
+    })
+  });
+
+  reconnectManager.initialize(bot, builder, apiKey);
+
+  return reconnectManager;
+}
+
+/**
+ * Get the current reconnect manager instance
+ * @returns {ReconnectManager|null}
+ */
+export function getReconnectManager() {
+  return reconnectManager;
+}
+
+/**
+ * Export ReconnectManager class for direct use
+ */
+export { ReconnectManager };

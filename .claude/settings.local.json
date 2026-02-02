@@ -25,7 +25,10 @@
       "Bash(npm run test:analyzer:*)",
       "Bash(npx jest --passWithNoTests)",
       "Bash(NODE_OPTIONS='--experimental-vm-modules' npx jest:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(wc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run test:v2:*)"
     ]
   }
 }

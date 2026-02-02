@@ -4,6 +4,65 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
 
 /**
+ * Parse block count from WorldEdit response message
+ * @param {string} text - Response text
+ * @returns {number|null} Block count or null if not found
+ */
+function parseBlockCount(text) {
+  if (!text) return null;
+
+  // Pattern 1: "123 blocks changed/affected/set"
+  const match1 = text.match(/(\d+)\s*(block|blocks)\s*(changed|affected|set|modified)/i);
+  if (match1) return parseInt(match1[1], 10);
+
+  // Pattern 2: "Operation completed (123 blocks)"
+  const match2 = text.match(/operation completed\s*\(?\s*(\d+)\s*block/i);
+  if (match2) return parseInt(match2[1], 10);
+
+  // Pattern 3: "history: 123 changed"
+  const match3 = text.match(/history[:\s#]*(\d+)\s*changed/i);
+  if (match3) return parseInt(match3[1], 10);
+
+  return null;
+}
+
+/**
+ * Parse affected region bounds from WorldEdit response (if available)
+ * Note: Most WorldEdit responses don't include bounds, but some do
+ * @param {string} text - Response text
+ * @param {Object} expectedBounds - Expected bounds from operation {from, to}
+ * @returns {Object|null} Bounds {from, to} or null if not parseable
+ */
+function parseAffectedRegion(text, expectedBounds = null) {
+  if (!text) return null;
+
+  // Pattern: "Set blocks from (x1, y1, z1) to (x2, y2, z2)"
+  const boundsMatch = text.match(/from\s*\(?\s*(-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)\s*\)?\s*to\s*\(?\s*(-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)/i);
+  if (boundsMatch) {
+    return {
+      from: {
+        x: parseInt(boundsMatch[1], 10),
+        y: parseInt(boundsMatch[2], 10),
+        z: parseInt(boundsMatch[3], 10)
+      },
+      to: {
+        x: parseInt(boundsMatch[4], 10),
+        y: parseInt(boundsMatch[5], 10),
+        z: parseInt(boundsMatch[6], 10)
+      }
+    };
+  }
+
+  // If we have expected bounds and operation succeeded, use those
+  // This helps with cursor tracking even when exact bounds aren't in response
+  if (expectedBounds) {
+    return expectedBounds;
+  }
+
+  return null;
+}
+
+/**
  * WorldEdit Executor
  * Handles WorldEdit command execution with rate limiting and validation
  */
@@ -320,11 +379,15 @@ export class WorldEditExecutor {
           console.warn(`      This may indicate selection issues or empty region`);
         }
 
+        // Parse actual bounds from response (or use expected if available)
+        const actualBounds = parseAffectedRegion(response, options.expectedBounds);
+
         return {
           success: true,
           command,
           response,
           blocksChanged,
+          actualBounds,
           confirmed: true
         };
       } else {
@@ -342,6 +405,7 @@ export class WorldEditExecutor {
           command,
           confirmed: false,
           blocksChanged: null,
+          actualBounds: options.expectedBounds || null,
           unconfirmed: true
         };
       }
@@ -351,7 +415,13 @@ export class WorldEditExecutor {
     const executionDelay = options.executionDelay || 300;
     await this.sleep(executionDelay);
 
-    return { success: true, command, confirmed: true };
+    return {
+      success: true,
+      command,
+      confirmed: true,
+      blocksChanged: null,
+      actualBounds: options.expectedBounds || null
+    };
   }
 
   /**

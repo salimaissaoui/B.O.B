@@ -122,20 +122,21 @@ const BASIC_PALETTE = { ...WOOL_COLORS, ...CONCRETE_COLORS };
  * VIBRANT PALETTE - Best blocks for pixel art
  * Prioritizes CONCRETE over wool, excludes ugly/dull blocks
  * This is the DEFAULT for pixel art
+ *
+ * NOTE: gold_block removed - it was matching bright yellow pixels
+ * and creating weird metallic-looking spots. yellow_concrete is better.
  */
 const VIBRANT_PALETTE = {
   // CONCRETE FIRST (smooth, vibrant) - preferred for main colors
   ...CONCRETE_COLORS,
-
-  // Add gold for bright yellow highlights
-  'gold_block': [246, 208, 61],
 
   // Add some terracotta for skin tones and shading only
   'orange_terracotta': [161, 83, 37],  // Skin tone
   'brown_terracotta': [77, 51, 35],    // Dark brown
   'white_terracotta': [209, 178, 161], // Light skin
 
-  // Exclude: end_stone, sandstone, redstone_block, wool, etc.
+  // Exclude: gold_block (matches yellow pixels incorrectly),
+  // end_stone, sandstone, redstone_block, wool, etc.
 };
 
 /**

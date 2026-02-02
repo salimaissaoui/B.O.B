@@ -5,6 +5,7 @@
 
 import { GeminiClient } from '../llm/gemini-client.js';
 import { visualAnalysisPrompt } from '../llm/prompts/visual-blueprint.js';
+import { fetchWithRetry } from '../utils/network-resilience.js';
 
 /**
  * Stage 0: Reference
@@ -20,8 +21,12 @@ export async function referenceStage(analysis, apiKey) {
     console.log(`🖼 Reference Stage: Analyzing visual reference from ${imageSource.url}...`);
 
     try {
-        // 1. Fetch Image
-        const response = await fetch(imageSource.url);
+        // 1. Fetch Image (with retry for network failures)
+        const response = await fetchWithRetry(
+            imageSource.url,
+            { signal: AbortSignal.timeout(30000) },
+            { label: 'image fetch', maxRetries: 3 }
+        );
         if (!response.ok) {
             throw new Error(`Failed to fetch image: ${response.statusText}`);
         }

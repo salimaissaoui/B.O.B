@@ -37,7 +37,7 @@ import { ActionQueue } from '../utils/queue/action-queue.js';
 import { InventoryManager, formatValidationResult } from '../utils/inventory-manager.js';
 import { PathfindingHelper, calculateDistance } from '../utils/pathfinding-helper.js';
 import { BuildStationManager } from '../positioning/BuildStationManager.js';
-import { validateBuildArea, clampToWorldBoundaries, safeBlockAt, WORLD_BOUNDARIES } from '../validation/world-validator.js';
+import { validateBuildArea, clampToWorldBoundaries, safeBlockAt, scanTerrainFootprint, WORLD_BOUNDARIES } from '../validation/world-validator.js';
 import { BuildStateManager } from '../state/build-state.js';
 
 import { sanitizer } from '../utils/blueprint-sanitizer.js';
@@ -649,19 +649,26 @@ export class Builder {
       // P0 Fix: Sanitize Blueprint (Typo fix & Sorting)
       sanitizer.sanitize(blueprint);
 
-      // P0 Fix: Grounding Logic (Snap to ground if floating)
-      let initialBlock = safeBlockAt(this.bot, new Vec3(startPos.x, startPos.y - 1, startPos.z));
-      if (!initialBlock || initialBlock.name === 'air') {
-        console.log('  ⚠ Starting above air. Searching for ground...');
-        for (let dy = 1; dy <= 10; dy++) {
-          const checkY = startPos.y - 1 - dy;
-          const ground = safeBlockAt(this.bot, new Vec3(startPos.x, checkY, startPos.z));
-          if (ground && ground.name !== 'air') {
-            console.log(`    ✓ Found ground at Y=${checkY}. Adjusting start height.`);
-            startPos.y = checkY + 1;
-            break;
-          }
-        }
+      // P0 Fix: Grounding Logic - Full Footprint Terrain Scan
+      // Scans multiple points across the build area to find the optimal foundation height
+      console.log('  [Terrain] Scanning build footprint for ground level...');
+      const terrainScan = scanTerrainFootprint(this.bot, startPos, blueprint.size, {
+        searchDepth: 20,
+        verbose: DEBUG
+      });
+
+      if (terrainScan.groundFound && terrainScan.adjustment !== 0) {
+        console.log(`  [Terrain] Adjusting foundation: Y=${startPos.y} → Y=${terrainScan.snapY} (${terrainScan.adjustment > 0 ? '+' : ''}${terrainScan.adjustment})`);
+        startPos.y = terrainScan.snapY;
+      }
+
+      if (terrainScan.warning) {
+        console.log(`  \u26A0 ${terrainScan.warning}`);
+        this.currentBuild.warnings.push(terrainScan.warning);
+      }
+
+      if (!terrainScan.isFlat) {
+        console.log(`  [Terrain] Note: Terrain has ${terrainScan.slope} block slope. Foundation placed at highest point.`);
       }
 
       console.log('Starting build execution...');
@@ -1119,28 +1126,66 @@ export class Builder {
   async executeWorldEditDescriptor(descriptor, startPos) {
     if (!descriptor || descriptor.type !== 'worldedit') return;
 
+    // Calculate expected bounds for cursor reconciliation
+    let expectedBounds = null;
+    if (descriptor.from && descriptor.to) {
+      expectedBounds = {
+        from: {
+          x: startPos.x + descriptor.from.x,
+          y: startPos.y + descriptor.from.y,
+          z: startPos.z + descriptor.from.z
+        },
+        to: {
+          x: startPos.x + descriptor.to.x,
+          y: startPos.y + descriptor.to.y,
+          z: startPos.z + descriptor.to.z
+        }
+      };
+    }
+
+    let operationResult = null;
+
     try {
       switch (descriptor.command) {
         case 'fill':
-          await this.executeWorldEditFill(descriptor, startPos);
+          operationResult = await this.executeWorldEditFill(descriptor, startPos);
           break;
         case 'walls':
-          await this.executeWorldEditWalls(descriptor, startPos);
+          operationResult = await this.executeWorldEditWalls(descriptor, startPos);
           break;
         case 'pyramid':
-          await this.executeWorldEditPyramid(descriptor, startPos);
+          operationResult = await this.executeWorldEditPyramid(descriptor, startPos);
           break;
         case 'cylinder':
-          await this.executeWorldEditCylinder(descriptor, startPos);
+          operationResult = await this.executeWorldEditCylinder(descriptor, startPos);
           break;
         case 'sphere':
-          await this.executeWorldEditSphere(descriptor, startPos);
+          operationResult = await this.executeWorldEditSphere(descriptor, startPos);
           break;
         case 'replace':
-          await this.executeWorldEditReplace(descriptor, startPos);
+          operationResult = await this.executeWorldEditReplace(descriptor, startPos);
           break;
         default:
           throw new Error(`Unknown WorldEdit command: ${descriptor.command}`);
+      }
+
+      // Cursor reconciliation after WorldEdit operation
+      if (this.cursor && expectedBounds) {
+        const expectedEndPos = expectedBounds.to;
+        const reconcileResult = this.cursor.reconcile(expectedEndPos, {
+          success: true,
+          actualBounds: operationResult?.actualBounds || expectedBounds,
+          blocksChanged: operationResult?.blocksChanged
+        });
+
+        if (reconcileResult.corrected) {
+          if (DEBUG) {
+            console.log(`    [Cursor] Drift corrected: ${reconcileResult.drift.magnitude} blocks`);
+          }
+        }
+        if (reconcileResult.warning) {
+          console.warn(`    [Cursor] ${reconcileResult.warning}`);
+        }
       }
 
       // Track SUCCESSFUL execution in history

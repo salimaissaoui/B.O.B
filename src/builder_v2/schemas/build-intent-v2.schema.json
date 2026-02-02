@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "build-intent-v2",
+  "title": "BuildIntentV2",
+  "description": "Non-LLM analyzer output for Builder v2",
+  "type": "object",
+  "required": ["version", "id", "timestamp", "prompt", "intent", "constraints", "context"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "UUID for tracking"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "prompt": {
+      "type": "object",
+      "required": ["raw", "normalized"],
+      "properties": {
+        "raw": { "type": "string", "minLength": 1 },
+        "normalized": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "default": "en" }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "required": ["category", "scale", "complexity"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["landmark", "architecture", "organic", "statue", "pixel_art", "abstract"]
+        },
+        "subcategory": { "type": "string" },
+        "reference": { "type": "string" },
+        "scale": {
+          "type": "string",
+          "enum": ["tiny", "small", "medium", "large", "massive", "colossal"]
+        },
+        "complexity": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex", "intricate"]
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "oneOf": [
+                { "type": "integer", "minimum": 1 },
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": { "type": "integer", "minimum": 1 },
+                    "max": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              ]
+            },
+            "height": {
+              "oneOf": [
+                { "type": "integer", "minimum": 1 },
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": { "type": "integer", "minimum": 1 },
+                    "max": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              ]
+            },
+            "depth": {
+              "oneOf": [
+                { "type": "integer", "minimum": 1 },
+                {
+                  "type": "object",
+                  "properties": {
+                    "min": { "type": "integer", "minimum": 1 },
+                    "max": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "materials": {
+          "type": "object",
+          "properties": {
+            "required": { "type": "array", "items": { "type": "string" } },
+            "preferred": { "type": "array", "items": { "type": "string" } },
+            "forbidden": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "style": { "type": "string" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": ["worldEditAvailable", "serverVersion"],
+      "properties": {
+        "worldEditAvailable": { "type": "boolean" },
+        "serverVersion": { "type": "string" },
+        "hasImageReference": { "type": "boolean", "default": false },
+        "imageAnalysis": { "type": "object" }
+      }
+    }
+  }
+}

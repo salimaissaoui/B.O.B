@@ -13,6 +13,7 @@
     "test:validation": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/validation/",
     "test:worldedit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/worldedit/",
     "test:pixel-art": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/operations/pixel-art",
+    "test:v2": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/builder_v2/",
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "keywords": [
@@ -27,6 +28,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "ajv": "^8.12.0",
+    "ajv-formats": "^3.0.1",
     "dotenv": "^16.4.0",
     "minecraft-data": "^3.103.0",
     "minecraft-protocol": "github:PrismarineJS/node-minecraft-protocol#master",

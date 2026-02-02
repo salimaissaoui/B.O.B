@@ -706,6 +706,68 @@ const DEFAULT_LIMITS = {
   },
 
   /**
+   * Network Resilience Configuration
+   *
+   * Settings for handling network failures and automatic reconnection.
+   * Protects against ECONNRESET, timeouts, and transient network issues.
+   */
+  network: {
+    /**
+     * Enable automatic bot reconnection (default: true)
+     *
+     * When true: Bot automatically attempts to reconnect after disconnection
+     * When false: Bot exits on disconnection (legacy behavior)
+     */
+    autoReconnect: true,
+
+    /**
+     * Maximum reconnection attempts (default: 10)
+     *
+     * Number of times to attempt reconnection before giving up.
+     * Each attempt uses exponential backoff.
+     */
+    maxReconnectAttempts: 10,
+
+    /**
+     * Base delay for reconnection (milliseconds) (default: 5000)
+     *
+     * Initial delay before first reconnection attempt.
+     * Subsequent attempts use exponential backoff (5s, 10s, 20s, 40s, etc.)
+     */
+    reconnectBaseDelayMs: 5000,
+
+    /**
+     * Maximum delay for reconnection (milliseconds) (default: 60000)
+     *
+     * Cap on exponential backoff to prevent excessively long waits.
+     */
+    reconnectMaxDelayMs: 60000,
+
+    /**
+     * Fetch retry attempts (default: 3)
+     *
+     * Number of times to retry failed HTTP fetches (image downloads, etc.)
+     */
+    fetchMaxRetries: 3,
+
+    /**
+     * Fetch timeout (milliseconds) (default: 30000)
+     *
+     * Maximum time to wait for HTTP fetch responses.
+     */
+    fetchTimeoutMs: 30000,
+
+    /**
+     * Enable graceful degradation (default: true)
+     *
+     * When true: Failed image fetches don't abort the build
+     * (continues without visual reference)
+     * When false: Image fetch failure aborts the build
+     */
+    gracefulDegradation: true
+  },
+
+  /**
    * Flag indicating this config can be customized via external file
    */
   isConfigurable: true
@@ -759,6 +821,10 @@ function mergeExternalConfig(defaults, external) {
     if (external.llm.maxRetries !== undefined) merged.llmMaxRetries = external.llm.maxRetries;
     if (external.llm.retryDelayMs !== undefined) merged.llmRetryDelayMs = external.llm.retryDelayMs;
     if (external.llm.maxOutputTokens !== undefined) merged.llmMaxOutputTokens = external.llm.maxOutputTokens;
+  }
+
+  if (external.network) {
+    merged.network = deepMerge(merged.network, external.network);
   }
 
   return merged;

@@ -277,3 +277,155 @@ export const WORLD_BOUNDARIES = {
   MAX_Y: WORLD_MAX_Y,
   EFFECTIVE_HEIGHT
 };
+
+/**
+ * Generate sample points for terrain scanning
+ * Uses 9-point grid: 4 corners + 4 edge midpoints + center
+ * @param {Object} startPos - Build start position {x, y, z}
+ * @param {Object} size - Build dimensions {width, depth}
+ * @returns {Array} Array of sample points
+ */
+function generateSamplePoints(startPos, size) {
+  const w = size.width || 1;
+  const d = size.depth || 1;
+  const halfW = Math.floor(w / 2);
+  const halfD = Math.floor(d / 2);
+
+  return [
+    // Four corners
+    { x: startPos.x, z: startPos.z, label: 'corner-NW' },
+    { x: startPos.x + w - 1, z: startPos.z, label: 'corner-NE' },
+    { x: startPos.x, z: startPos.z + d - 1, label: 'corner-SW' },
+    { x: startPos.x + w - 1, z: startPos.z + d - 1, label: 'corner-SE' },
+    // Four edge midpoints
+    { x: startPos.x + halfW, z: startPos.z, label: 'edge-N' },
+    { x: startPos.x + halfW, z: startPos.z + d - 1, label: 'edge-S' },
+    { x: startPos.x, z: startPos.z + halfD, label: 'edge-W' },
+    { x: startPos.x + w - 1, z: startPos.z + halfD, label: 'edge-E' },
+    // Center
+    { x: startPos.x + halfW, z: startPos.z + halfD, label: 'center' }
+  ];
+}
+
+/**
+ * Find the ground level at a specific X,Z position
+ * Searches downward from startY to find the first solid block
+ * @param {Object} bot - Mineflayer bot instance
+ * @param {number} x - X coordinate
+ * @param {number} z - Z coordinate
+ * @param {number} startY - Y coordinate to start searching from
+ * @param {number} maxDepth - Maximum blocks to search downward
+ * @returns {Object} {groundY, blockName, found}
+ */
+function findGroundLevel(bot, x, z, startY, maxDepth = 20) {
+  for (let dy = 0; dy >= -maxDepth; dy--) {
+    const checkY = startY + dy;
+
+    // Don't search below world minimum
+    if (checkY < WORLD_MIN_Y) {
+      return { groundY: WORLD_MIN_Y, blockName: 'void', found: false };
+    }
+
+    const block = safeBlockAt(bot, { x, y: checkY, z });
+
+    if (block && block.name !== 'air' && block.name !== 'cave_air' && block.name !== 'void_air') {
+      return { groundY: checkY, blockName: block.name, found: true };
+    }
+  }
+
+  // No ground found within search depth
+  return { groundY: startY - maxDepth, blockName: 'unknown', found: false };
+}
+
+/**
+ * Scan the terrain footprint for a build area
+ * Samples multiple points to determine the best foundation height
+ *
+ * @param {Object} bot - Mineflayer bot instance
+ * @param {Object} startPos - Initial build start position {x, y, z}
+ * @param {Object} size - Build dimensions {width, depth, height}
+ * @param {Object} options - Scanning options
+ * @param {number} options.searchDepth - Max blocks to search down (default: 20)
+ * @param {boolean} options.verbose - Log detailed info (default: false)
+ * @returns {Object} Terrain scan result
+ */
+export function scanTerrainFootprint(bot, startPos, size, options = {}) {
+  const { searchDepth = 20, verbose = false } = options;
+
+  // Generate sample points across the build footprint
+  const samples = generateSamplePoints(startPos, size);
+  const heights = [];
+
+  // Scan each sample point
+  for (const sample of samples) {
+    const result = findGroundLevel(bot, sample.x, sample.z, startPos.y, searchDepth);
+    heights.push({
+      ...sample,
+      y: startPos.y,
+      groundY: result.groundY,
+      blockName: result.blockName,
+      found: result.found
+    });
+  }
+
+  // Calculate statistics
+  const foundHeights = heights.filter(h => h.found);
+
+  if (foundHeights.length === 0) {
+    // No ground found at any sample point
+    return {
+      snapY: startPos.y,
+      originalY: startPos.y,
+      slope: 0,
+      heights,
+      isFlat: true,
+      warning: 'No solid ground found within search depth. Building at current position.',
+      groundFound: false,
+      adjustment: 0
+    };
+  }
+
+  const groundYValues = foundHeights.map(h => h.groundY);
+  const maxGroundY = Math.max(...groundYValues);
+  const minGroundY = Math.min(...groundYValues);
+  const slope = maxGroundY - minGroundY;
+  const avgGroundY = Math.round(groundYValues.reduce((a, b) => a + b, 0) / groundYValues.length);
+
+  // Snap to highest point (foundation sits ON the highest ground)
+  const snapY = maxGroundY + 1;
+  const adjustment = snapY - startPos.y;
+
+  // Determine if terrain is reasonably flat
+  const isFlat = slope <= 2;
+
+  // Generate warning for steep terrain
+  let warning = null;
+  if (slope > 10) {
+    warning = `Steep terrain detected: ${slope} block elevation change across build footprint. ` +
+              `Foundation will be placed at Y=${snapY} (highest point).`;
+  } else if (slope > 5) {
+    warning = `Uneven terrain: ${slope} block slope. Foundation adjusted to Y=${snapY}.`;
+  }
+
+  if (verbose) {
+    console.log('  [Terrain] Scan results:');
+    console.log(`    Sample points: ${heights.length}`);
+    console.log(`    Ground range: Y=${minGroundY} to Y=${maxGroundY} (slope: ${slope})`);
+    console.log(`    Original Y: ${startPos.y}, Snap Y: ${snapY}, Adjustment: ${adjustment > 0 ? '+' : ''}${adjustment}`);
+    if (warning) console.log(`    \u26A0 ${warning}`);
+  }
+
+  return {
+    snapY,                    // Recommended Y to start build (sits ON highest ground)
+    originalY: startPos.y,    // Original requested Y
+    slope,                    // Height difference across footprint
+    minGroundY,               // Lowest ground point
+    maxGroundY,               // Highest ground point
+    avgGroundY,               // Average ground level
+    heights,                  // All sample points with their ground levels
+    isFlat,                   // True if slope <= 2 blocks
+    warning,                  // Warning message if terrain is uneven
+    groundFound: true,        // Whether any ground was found
+    adjustment                // How much Y was adjusted (can be negative)
+  };
+}

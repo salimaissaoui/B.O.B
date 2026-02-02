@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "build-plan-v2",
+  "title": "BuildPlanV2",
+  "description": "Deterministic expansion of BuildSceneV2 into geometry primitives",
+  "type": "object",
+  "required": ["version", "sceneId", "hash", "seed", "bounds", "palette", "geometry", "stats"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "sceneId": {
+      "type": "string",
+      "description": "Reference to BuildSceneV2"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash for determinism verification"
+    },
+    "seed": {
+      "type": "integer",
+      "description": "Random seed used for deterministic generation"
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["width", "height", "depth"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "depth": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Resolved palette mapping semantic names to Minecraft block names"
+    },
+    "geometry": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/GeometryPrimitive" }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["totalBlocks", "uniqueBlocks", "componentsExpanded", "detailPassesApplied"],
+      "properties": {
+        "totalBlocks": { "type": "integer", "minimum": 0 },
+        "uniqueBlocks": { "type": "integer", "minimum": 0 },
+        "componentsExpanded": { "type": "integer", "minimum": 0 },
+        "detailPassesApplied": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "definitions": {
+    "GeometryPrimitive": {
+      "type": "object",
+      "required": ["id", "type", "block"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "box", "hollow_box", "sphere", "cylinder", "pyramid",
+            "line", "set", "stairs", "door", "slab",
+            "pixel_art", "three_d_layers"
+          ]
+        },
+        "from": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer", "minimum": 0 },
+            "z": { "type": "integer" }
+          }
+        },
+        "to": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer", "minimum": 0 },
+            "z": { "type": "integer" }
+          }
+        },
+        "pos": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer", "minimum": 0 },
+            "z": { "type": "integer" }
+          }
+        },
+        "center": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer", "minimum": 0 },
+            "z": { "type": "integer" }
+          }
+        },
+        "base": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer", "minimum": 0 },
+            "z": { "type": "integer" }
+          }
+        },
+        "block": { "type": "string" },
+        "radius": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "hollow": { "type": "boolean" },
+        "facing": { "type": "string", "enum": ["north", "south", "east", "west"] },
+        "sourceComponent": { "type": "string" },
+        "layer": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

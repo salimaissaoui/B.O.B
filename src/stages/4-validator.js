@@ -29,6 +29,7 @@ import { WorldEditValidator } from '../validation/worldedit-validator.js';
 import { QualityValidator } from '../validation/quality-validator.js';
 import { validateGeometry } from '../validation/geometry-validator.js';
 import { validateTreeQuality, fixTreeQuality, isOrganicBuild } from '../validation/organic-quality.js';
+import { validateConnectivity, formatConnectivityIssuesForRepair } from '../validation/spatial-validator.js';
 import { getOperationMetadata } from '../config/operations-registry.js';
 import { isValidBlock } from '../config/blocks.js';
 import { normalizeBlueprint } from '../utils/normalizer.js';
@@ -170,6 +171,28 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       }
     }
 
+    // 5.8. Spatial connectivity validation (gaps, floating components)
+    const connectivityResult = validateConnectivity(currentBlueprint, { verbose: DEBUG });
+    logValidationStage('Connectivity', { errors: connectivityResult.issues });
+    if (connectivityResult.hasWarnings) {
+      // Store connectivity issues for potential repair prompt enhancement
+      currentBlueprint._connectivityIssues = connectivityResult.issues;
+
+      // Only add as errors if there are severe issues
+      const severeIssues = connectivityResult.issues.filter(i => i.severity === 'error');
+      if (severeIssues.length > 0) {
+        errors.push(...severeIssues.map(i => `Connectivity: ${i.message}`));
+      }
+
+      // Log warnings even if not blocking
+      if (DEBUG && connectivityResult.issues.length > 0) {
+        console.log('  [Spatial] Connectivity warnings:');
+        for (const issue of connectivityResult.issues) {
+          console.log(`    [${issue.severity}] ${issue.type}: ${issue.message}`);
+        }
+      }
+    }
+
     // 6. Volume and Step Limits
     const limitErrors = validateLimits(currentBlueprint);
     errors.push(...limitErrors);
@@ -248,9 +271,17 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
 
       try {
         const client = new GeminiClient(apiKey);
+
+        // Enhance errors with connectivity issue details if present
+        let enhancedErrors = [...errors];
+        if (currentBlueprint._connectivityIssues?.length > 0) {
+          const connectivityDetails = formatConnectivityIssuesForRepair(currentBlueprint._connectivityIssues);
+          enhancedErrors.push(connectivityDetails);
+        }
+
         currentBlueprint = await client.repairBlueprint(
           currentBlueprint,
-          errors,
+          enhancedErrors,
           analysis,
           qualityScore
         );

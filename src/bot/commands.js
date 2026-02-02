@@ -6,6 +6,12 @@ import { exportBlueprint } from '../export/index.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { parseCoordinateFlags, stripCoordinateFlags, validateBoundingBox } from '../utils/coordinate-parser.js';
 import { getMemory } from '../memory/index.js';
+import {
+  getBuilderVersion,
+  setBuilderVersion,
+  runBuilderV2Pipeline,
+  convertToLegacyBlueprint
+} from '../builder_v2/index.js';
 
 /**
  * Register chat commands for the bot
@@ -81,6 +87,26 @@ export function registerCommands(bot, builder, apiKey) {
         safeChat(bot, '  !build resume - Resume interrupted build');
         safeChat(bot, '  !build rate <1-5> - Rate last build');
         safeChat(bot, '  !build list - List saved builds');
+        safeChat(bot, '  !builder v1|v2|status - Toggle builder version');
+      }
+
+      // Builder version toggle command
+      else if (message.startsWith('!builder')) {
+        const arg = message.slice(8).trim().toLowerCase();
+        const currentVersion = getBuilderVersion();
+
+        if (arg === 'v1') {
+          setBuilderVersion('v1');
+          safeChat(bot, '✓ Switched to Builder v1 (legacy)');
+        } else if (arg === 'v2') {
+          setBuilderVersion('v2');
+          safeChat(bot, '✓ Switched to Builder v2 (experimental)');
+        } else if (arg === 'status' || arg === '') {
+          safeChat(bot, `Builder version: ${currentVersion}`);
+          safeChat(bot, '  Use !builder v1 or !builder v2 to switch');
+        } else {
+          safeChat(bot, 'Usage: !builder v1|v2|status');
+        }
       }
 
       // Rate command - provide feedback on last build
@@ -244,6 +270,10 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
     return;
   }
 
+  // Check for dry-run flag
+  const isDryRun = prompt.includes('--dry-run');
+  prompt = prompt.replace(/--dry-run/gi, '').trim();
+
   // Parse export flag
   let exportFormat = null;
   let cleanPrompt = prompt;
@@ -259,6 +289,17 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   // Parse coordinate flags (--at X,Y,Z --to X2,Y2,Z2)
   const coordFlags = parseCoordinateFlags(cleanPrompt);
   cleanPrompt = stripCoordinateFlags(cleanPrompt);
+
+  // Check if Builder v2 should be used
+  const builderVersion = getBuilderVersion();
+  if (builderVersion === 'v2') {
+    await handleBuildCommandV2(cleanPrompt, bot, builder, apiKey, username, {
+      dryRun: isDryRun,
+      exportFormat,
+      coordFlags
+    });
+    return;
+  }
 
   // Validate bounding box if specified
   if (coordFlags.boundingBox) {
@@ -397,6 +438,100 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   } catch (error) {
     console.error('Build command failed:', error);
     safeChat(bot, `✗ Build failed: ${error.message}`);
+  }
+}
+
+/**
+ * Handle build command using Builder v2 pipeline
+ */
+async function handleBuildCommandV2(prompt, bot, builder, apiKey, username, options = {}) {
+  const { dryRun = false, exportFormat, coordFlags } = options;
+
+  safeChat(bot, `[v2] Building: "${prompt}"${dryRun ? ' (DRY RUN)' : ''}`);
+
+  try {
+    // Run v2 pipeline
+    const context = {
+      worldEditAvailable: builder.worldEditEnabled,
+      serverVersion: '1.20.1'  // Could detect from server
+    };
+
+    const result = await runBuilderV2Pipeline(prompt, apiKey, context, { dryRun });
+
+    if (!result.success) {
+      safeChat(bot, '✗ Builder v2 pipeline failed');
+      for (const err of result.errors.slice(0, 3)) {
+        safeChat(bot, `  Error: ${err}`);
+      }
+      return;
+    }
+
+    // Report stages
+    if (result.stages.intent) {
+      safeChat(bot, `  Intent: ${result.stages.intent.category}/${result.stages.intent.scale}`);
+    }
+    if (result.stages.scene) {
+      safeChat(bot, `  Scene: ${result.stages.scene.title || 'untitled'}`);
+    }
+    if (result.stages.plan) {
+      safeChat(bot, `  Plan: ${result.stages.plan.stats.totalBlocks} blocks`);
+    }
+
+    // Dry run stops here
+    if (dryRun) {
+      safeChat(bot, '✓ Dry run complete');
+      if (result.stages.placement) {
+        const stats = result.stages.placement.stats;
+        safeChat(bot, `  WE batches: ${stats.worldEditCommands / 3 | 0}`);
+        safeChat(bot, `  Vanilla blocks: ${stats.vanillaBlocks}`);
+        safeChat(bot, `  Est. time: ${stats.estimatedTime.toFixed(1)}s`);
+      }
+      return;
+    }
+
+    // Convert to legacy blueprint and execute
+    if (result.plan && result.placement) {
+      const legacyBlueprint = convertToLegacyBlueprint(result.plan, result.placement);
+
+      // Calculate build position
+      let buildPos;
+      if (coordFlags?.position) {
+        buildPos = coordFlags.position;
+      } else {
+        let targetEntity = bot.entity;
+        if (username && bot.players[username] && bot.players[username].entity) {
+          targetEntity = bot.players[username].entity;
+        }
+
+        const viewDir = {
+          x: -Math.sin(targetEntity.yaw),
+          z: -Math.cos(targetEntity.yaw)
+        };
+
+        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
+        buildPos = {
+          x: Math.floor(startPos.x),
+          y: Math.floor(startPos.y),
+          z: Math.floor(startPos.z)
+        };
+      }
+
+      safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
+      await builder.executeBlueprint(legacyBlueprint, buildPos);
+
+      // Track in memory
+      try {
+        const memory = getMemory();
+        memory.trackLastBuild(legacyBlueprint);
+      } catch (e) {
+        console.warn('Failed to track build in memory:', e.message);
+      }
+
+      safeChat(bot, '✓ Build complete! (Builder v2)');
+    }
+  } catch (error) {
+    console.error('Builder v2 error:', error);
+    safeChat(bot, `✗ v2 Error: ${error.message}`);
   }
 }
 

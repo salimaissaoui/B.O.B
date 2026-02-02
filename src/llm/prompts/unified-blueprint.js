@@ -77,6 +77,49 @@ BUILD A NATURAL, ORGANIC TREE:
    - Do NOT use a single box.
 `,
 
+    treehouse: `
+=== TREEHOUSE BUILD ===
+${massiveGuidance}
+A TREEHOUSE MUST HAVE CONNECTED PARTS - NO FLOATING SECTIONS!
+
+BUILD ORDER (CRITICAL - follow exactly):
+1. TREE TRUNK (Ground to Platform):
+   - Start at Y=0, use we_fill or we_cylinder
+   - Make trunk TALL (at least 8-12 blocks high)
+   - Trunk must reach UP TO the platform level
+
+2. PLATFORM (Connected to Trunk):
+   - Platform Y-level = trunk top (e.g., if trunk goes from Y=0 to Y=10, platform starts at Y=10)
+   - Use we_fill for platform floor (oak_planks)
+   - Platform MUST touch/surround the trunk
+   - Extend platform outward from trunk center
+
+3. HOUSE WALLS (On Platform):
+   - Build walls ON TOP of the platform (Y = platform + 1)
+   - Use we_walls sitting directly on the platform
+   - Leave opening for trunk if it continues through
+
+4. ROOF (On Walls):
+   - Roof sits on top of walls
+   - Use roof_gable or we_fill for flat roof
+   - Add slight overhang (1-2 blocks)
+
+5. ACCESS (Ground to Platform):
+   - Ladder: line of ladder blocks from Y=0 to platform
+   - OR stairs spiraling around trunk
+   - MUST connect ground to platform entrance
+
+6. RAILINGS (Platform Edges):
+   - Fence posts on platform edges
+   - Prevents falling
+
+CONNECTIVITY RULES:
+- Trunk Y-max = Platform Y-min (no gap!)
+- Platform extends FROM trunk, not floating beside it
+- Walls sit ON platform, roof ON walls
+- Ladder/stairs connect ground to platform
+`,
+
     house: `
 === HOUSE/MANSION BUILD ===
 ${massiveGuidance}

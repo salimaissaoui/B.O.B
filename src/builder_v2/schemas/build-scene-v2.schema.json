@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "build-scene-v2",
+  "title": "BuildSceneV2",
+  "description": "LLM-generated scene graph for Builder v2",
+  "type": "object",
+  "required": ["version", "intentId", "description", "bounds", "style", "components"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "intentId": {
+      "type": "string",
+      "description": "Reference to BuildIntentV2.id"
+    },
+    "description": {
+      "type": "object",
+      "required": ["title", "summary"],
+      "properties": {
+        "title": { "type": "string", "maxLength": 100 },
+        "summary": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "required": ["width", "height", "depth"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 2000 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "depth": { "type": "integer", "minimum": 1, "maximum": 2000 }
+      }
+    },
+    "style": {
+      "type": "object",
+      "required": ["palette", "theme"],
+      "properties": {
+        "palette": {
+          "type": "object",
+          "required": ["primary", "secondary", "accent"],
+          "properties": {
+            "primary": { "type": "string" },
+            "secondary": { "type": "string" },
+            "accent": { "type": "string" },
+            "trim": { "type": "string" },
+            "glass": { "type": "string" },
+            "light": { "type": "string" }
+          }
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["medieval", "modern", "gothic", "rustic", "oriental", "fantasy", "organic", "industrial", "default"]
+        },
+        "gradient": {
+          "type": "object",
+          "properties": {
+            "direction": { "type": "string", "enum": ["up", "down"] },
+            "intensity": { "type": "string", "enum": ["subtle", "moderate", "strong"] }
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/ComponentNode" },
+      "minItems": 1
+    },
+    "interiors": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/InteriorDirective" }
+    },
+    "detailPasses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["edge_trim", "window_framing", "roof_trimming", "interior_furnish", "lighting", "landscaping"]
+      }
+    }
+  },
+  "definitions": {
+    "ComponentNode": {
+      "type": "object",
+      "required": ["id", "type", "transform", "params"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "lattice_tower", "arch", "truss", "column", "beam", "platform", "staircase",
+            "room", "corridor", "floorplan", "building_shell",
+            "roof_gable", "roof_hip", "roof_dome", "roof_spire", "roof_flat",
+            "sphere", "ellipsoid", "cylinder", "cone", "blob", "statue_armature",
+            "window_row", "door_frame", "balcony", "chimney", "furniture_set", "lighting_array",
+            "box", "wall", "custom"
+          ]
+        },
+        "transform": {
+          "type": "object",
+          "required": ["position"],
+          "properties": {
+            "position": {
+              "type": "object",
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "type": "integer" },
+                "y": { "type": "integer", "minimum": 0 },
+                "z": { "type": "integer" }
+              }
+            },
+            "rotation": { "type": "integer", "enum": [0, 90, 180, 270] },
+            "scale": { "type": "number", "minimum": 0.1, "maximum": 10 }
+          }
+        },
+        "params": {
+          "type": "object",
+          "description": "Component-specific parameters"
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ComponentNode" }
+        },
+        "materials": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "InteriorDirective": {
+      "type": "object",
+      "required": ["roomId", "type", "style"],
+      "properties": {
+        "roomId": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["bedroom", "kitchen", "workshop", "library", "throne", "storage", "living", "dining", "bathroom"]
+        },
+        "style": { "type": "string" },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
