@@ -66,6 +66,16 @@ describe('Inventory Manager', () => {
       expect(result.get('stone')).toBe(27); // 3x3x3
     });
 
+    test('calculates requirements from x/y/z size format', () => {
+      const blueprint = {
+        steps: [
+          { op: 'fill', block: 'stone', size: { x: 2, y: 3, z: 4 } }
+        ]
+      };
+      const result = calculateMaterialRequirements(blueprint);
+      expect(result.get('stone')).toBe(24); // 2x3x4
+    });
+
     test('resolves palette variables', () => {
       const blueprint = {
         palette: { wall: 'stone_bricks', floor: 'oak_planks' },
@@ -231,6 +241,26 @@ describe('Inventory Manager', () => {
       
       const result = manager.validateForBlueprint(blueprint);
       expect(result.valid).toBe(true);
+    });
+
+    test('estimates material counts for x/y/z sizes in survival mode', () => {
+      const bot = {
+        inventory: {
+          items: () => [
+            { name: 'stone', count: 24 }
+          ]
+        }
+      };
+      const manager = new InventoryManager(bot);
+      manager.isCreativeMode = false;
+
+      const blueprint = {
+        steps: [{ op: 'fill', block: 'stone', size: { x: 2, y: 3, z: 4 } }]
+      };
+
+      const result = manager.validateForBlueprint(blueprint);
+      expect(result.valid).toBe(true);
+      expect(result.required.stone).toBe(24);
     });
   });
 });

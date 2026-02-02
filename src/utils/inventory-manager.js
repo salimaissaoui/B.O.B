@@ -93,8 +93,18 @@ export class InventoryManager {
   estimateBlockCount(step) {
     // Simple estimation based on operation type
     if (step.size) {
-      const { x = 1, y = 1, z = 1 } = step.size;
-      return x * y * z;
+      const {
+        x,
+        y,
+        z,
+        width,
+        height,
+        depth
+      } = step.size;
+      const sizeX = x ?? width ?? 1;
+      const sizeY = y ?? height ?? 1;
+      const sizeZ = z ?? depth ?? 1;
+      return sizeX * sizeY * sizeZ;
     }
 
     if (step.from && step.to) {
@@ -190,7 +200,18 @@ export function calculateMaterialRequirements(blueprint) {
 
       let count = 1;
       if (step.size) {
-        count = (step.size.width || 1) * (step.size.height || 1) * (step.size.depth || 1);
+        const {
+          x,
+          y,
+          z,
+          width,
+          height,
+          depth
+        } = step.size;
+        const sizeX = x ?? width ?? 1;
+        const sizeY = y ?? height ?? 1;
+        const sizeZ = z ?? depth ?? 1;
+        count = sizeX * sizeY * sizeZ;
       } else if (step.from && step.to) {
         count = (Math.abs(step.to.x - step.from.x) + 1) *
           (Math.abs(step.to.y - step.from.y) + 1) *

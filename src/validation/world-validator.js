@@ -80,24 +80,35 @@ export function validateYBoundaries(startPos, size) {
 
   let clamped = false;
   let warning = '';
+  const warningParts = [];
   let clampedHeight = size.height;
 
   // Check lower boundary
   if (buildMinY < WORLD_MIN_Y) {
     clamped = true;
-    warning = `Build extends below world minimum (Y=${WORLD_MIN_Y}). Bottom will be clipped.`;
     // Adjust height to fit within boundaries
     const overflow = WORLD_MIN_Y - buildMinY;
-    clampedHeight = size.height - overflow;
+    clampedHeight -= overflow;
+    warningParts.push(
+      `Build extends below world minimum (Y=${WORLD_MIN_Y}). Bottom will be clipped.`
+    );
   }
 
   // Check upper boundary
   if (buildMaxY > WORLD_MAX_Y) {
     clamped = true;
     const overflow = buildMaxY - WORLD_MAX_Y;
-    clampedHeight = size.height - overflow;
-    warning = `Build extends above world maximum (Y=${WORLD_MAX_Y}). Top will be clipped.`;
+    clampedHeight -= overflow;
+    warningParts.push(
+      `Build extends above world maximum (Y=${WORLD_MAX_Y}). Top will be clipped.`
+    );
   }
+
+  if (clampedHeight < 0) {
+    clampedHeight = 0;
+  }
+
+  warning = warningParts.join(' ');
 
   return { clamped, warning, clampedHeight };
 }

@@ -398,6 +398,35 @@ describe('Builder P0 Fixes', () => {
     });
   });
 
+  describe('Cancellation Handling', () => {
+    test('should mark build as cancelled and avoid completion', async () => {
+      const mockBot = createMockBot();
+      const builder = new Builder(mockBot);
+      builder.verifyBuild = jest.fn().mockResolvedValue();
+      builder.autoClearArea = jest.fn(() => new Promise(resolve => setTimeout(resolve, 50)));
+      const failBuildSpy = jest.spyOn(builder.stateManager, 'failBuild');
+      const completeBuildSpy = jest.spyOn(builder.stateManager, 'completeBuild');
+
+      const blueprint = {
+        size: { width: 2, depth: 2, height: 2 },
+        palette: ['stone'],
+        steps: [
+          { op: 'set', block: 'stone', pos: { x: 0, y: 0, z: 0 } },
+          { op: 'set', block: 'stone', pos: { x: 1, y: 0, z: 0 } }
+        ]
+      };
+
+      const buildPromise = builder.executeBlueprint(blueprint, { x: 0, y: 64, z: 0 });
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      builder.cancel();
+
+      await expect(buildPromise).rejects.toThrow(/Build cancelled/i);
+      expect(failBuildSpy).toHaveBeenCalledWith('Build cancelled');
+      expect(completeBuildSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('WorldEdit Undo Tracking', () => {
     test('should track WorldEdit operations in history', async () => {
       const mockBot = createMockBot();

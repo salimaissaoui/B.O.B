@@ -42,7 +42,7 @@ import { BuildStateManager } from '../state/build-state.js';
 
 import { sanitizer } from '../utils/blueprint-sanitizer.js';
 
-const DEBUG = true;
+const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
 /**
  * Build Mutex - Prevents Concurrent Build Race Conditions
@@ -894,6 +894,12 @@ export class Builder {
         this.stateManager.completeStep(i);
       }
 
+      if (!this.building) {
+        const cancelError = new Error('Build cancelled');
+        cancelError.code = 'BUILD_CANCELLED';
+        throw cancelError;
+      }
+
       // Mark build as completed in state manager
       this.stateManager.completeBuild();
 
@@ -944,9 +950,14 @@ export class Builder {
       await this.verifyBuild(blueprint, startPos);
 
     } catch (error) {
-      console.error(`Build execution failed: ${error.message}`);
-      // Mark build as failed in state manager
-      this.stateManager.failBuild(error.message);
+      if (error && error.code === 'BUILD_CANCELLED') {
+        console.warn('Build cancelled');
+        this.stateManager.failBuild('Build cancelled');
+      } else {
+        console.error(`Build execution failed: ${error.message}`);
+        // Mark build as failed in state manager
+        this.stateManager.failBuild(error.message);
+      }
       throw error;
     } finally {
       this.building = false;
