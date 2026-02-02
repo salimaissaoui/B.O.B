@@ -1,6 +1,32 @@
-# Changelog
-
 All notable changes to B.O.B (Build Orchestrating Bot) will be documented in this file.
+
+## [2.1.0-beta] - 2026-02-02
+
+### Major Features
+
+#### Builder v2 (Preview)
+- **Component-Driven Pipeline**: Migration to structural components (lattice towers, arches, etc.).
+- **Style Engine**: Separation of geometry from aesthetics via theme-aware palettes.
+- **Seeded Determinism**: Support for reproducible builds via seeded random generation.
+- **Improved Schemas**: Strict `BuildSceneV2` and `BuildPlanV2` validation.
+
+#### Tree Generation System Refactor
+- **Archetype System**: Added 7 distinct tree types (Oak, Birch, Spruce, Jungle, Willow, Cherry, Dark Oak).
+- **Organic Shapes**: Forced WorldEdit usage for organic canopy clusters (10-50x speedup).
+- **Natural Randomization**: ±20% size variation and asymmetric canopy positioning.
+- **Detail Levels**: Supports "simple" vs "beautiful" adjectives in prompts.
+
+#### Network & Reliability
+- **Resilience Layer**: Added `withRetry` with exponential backoff for all LLM API calls.
+- **Circuit Breaker**: Implemented for WorldEdit commands to handle server lag gracefully.
+- **Diagnostics**: Enhanced error classification for FAWE/WorldEdit timeouts.
+
+### Improvements
+- **Token Optimization**: Reduced LLM token footprint by 43% via prompt engineering.
+- **Blueprint Sanitizer**: Improved block name correction logic.
+- **Inventory Manager**: Better namespaced block handling.
+- **Performance**: Improved WorldEdit command throughput via asynchronous tracking.
+
 
 ## [2.0.0] - 2026-01-24
 

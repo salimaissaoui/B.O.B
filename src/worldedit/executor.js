@@ -4,6 +4,192 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
 
 /**
+ * Circuit Breaker for WorldEdit operations
+ *
+ * Prevents cascade failures when server is unresponsive or experiencing issues.
+ * Implements the circuit breaker pattern with three states:
+ * - CLOSED: Normal operation, commands execute normally
+ * - OPEN: Circuit tripped, commands fail fast without execution
+ * - HALF_OPEN: Testing recovery, limited commands allowed
+ */
+export class CircuitBreaker {
+  constructor(options = {}) {
+    // Configuration
+    this.failureThreshold = options.failureThreshold || 5;
+    this.timeoutThreshold = options.timeoutThreshold || 3;
+    this.resetTimeoutMs = options.resetTimeoutMs || 30000;
+    this.halfOpenRequests = options.halfOpenRequests || 2;
+
+    // State
+    this.state = 'CLOSED';
+    this.consecutiveFailures = 0;
+    this.consecutiveTimeouts = 0;
+    this.lastFailureTime = null;
+    this.lastFailureReason = null;
+    this.halfOpenSuccesses = 0;
+
+    // Statistics
+    this.stats = {
+      totalFailures: 0,
+      totalTimeouts: 0,
+      totalSuccesses: 0,
+      circuitOpenCount: 0,
+      lastStateChange: null
+    };
+  }
+
+  /**
+   * Record a successful operation
+   * Resets failure counters and may close the circuit
+   */
+  recordSuccess() {
+    this.consecutiveFailures = 0;
+    this.consecutiveTimeouts = 0;
+    this.stats.totalSuccesses++;
+
+    if (this.state === 'HALF_OPEN') {
+      this.halfOpenSuccesses++;
+
+      if (this.halfOpenSuccesses >= this.halfOpenRequests) {
+        this._transitionTo('CLOSED');
+        this.halfOpenSuccesses = 0;
+        console.log('[CircuitBreaker] Circuit CLOSED - service recovered');
+      }
+    }
+  }
+
+  /**
+   * Record a failed operation
+   * May trip the circuit if threshold is exceeded
+   */
+  recordFailure(reason = 'unknown') {
+    this.consecutiveFailures++;
+    this.consecutiveTimeouts = 0; // Reset timeout counter on explicit failure
+    this.lastFailureTime = Date.now();
+    this.lastFailureReason = reason;
+    this.stats.totalFailures++;
+
+    if (this.state === 'HALF_OPEN') {
+      // Any failure in half-open immediately reopens circuit
+      this._transitionTo('OPEN');
+      console.warn(`[CircuitBreaker] Circuit re-OPENED - failure during recovery test: ${reason}`);
+      return;
+    }
+
+    if (this.state === 'CLOSED' && this.consecutiveFailures >= this.failureThreshold) {
+      this._transitionTo('OPEN');
+      console.warn(`[CircuitBreaker] Circuit OPEN - ${this.consecutiveFailures} consecutive failures (${reason})`);
+    }
+  }
+
+  /**
+   * Record a timeout (no ACK received)
+   * Timeouts are tracked separately and may trip the circuit
+   */
+  recordTimeout() {
+    this.consecutiveTimeouts++;
+    this.lastFailureTime = Date.now();
+    this.lastFailureReason = 'timeout';
+    this.stats.totalTimeouts++;
+
+    if (this.state === 'HALF_OPEN') {
+      // Timeout in half-open reopens circuit
+      this._transitionTo('OPEN');
+      console.warn('[CircuitBreaker] Circuit re-OPENED - timeout during recovery test');
+      return;
+    }
+
+    if (this.state === 'CLOSED' && this.consecutiveTimeouts >= this.timeoutThreshold) {
+      this._transitionTo('OPEN');
+      console.warn(`[CircuitBreaker] Circuit OPEN - ${this.consecutiveTimeouts} consecutive timeouts`);
+    }
+  }
+
+  /**
+   * Check if an operation can proceed
+   * Returns true if operation should be attempted, false if it should fail fast
+   */
+  canProceed() {
+    if (this.state === 'CLOSED') {
+      return true;
+    }
+
+    if (this.state === 'OPEN') {
+      // Check if reset timeout has elapsed
+      const timeSinceFailure = Date.now() - this.lastFailureTime;
+
+      if (timeSinceFailure >= this.resetTimeoutMs) {
+        this._transitionTo('HALF_OPEN');
+        this.halfOpenSuccesses = 0;
+        console.log('[CircuitBreaker] Circuit HALF_OPEN - testing recovery');
+        return true;
+      }
+
+      return false;
+    }
+
+    // HALF_OPEN: allow limited requests for testing
+    return true;
+  }
+
+  /**
+   * Get remaining time until circuit may transition from OPEN to HALF_OPEN
+   * Returns 0 if not in OPEN state
+   */
+  getTimeUntilRetry() {
+    if (this.state !== 'OPEN' || !this.lastFailureTime) {
+      return 0;
+    }
+
+    const elapsed = Date.now() - this.lastFailureTime;
+    return Math.max(0, this.resetTimeoutMs - elapsed);
+  }
+
+  /**
+   * Get current circuit breaker state information
+   */
+  getState() {
+    return {
+      state: this.state,
+      consecutiveFailures: this.consecutiveFailures,
+      consecutiveTimeouts: this.consecutiveTimeouts,
+      lastFailureTime: this.lastFailureTime,
+      lastFailureReason: this.lastFailureReason,
+      timeUntilRetry: this.getTimeUntilRetry(),
+      stats: { ...this.stats }
+    };
+  }
+
+  /**
+   * Forcefully reset the circuit breaker to CLOSED state
+   * Use with caution - typically for manual recovery
+   */
+  reset() {
+    this._transitionTo('CLOSED');
+    this.consecutiveFailures = 0;
+    this.consecutiveTimeouts = 0;
+    this.halfOpenSuccesses = 0;
+    this.lastFailureTime = null;
+    this.lastFailureReason = null;
+    console.log('[CircuitBreaker] Circuit manually reset to CLOSED');
+  }
+
+  /**
+   * Internal state transition
+   */
+  _transitionTo(newState) {
+    if (this.state !== newState) {
+      this.state = newState;
+      this.stats.lastStateChange = Date.now();
+
+      if (newState === 'OPEN') {
+        this.stats.circuitOpenCount++;
+      }
+    }
+  }
+}
+
+/**
  * Parse block count from WorldEdit response message
  * @param {string} text - Response text
  * @returns {number|null} Block count or null if not found
@@ -75,6 +261,19 @@ export class WorldEditExecutor {
     this.commandsExecuted = 0;
     this.spamDetected = false;
     this.backoffMultiplier = 1.0;
+
+    // Circuit Breaker for failure protection
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: 5,      // Open after 5 consecutive failures
+      timeoutThreshold: 3,      // Open after 3 consecutive timeouts
+      resetTimeoutMs: 30000,    // Stay open for 30 seconds
+      halfOpenRequests: 2       // Test with 2 requests before closing
+    });
+
+    // Latency tracking for adaptive rate limiting
+    this.latencyHistory = [];
+    this.maxLatencyHistory = 20;
+    this.adaptiveDelayMs = SAFETY_LIMITS.worldEdit.commandMinDelayMs;
 
     // Command History Tracking
     this.commandHistory = [];
@@ -242,13 +441,63 @@ export class WorldEditExecutor {
   }
 
   /**
+   * Record command latency for adaptive rate limiting
+   */
+  recordLatency(latencyMs) {
+    this.latencyHistory.push(latencyMs);
+    if (this.latencyHistory.length > this.maxLatencyHistory) {
+      this.latencyHistory.shift();
+    }
+
+    // Calculate adaptive delay based on p90 latency
+    if (this.latencyHistory.length >= 5) {
+      const sorted = [...this.latencyHistory].sort((a, b) => a - b);
+      const p90Index = Math.floor(sorted.length * 0.9);
+      const p90Latency = sorted[p90Index];
+
+      // Set delay to p90 latency + 50% buffer, min 200ms, max 2000ms
+      this.adaptiveDelayMs = Math.max(200, Math.min(2000, p90Latency * 1.5));
+
+      if (DEBUG_ACK) {
+        console.log(`[WE-Adaptive] Delay updated: ${Math.round(this.adaptiveDelayMs)}ms (p90: ${Math.round(p90Latency)}ms)`);
+      }
+    }
+  }
+
+  /**
+   * Calculate effective delay considering adaptive rate and backoff
+   */
+  calculateEffectiveDelay() {
+    const baseDelay = this.adaptiveDelayMs;
+    const queuePressure = this.getPendingCount() > 5 ? 1.5 : 1.0;
+    const spamMultiplier = this.spamDetected ? 2.0 : 1.0;
+
+    return Math.min(baseDelay * this.backoffMultiplier * queuePressure * spamMultiplier, 2000);
+  }
+
+  /**
    * Execute a WorldEdit command with rate limiting and validation
    */
   async executeCommand(command, options = {}) {
-    // Rate limiting with backoff
+    // Check circuit breaker first
+    if (!this.circuitBreaker.canProceed()) {
+      const state = this.circuitBreaker.getState();
+      const retryInSec = Math.ceil(state.timeUntilRetry / 1000);
+      const error = new Error(
+        `WorldEdit circuit breaker OPEN - ${state.consecutiveFailures} failures, ` +
+        `${state.consecutiveTimeouts} timeouts. Retry in ${retryInSec}s. ` +
+        `Reason: ${state.lastFailureReason || 'unknown'}`
+      );
+      error.isCircuitBreakerError = true;
+      error.circuitState = state;
+      throw error;
+    }
+
+    const commandStartTime = Date.now();
+
+    // Rate limiting with adaptive delay
     const now = Date.now();
-    const baseDelay = SAFETY_LIMITS.worldEdit.commandMinDelayMs;
-    const effectiveDelay = baseDelay * this.backoffMultiplier;
+    const effectiveDelay = this.calculateEffectiveDelay();
     const timeSinceLastCmd = now - this.lastCommandTime;
 
     if (timeSinceLastCmd < effectiveDelay) {
@@ -348,9 +597,10 @@ export class WorldEditExecutor {
     // Wait for and verify response
     if (responsePromise) {
       const response = await responsePromise;
+      const latency = Date.now() - commandStartTime;
 
       if (DEBUG_ACK) {
-        console.log(`[WE-ACK] RSP: ${response?.substring(0, 100) || '(null)'}`);
+        console.log(`[WE-ACK] RSP: ${response?.substring(0, 100) || '(null)'} (${latency}ms)`);
       }
 
       if (response) {
@@ -359,6 +609,9 @@ export class WorldEditExecutor {
         // Classify and handle error responses
         const errorInfo = this.classifyError(response, command);
         if (errorInfo) {
+          // Record failure with circuit breaker
+          this.circuitBreaker.recordFailure(errorInfo.type);
+
           const error = new Error(errorInfo.message);
           error.isWorldEditError = true;
           error.errorType = errorInfo.type;
@@ -369,6 +622,10 @@ export class WorldEditExecutor {
           console.error(`      Suggestion: ${errorInfo.suggestedFix}`);
           throw error;
         }
+
+        // Success - record with circuit breaker and track latency
+        this.circuitBreaker.recordSuccess();
+        this.recordLatency(latency);
 
         // Check for "0 blocks changed" or "No blocks in region"
         const blockMatch = response.match(/(\d+)\s*block/i);
@@ -388,16 +645,21 @@ export class WorldEditExecutor {
           response,
           blocksChanged,
           actualBounds,
-          confirmed: true
+          confirmed: true,
+          latency
         };
       } else {
-        // No response
+        // No response = timeout
         console.warn(`    ⚠ No acknowledgment received for: ${command}`);
         console.warn(`      This could indicate: plugin lag, chat spam filter, or command failure`);
 
+        // Record timeout with circuit breaker
+        this.circuitBreaker.recordTimeout();
+
         this.unconfirmedOps.push({
           command,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          retryCount: 0
         });
 
         return {
@@ -406,7 +668,8 @@ export class WorldEditExecutor {
           confirmed: false,
           blocksChanged: null,
           actualBounds: options.expectedBounds || null,
-          unconfirmed: true
+          unconfirmed: true,
+          latency
         };
       }
     }
@@ -1078,6 +1341,9 @@ export class WorldEditExecutor {
     this.commandQueue = [];
     this.spamDetected = false;
     this.backoffMultiplier = 1.0;
+    // Reset adaptive delay to default
+    this.adaptiveDelayMs = SAFETY_LIMITS.worldEdit.commandMinDelayMs;
+    this.latencyHistory = [];
     // P0 Fix: Clear command history for new build
     this.commandHistory = [];
     // Clear unconfirmed operations
@@ -1088,6 +1354,15 @@ export class WorldEditExecutor {
     if (this.pendingAsyncCommands) {
       this.pendingAsyncCommands.clear();
     }
+    // Note: Circuit breaker is NOT reset between builds - it tracks service health
+    // Use this.circuitBreaker.reset() manually if needed
+  }
+
+  /**
+   * Get the circuit breaker instance for external control
+   */
+  getCircuitBreaker() {
+    return this.circuitBreaker;
   }
 
   /**
@@ -1107,9 +1382,14 @@ export class WorldEditExecutor {
       commandsExecuted: this.commandsExecuted,
       spamDetected: this.spamDetected,
       backoffMultiplier: this.backoffMultiplier,
+      adaptiveDelayMs: Math.round(this.adaptiveDelayMs),
       commandHistoryCount: this.commandHistory.length,
       unconfirmedOps: this.unconfirmedOps.length,
-      pendingAsyncCommands: this.getPendingCount()
+      pendingAsyncCommands: this.getPendingCount(),
+      circuitBreaker: this.circuitBreaker.getState(),
+      latencyP90: this.latencyHistory.length >= 5
+        ? Math.round([...this.latencyHistory].sort((a, b) => a - b)[Math.floor(this.latencyHistory.length * 0.9)])
+        : null
     };
   }
 

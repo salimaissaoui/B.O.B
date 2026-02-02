@@ -41,13 +41,20 @@ B.O.B/
 │   ├── bot/              # Minecraft bot integration
 │   ├── config/           # Configuration and schemas
 │   ├── llm/              # Gemini LLM integration
-│   ├── operations/       # Building operations
-│   ├── stages/           # Five-stage pipeline
+│   ├── operations/       # Building operations (V1)
+│   ├── stages/           # V1 pipeline stages
+│   ├── builder_v2/       # NEXT-GEN component-driven pipeline
+│   │   ├── components/   # Parametric building blocks
+│   │   ├── style/        # Palette and theme engine
+│   │   ├── plan/         # Scene-to-plan compilers
+│   │   └── execute/      # Optimized execution adapters
+│   ├── utils/            # Shared utilities (Network Resilience, etc.)
 │   └── index.js          # Main entry point
 ├── tests/
 │   ├── operations/       # Operation unit tests
 │   ├── schemas/          # Schema validation tests
 │   ├── stages/           # Stage integration tests
+│   ├── builder_v2/       # V2 pipeline unit/integration tests
 │   └── integration/      # Full pipeline tests
 └── README.md
 ```

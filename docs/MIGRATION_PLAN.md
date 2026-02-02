@@ -6,21 +6,17 @@ This document outlines the migration strategy from the current B.O.B build pipel
 
 ---
 
-## Current State
-
-- **Build Pipeline:** 4 stages (Analyzer → Generator → Validator → Builder)
-- **LLM Output:** Loosely structured JSON with direct block names
-- **Components:** None (monolithic blueprints)
-- **Style:** Embedded in LLM prompt
-- **Determinism:** Not guaranteed
-
-## Target State
-
-- **Build Pipeline:** 5 stages with versioned contracts
-- **LLM Output:** Strict `BuildSceneV2` schema with semantic tokens
-- **Components:** Parametric component library
-- **Style:** Separate StyleEngine
-- **Determinism:** Guaranteed via seeded compilation
+## Phase 1: Infrastructure Setup - ✅ **COMPLETED**
+...
+## Phase 2: Intent Analyzer - ✅ **COMPLETED**
+...
+## Phase 3: Component Library (Core) - ✅ **80% COMPLETED** (Core structural/organic done)
+...
+## Phase 4: Style Engine - ✅ **COMPLETED**
+...
+## Phase 5: LLM Scene Generator - 🚧 **IN PROGRESS**
+...
+## Phase 6: Plan Compiler - ✅ **COMPLETED**
 
 ---
 

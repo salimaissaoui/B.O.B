@@ -34,6 +34,12 @@ import { getOperationMetadata } from '../config/operations-registry.js';
 import { isValidBlock } from '../config/blocks.js';
 import { normalizeBlueprint } from '../utils/normalizer.js';
 import { getResolvedVersion } from '../config/version-resolver.js';
+import {
+  getValidationProfile,
+  detectBuildType,
+  validateWithProfile,
+  validateStructuralRequirements
+} from '../validation/validation-profiles.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
@@ -203,15 +209,66 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       errors.push(...weValidation.errors);
     }
 
-    // 8. Quality Validation (always run for scoring, even if other errors exist)
-    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
-    if (SAFETY_LIMITS.requireFeatureCompletion && !qualityScore.passed) {
-      errors.push(
-        `Blueprint quality too low: ${(qualityScore.score * 100).toFixed(1)}% ` +
-        `(minimum: ${SAFETY_LIMITS.minQualityScore * 100}%)`
-      );
-      errors.push(...qualityScore.penalties);
+    // 8. Profile-Based Validation (build-type-aware)
+    // Use validation profiles to customize checks based on build type
+    const detectedBuildType = detectBuildType(currentBlueprint, analysis);
+    const profile = getValidationProfile(detectedBuildType);
+    const profileValidation = validateWithProfile(currentBlueprint, {
+      buildType: detectedBuildType,
+      intent: analysis
+    });
+
+    logValidationStage('ProfileValidation', {
+      errors: profileValidation.errors,
+      profile: profile.id,
+      qualityScore: profileValidation.qualityScore
+    });
+
+    if (DEBUG) {
+      console.log(`  [Profile] Using validation profile: ${profile.name} (${profile.id})`);
+      console.log(`  [Profile] Quality score: ${(profileValidation.qualityScore * 100).toFixed(1)}%`);
+      if (profileValidation.warnings.length > 0) {
+        console.log(`  [Profile] Warnings: ${profileValidation.warnings.map(w => w.message).join(', ')}`);
+      }
     }
+
+    // Add profile safety errors (always enforced)
+    if (profileValidation.errors.length > 0) {
+      errors.push(...profileValidation.errors.map(e =>
+        typeof e === 'string' ? e : `${e.code}: ${e.message}`
+      ));
+    }
+
+    // 8.5. Legacy Quality Validation (for backward compatibility and additional scoring)
+    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
+
+    // Combine profile quality with legacy quality
+    const combinedQualityScore = Math.min(profileValidation.qualityScore, qualityScore.score);
+
+    // Only fail on quality if profile says it should AND legacy validator agrees
+    if (SAFETY_LIMITS.requireFeatureCompletion && !profileValidation.safetyPassed) {
+      errors.push(
+        `Blueprint fails safety checks for profile '${profile.name}'`
+      );
+    }
+
+    // Quality warnings (non-blocking) from profile
+    if (profileValidation.warnings.length > 0 && DEBUG) {
+      console.log('  [Profile] Quality warnings (non-blocking):');
+      for (const warning of profileValidation.warnings) {
+        console.log(`    - ${warning.code}: ${warning.message}`);
+      }
+    }
+
+    // Store combined quality info
+    qualityScore = {
+      ...qualityScore,
+      profileScore: profileValidation.qualityScore,
+      profileGrade: profileValidation.qualityGrade,
+      profile: profile.id,
+      combinedScore: combinedQualityScore,
+      passed: combinedQualityScore >= SAFETY_LIMITS.minQualityScore
+    };
 
     // If no errors, validation successful
     if (errors.length === 0) {

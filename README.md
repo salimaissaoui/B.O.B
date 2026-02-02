@@ -5,7 +5,10 @@ AI-powered Minecraft building assistant that safely converts natural language in
 ## Features
 
 - ✅ Natural language building commands
+- ✅ **Builder v2 (Beta)** - Component-basedparametric generation system
+- ✅ **Tree Generation Refactor** - 7 distinct archetypes with organic randomization
 - ✅ **Intent-based scaling** - "massive tree" (80-120 blocks), "colossal castle" (150+ blocks)
+- ✅ **Network Resilience** - Built-in retry logic and circuit breakers for API stability
 - ✅ **Creative freedom** - Silhouette-first building with WorldEdit spheres/cylinders for organic shapes
 - ✅ Automated Pixel Art generation (deterministic RGB-to-block mapping)
 - ✅ Multi-stage LLM planning with safety validation
@@ -23,11 +26,27 @@ AI-powered Minecraft building assistant that safely converts natural language in
 
 ## Architecture
 
-B.O.B uses a streamlined three-stage safety pipeline for reliable and efficient building:
+B.O.B uses a modular pipeline architecture with two distinct tracks:
 
-1. **Analyzer** (no LLM) - Fast prompt analysis with build type and theme detection
-2. **Generator** (single LLM call) - Complete blueprint generation with WorldEdit optimization
-3. **Validator + Executor** - Schema validation, quality scoring, and rate-limited building
+### 1. Legacy Pipeline (V1)
+A streamlined four-stage safety pipeline:
+1.  **Analyzer** (no LLM) - Fast prompt analysis with build type and theme detection.
+2.  **Generator** (single LLM call) - Complete blueprint generation with WorldEdit optimization.
+3.  **Validator** - Schema validation and quality scoring.
+4.  **Builder** - Execution with vanilla fallback and rate-limiting.
+
+### 2. Builder v2 (Next Gen)
+A sophisticated component-driven architecture:
+-   **Semantic Intent** - Deep extraction of architectural hints.
+-   **Parametric Components** - Generates reusable structural nodes (towers, arches, etc.).
+-   **Style Engine** - Separates geometry from aesthetics (palettes, trims, gradients).
+-   **Seeded Compilation** - Guaranteed determinism and reproducibility.
+-   **Placement Optimization** - Advanced WorldEdit batching and ordering.
+
+### Shared Infrastructure
+-   **Network Resilience Layer** - `src/utils/network-resilience.js` provides retry/backoff for LLM API calls.
+-   **State Persistence** - JSON-backed build tracking in `bob-state/`.
+-   **Memory Module** - Local pattern storage for style consistency.
 
 ## Quick Start
 

@@ -51,6 +51,31 @@ node test-builds.js
 
 This runs both tests above and provides a comprehensive report.
 
+## Testing Builder v2 (Experimental)
+
+Builder v2 introduces component-driven generation. You can test these modules individually:
+
+### 1. Run Schema Validation Tests
+```bash
+npm test tests/builder_v2/schemas.test.js
+```
+
+### 2. Test Component Generation
+```bash
+npm test tests/builder_v2/components.test.js
+```
+
+### 3. Test Full V2 Integration (Dry-Run)
+```bash
+npm test tests/builder_v2/integration.test.js
+```
+
+**What to look for in V2:**
+- ✓ `BuildSceneV2` objects with `components` and `style` rather than raw block lists.
+- ✓ Highly structured JSON output.
+- ✓ Deterministic output when using the same random seed.
+
+
 ## Full Integration Tests (With Minecraft)
 
 To test with an actual Minecraft server:
