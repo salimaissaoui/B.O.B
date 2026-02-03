@@ -15,7 +15,7 @@ function extractPixelArtSubject(userPrompt) {
   return userPrompt.toLowerCase()
     .replace(/pixel\s*art/gi, '')
     .replace(/build/gi, '')
-    .replace(/a\s+/gi, '')
+    .replace(/\ba\b/gi, '')  // Only match standalone "a" (word boundary)
     .trim();
 }
 

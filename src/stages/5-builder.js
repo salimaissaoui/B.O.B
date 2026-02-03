@@ -810,32 +810,6 @@ export class Builder {
 
         const operation = OPERATION_MAP[step.op];
 
-        // Check for Organic Operations (VoxelSniper)
-        const opMeta = OPERATIONS_REGISTRY[step.op];
-        if (opMeta && opMeta.type === 'organic') {
-          console.log(`    → Detected Organic Operation: ${step.op}`);
-          try {
-            await this.executeOrganicOperation(step, startPos);
-            // Track organic ops in history too (VoxelSniper usually doesn't undo well via core WE, but we track it)
-            this.worldEditHistory.push({
-              step,
-              startPos,
-              timestamp: Date.now(),
-              type: 'organic'
-            });
-            if (this.currentBuild) {
-              this.currentBuild.worldEditOpsExecuted++;
-            }
-            buildMetrics.recordWorldEditOp(step.op);
-          } catch (err) {
-            console.error(`Organic Op Error: ${err.message}`);
-            if (this.currentBuild) {
-              this.currentBuild.blocksFailed++;
-            }
-          }
-          this.stateManager.completeStep(i);
-          continue;
-        }
 
         // Generic Operation Dispatcher
         if (operation) {
@@ -1412,67 +1386,6 @@ export class Builder {
     await this.worldEdit.clearSelection();
   }
 
-  /**
-   * Execute organic operation (VoxelSniper brush commands)
-   * Handles operations like smooth, grow_tree that use VoxelSniper brushes
-   * @param {Object} step - Operation step with parameters
-   * @param {Object} startPos - Build start position
-   */
-  async executeOrganicOperation(step, startPos) {
-    // Check if we have an arrow for brush activation
-    const arrow = this.bot.inventory?.findInventoryItem?.('arrow');
-    if (!arrow) {
-      console.warn('    ⚠ No arrow in inventory for VoxelSniper brush - skipping organic operation');
-      return;
-    }
-
-    // Equip the arrow
-    await this.bot.equip(arrow, 'hand');
-
-    // Calculate world position
-    const worldPos = {
-      x: startPos.x + (step.center?.x || step.pos?.x || 0),
-      y: startPos.y + (step.center?.y || step.pos?.y || 0),
-      z: startPos.z + (step.center?.z || step.pos?.z || 0)
-    };
-
-    // Teleport to position for brush operation
-    await this.teleportAndVerify(worldPos);
-
-    // Configure brush based on operation type
-    switch (step.op) {
-      case 'smooth':
-        // VoxelSniper blend ball brush
-        this.bot.chat(`/b bb`);
-        await this.sleep(100);
-        this.bot.chat(`/b ${step.radius || 5}`);
-        await this.sleep(100);
-        break;
-
-      case 'grow_tree':
-        // VoxelSniper tree brush
-        const treeType = step.type || 'oak';
-        this.bot.chat(`/b t ${treeType}`);
-        await this.sleep(100);
-        break;
-
-      default:
-        console.warn(`    ⚠ Unknown organic operation: ${step.op}`);
-        return;
-    }
-
-    // Look at target position and activate brush
-    const Vec3 = (await import('vec3')).default;
-    const targetPos = new Vec3(worldPos.x, worldPos.y, worldPos.z);
-    await this.bot.lookAt(targetPos);
-    await this.sleep(50);
-
-    // Activate the brush (right-click with arrow)
-    this.bot.activateItem();
-    await this.sleep(200);
-
-    console.log(`    ✓ Organic operation ${step.op} executed at (${worldPos.x}, ${worldPos.y}, ${worldPos.z})`);
-  }
 
   /**
    * Execute vanilla operation (existing + new detail ops)

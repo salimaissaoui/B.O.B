@@ -1,5 +1,4 @@
 import { detectBuildType, detectTheme, analyzePrompt as analyzeBuildTypes } from '../config/build-types.js';
-import { retrieveBlueprint } from '../library/blueprint-library.js';
 import { INTENT_SCALE_MAP } from '../config/creative-scales.js';
 import { detectCharacter } from '../config/character-palettes.js';
 
@@ -308,27 +307,14 @@ export function analyzePrompt(userPrompt) {
   // NEW: Theme inference for palette
   const themeInference = inferThemeForPalette(userPrompt, finalBuildType);
 
-  // Try to retrieve a matching blueprint from library
-  // DISABLED: User requested full LLM creativity for all builds.
-  // We bypass the library entirely to ensure robust, unique generation every time.
-  const libraryBlueprint = null;
-  /* 
-  try {
-    libraryBlueprint = retrieveBlueprint({
-      userPrompt,
-      buildType: finalBuildType
-    });
-  } catch (e) {
-    if (DEBUG) console.log(`Blueprint library: ${e.message}`);
-  }
-  */
-
   // Build hints with explicit overrides
   // Use intent scale dimensions if no explicit dimensions provided
   let dimensions = explicitDimensions || analysis.dimensions;
 
   // Scale dimensions based on intent ONLY if we don't have type-specific dimensions
   // This prevents overriding specific dimensions (like tall trees) with generic boxes
+  const libraryBlueprint = null; // Explicitly null as library is disabled
+
   if (intentScale.scale !== 'medium' && !explicitDimensions && !analysis.dimensions) {
     const scaleDims = intentScale.dimensions;
     dimensions = {

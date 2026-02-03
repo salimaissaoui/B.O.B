@@ -1,22 +1,21 @@
 {
-  "buildId": "fe21af33-05f6-4234-b826-2b6a1bb10e03",
-  "startedAt": "2026-01-28T13:58:54.846Z",
-  "lastUpdated": "2026-01-28T13:58:54.864Z",
+  "buildId": "ff095b65-504d-44a1-bcb1-f9d579d9c1f4",
+  "startedAt": "2026-02-03T18:38:22.658Z",
+  "lastUpdated": "2026-02-03T18:38:22.702Z",
   "startPos": {
     "x": 0,
     "y": 64,
     "z": 0
   },
   "blueprint": {
-    "buildType": "pixel_art",
     "size": {
-      "width": 1,
-      "height": 1,
-      "depth": 1
+      "width": 2,
+      "depth": 2,
+      "height": 2
     },
-    "palette": {
-      "A": "stone"
-    },
+    "palette": [
+      "stone"
+    ],
     "stepsCount": 1
   },
   "progress": {
@@ -31,5 +30,5 @@
   "undoHistory": [],
   "worldEditHistory": [],
   "status": "completed",
-  "completedAt": "2026-01-28T13:58:54.864Z"
+  "completedAt": "2026-02-03T18:38:22.702Z"
 }

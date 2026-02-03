@@ -209,24 +209,6 @@ export const OPERATIONS_REGISTRY = {
     description: 'Creates a filled cylinder using FAWE async commands'
   },
 
-  // Organic Operations (VoxelSniper)
-  smooth: {
-    handler: 'smooth',
-    type: 'organic',
-    avgBlocksPerOp: 500,
-    complexity: 1,
-    requiredParams: ['center', 'radius'],
-    description: 'Smooths terrain/structure using VoxelSniper blend ball'
-  },
-
-  grow_tree: {
-    handler: 'grow-tree',
-    type: 'organic',
-    avgBlocksPerOp: 200,
-    complexity: 1,
-    requiredParams: ['pos', 'type'],
-    description: 'Generates a procedural tree using VoxelSniper forest brush'
-  },
 
   // Detail operations (new - vanilla)
   stairs: {

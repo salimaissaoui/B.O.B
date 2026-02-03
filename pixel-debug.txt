@@ -1,0 +1,5 @@
+Total: 31
+Orange: 25
+Yellow: 3
+Red: 2
+Black: 1

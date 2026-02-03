@@ -93,27 +93,6 @@ describe('Builder Optimized Logic (Task 3 & 4)', () => {
         });
     });
 
-    describe('VoxelSniper Tool Safety', () => {
-        test('should verify arrow in inventory before organic operation', async () => {
-            // Setup bot WITHOUT an arrow
-            const botNoArrow = createMockBot({ initialInventory: [] });
-            const builderNo = new Builder(botNoArrow);
-            builderNo.worldEditEnabled = true;
-
-            // Use 'op' instead of 'command' - this matches how Builder dispatches operations
-            await builderNo.executeOrganicOperation({ op: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
-            expect(botNoArrow.equip).not.toHaveBeenCalled();
-
-            // Setup bot WITH an arrow
-            const botWithArrow = createMockBot({ initialInventory: [{ name: 'arrow' }] });
-            const builderWith = new Builder(botWithArrow);
-            builderWith.worldEditEnabled = true;
-
-            await builderWith.executeOrganicOperation({ op: 'grow_tree', type: 'oak' }, { x: 0, y: 0, z: 0 });
-            expect(botWithArrow.equip).toHaveBeenCalledWith(expect.objectContaining({ name: 'arrow' }), 'hand');
-            expect(botWithArrow.activateItem).toHaveBeenCalled(); // Triggered the brush
-        });
-    });
 
     describe('Refined Teleportation', () => {
         test('should use @s in teleport commands', async () => {

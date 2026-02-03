@@ -711,29 +711,5 @@ describe('Builder P0 Fixes', () => {
         expect(builder.building).toBe(false);
       });
     });
-    describe('Organic Operations', () => {
-      test('should execute organic operations correctly', async () => {
-        const mockBot = createMockBot();
-        const builder = new Builder(mockBot);
-        builder.verifyBuild = jest.fn().mockResolvedValue();
-
-        // Mock executeOrganicOperation to verify it's called
-        builder.executeOrganicOperation = jest.fn().mockResolvedValue();
-
-        const blueprint = {
-          size: { width: 10, height: 10, depth: 10 },
-          palette: ['organic_tree'],
-          steps: [
-            { op: 'grow_tree', command: 'grow_tree', pos: { x: 0, y: 0, z: 0 }, type: 'oak' }
-          ]
-        };
-
-        await builder.executeBlueprint(blueprint, { x: 0, y: 64, z: 0 });
-
-        expect(builder.executeOrganicOperation).toHaveBeenCalled();
-        const callArg = builder.executeOrganicOperation.mock.calls[0][0];
-        expect(callArg.type).toBe('oak');
-      });
-    });
   });
 });

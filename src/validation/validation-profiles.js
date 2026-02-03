@@ -208,7 +208,7 @@ export const VALIDATION_PROFILES = {
     allowIrregular: false,
     allowExtremeScale: true,
 
-    maxHeight: 128,
+    maxHeight: 256,  // Increased for tall towers like Eiffel Tower
     maxWidth: 512,
     maxDepth: 512,
 
@@ -322,6 +322,16 @@ const BUILD_TYPE_TO_PROFILE = {
   'monument': 'landmark',
   'replica': 'landmark',
   'famous': 'landmark',
+  'eiffel': 'landmark',
+  'eiffel_tower': 'landmark',
+  'statue_of_liberty': 'landmark',
+  'colosseum': 'landmark',
+  'big_ben': 'landmark',
+  'pyramids': 'landmark',
+  'pyramid': 'landmark',
+  'sphinx': 'landmark',
+  'taj_mahal': 'landmark',
+  'leaning_tower': 'landmark',
 
   // Infrastructure variants
   'infrastructure': 'infrastructure',
@@ -411,9 +421,6 @@ export function detectBuildType(blueprint, intent = null) {
 
     if (ops.includes('pixel_art') || ops.includes('three_d_layers')) {
       return 'pixel_art';
-    }
-    if (ops.includes('grow_tree') || ops.includes('organic')) {
-      return 'tree';
     }
     if (ops.includes('roof') && ops.includes('wall') && ops.includes('door')) {
       return 'house';
@@ -529,9 +536,9 @@ export function calculateQualityScore(blueprint, profile, structuralResult) {
   // Calculate grade
   const grade = weightedScore >= 0.9 ? 'A'
     : weightedScore >= 0.8 ? 'B'
-    : weightedScore >= 0.7 ? 'C'
-    : weightedScore >= 0.5 ? 'D'
-    : 'F';
+      : weightedScore >= 0.7 ? 'C'
+        : weightedScore >= 0.5 ? 'D'
+          : 'F';
 
   return {
     score: weightedScore,

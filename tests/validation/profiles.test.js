@@ -171,13 +171,6 @@ describe('Validation Profiles', () => {
       expect(detectBuildType(blueprint)).toBe('pixel_art');
     });
 
-    test('infers tree from operations', () => {
-      const blueprint = {
-        steps: [{ op: 'grow_tree', block: 'oak_log' }]
-      };
-
-      expect(detectBuildType(blueprint)).toBe('tree');
-    });
 
     test('infers house from operations with roof, wall, door', () => {
       const blueprint = {

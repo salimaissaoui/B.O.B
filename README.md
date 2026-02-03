@@ -5,13 +5,13 @@ AI-powered Minecraft building assistant that safely converts natural language in
 ## Features
 
 - ✅ Natural language building commands
-- ✅ **Builder v2 (Beta)** - Component-basedparametric generation system
+- ✅ **Builder v2 (Production)** - Advanced component-driven parametric generation system
 - ✅ **Tree Generation Refactor** - 7 distinct archetypes with organic randomization
 - ✅ **Intent-based scaling** - "massive tree" (80-120 blocks), "colossal castle" (150+ blocks)
 - ✅ **Network Resilience** - Built-in retry logic and circuit breakers for API stability
-- ✅ **Creative freedom** - Silhouette-first building with WorldEdit spheres/cylinders for organic shapes
+- ✅ **Creative freedom** - Component-based building with WorldEdit spheres/cylinders for organic shapes
 - ✅ Automated Pixel Art generation (deterministic RGB-to-block mapping)
-- ✅ Multi-stage LLM planning with safety validation
+- ✅ Single-shot LLM generation with safety validation (V2 optimized)
 - ✅ Schema-constrained generation (no hallucinated blocks)
 - ✅ WorldEdit integration for 50-100x faster large builds
 - ✅ **Async WorldEdit tracking** for high-speed construction
@@ -85,13 +85,12 @@ A sophisticated component-driven architecture:
    MINECRAFT_VERSION=1.20.1
    ```
 
-### WorldEdit Setup (Optional but Recommended)
+### FastAsyncWorldEdit (FAWE) Setup (Highly Recommended)
 
-For significantly faster builds (50-100x speedup for large structures), install WorldEdit:
+For significantly faster builds (50-100x speedup for large structures), install FastAsyncWorldEdit (FAWE). Standard WorldEdit may be slower and not provide the specific "Operation completed" messages B.O.B expects.
 
-1. **Download WorldEdit** for your server type:
-   - Bukkit/Spigot/Paper: [WorldEdit Bukkit](https://dev.bukkit.org/projects/worldedit)
-   - Fabric: [WorldEdit Fabric](https://www.curseforge.com/minecraft/mc-mods/worldedit)
+1. **Download FAWE** for your server type:
+   - Bukkit/Spigot/Paper: [FastAsyncWorldEdit (Bukkit)](https://www.spigotmc.org/resources/fastasyncworldedit.13932/)
 
 2. **Install the plugin/mod** in your server's `plugins/` or `mods/` directory
 

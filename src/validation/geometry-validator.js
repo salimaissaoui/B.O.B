@@ -206,8 +206,9 @@ function validateDetailContainment(blueprint) {
  * Main geometry validation function
  */
 export function validateGeometry(blueprint, buildType) {
-    // Skip geometry checks for pixel art and organic builds
-    if (['pixel_art', 'statue', 'tree', 'art'].includes(buildType)) {
+    // Skip geometry checks for pixel art, organic builds, and tower/infrastructure
+    // Towers and landmarks have non-standard geometry that doesn't follow "foundation → wall → roof" rules
+    if (['pixel_art', 'statue', 'tree', 'art', 'tower', 'infrastructure', 'landmark'].includes(buildType)) {
         return { valid: true, errors: [], warnings: [] };
     }
 

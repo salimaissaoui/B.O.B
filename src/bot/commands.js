@@ -6,6 +6,8 @@ import { exportBlueprint } from '../export/index.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { parseCoordinateFlags, stripCoordinateFlags, validateBoundingBox } from '../utils/coordinate-parser.js';
 import { getMemory } from '../memory/index.js';
+import { isSchematicPath, loadAndConvert } from '../services/schematic-loader.js';
+import { findBestMatch as findSchematicMatch, listSchematics } from '../services/schematic-gallery.js';
 import {
   getBuilderVersion,
   setBuilderVersion,
@@ -289,6 +291,97 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   // Parse coordinate flags (--at X,Y,Z --to X2,Y2,Z2)
   const coordFlags = parseCoordinateFlags(cleanPrompt);
   cleanPrompt = stripCoordinateFlags(cleanPrompt);
+
+  // SCHEMATIC FAST-PATH: Detect schematic file paths
+  if (isSchematicPath(cleanPrompt)) {
+    safeChat(bot, `📦 Loading schematic: ${cleanPrompt}`);
+    try {
+      const blueprint = await loadAndConvert(cleanPrompt.trim(), {
+        useWorldEdit: builder.worldEditEnabled
+      });
+
+      safeChat(bot, `  Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
+      safeChat(bot, `  Blocks: ${blueprint.palette.length} types, ${blueprint.steps.length} ops`);
+
+      // Calculate build position
+      let buildPos;
+      if (coordFlags?.position) {
+        buildPos = coordFlags.position;
+      } else {
+        let targetEntity = bot.entity;
+        if (username && bot.players[username] && bot.players[username].entity) {
+          targetEntity = bot.players[username].entity;
+        }
+
+        const viewDir = {
+          x: -Math.sin(targetEntity.yaw),
+          z: -Math.cos(targetEntity.yaw)
+        };
+
+        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
+        buildPos = {
+          x: Math.floor(startPos.x),
+          y: Math.floor(startPos.y),
+          z: Math.floor(startPos.z)
+        };
+      }
+
+      safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
+      await builder.executeBlueprint(blueprint, buildPos);
+      safeChat(bot, '✓ Schematic build complete!');
+      return;
+    } catch (schematicError) {
+      console.error('Schematic loading failed:', schematicError);
+      safeChat(bot, `✗ Schematic error: ${schematicError.message}`);
+      return;
+    }
+  }
+
+  // SCHEMATIC GALLERY: Search local schematics folder for fuzzy match
+  try {
+    const schematicMatch = await findSchematicMatch(cleanPrompt, 0.6);
+    if (schematicMatch) {
+      safeChat(bot, `📦 Found schematic: ${schematicMatch.name} (${(schematicMatch.score * 100).toFixed(0)}% match)`);
+
+      const blueprint = await loadAndConvert(schematicMatch.path, {
+        useWorldEdit: builder.worldEditEnabled
+      });
+
+      safeChat(bot, `  Size: ${blueprint.size.width}x${blueprint.size.height}x${blueprint.size.depth}`);
+      safeChat(bot, `  Blocks: ${blueprint.palette.length} types`);
+
+      // Calculate build position
+      let buildPos;
+      if (coordFlags?.position) {
+        buildPos = coordFlags.position;
+      } else {
+        let targetEntity = bot.entity;
+        if (username && bot.players[username] && bot.players[username].entity) {
+          targetEntity = bot.players[username].entity;
+        }
+
+        const viewDir = {
+          x: -Math.sin(targetEntity.yaw),
+          z: -Math.cos(targetEntity.yaw)
+        };
+
+        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
+        buildPos = {
+          x: Math.floor(startPos.x),
+          y: Math.floor(startPos.y),
+          z: Math.floor(startPos.z)
+        };
+      }
+
+      safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
+      await builder.executeBlueprint(blueprint, buildPos);
+      safeChat(bot, '✓ Schematic build complete!');
+      return;
+    }
+  } catch (galleryError) {
+    console.warn('Schematic gallery search failed:', galleryError.message);
+    // Continue to LLM generation
+  }
 
   // Check if Builder v2 should be used
   const builderVersion = getBuilderVersion();

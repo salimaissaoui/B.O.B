@@ -18,26 +18,75 @@ import { SPRITE_SOURCES, isSourceConfigured } from '../config/sprite-sources.js'
 import { quickBlockCleanup } from './palette-optimizer.js';
 
 /**
+ * Alias map for Pokemon with special names that require hyphens or specific formatting
+ */
+const POKEMON_ALIASES = {
+    'ho oh': 'ho-oh',
+    'hooh': 'ho-oh',
+    'mr mime': 'mr-mime',
+    'mrmime': 'mr-mime',
+    'mime jr': 'mime-jr',
+    'mimejr': 'mime-jr',
+    'porygon z': 'porygon-z',
+    'porygonz': 'porygon-z',
+    'tapu koko': 'tapu-koko',
+    'tapu lele': 'tapu-lele',
+    'tapu bulu': 'tapu-bulu',
+    'tapu fini': 'tapu-fini',
+    'type null': 'type-null',
+    'typenull': 'type-null',
+    'jangmo o': 'jangmo-o',
+    'hakamo o': 'hakamo-o',
+    'kommo o': 'kommo-o',
+    'nidoran f': 'nidoran-f',
+    'nidoran m': 'nidoran-m'
+};
+
+/**
+ * Normalize a subject name into a PokeAPI-compatible Pokemon name
+ * @param {string} subject - Raw subject name
+ * @returns {string} - Normalized name
+ */
+function normalizePokemonName(subject) {
+    // 1. Basic cleaning: lowercase and remove special characters except spaces/hyphens
+    const cleaned = subject.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim();
+
+    // 2. Check alias map first
+    if (POKEMON_ALIASES[cleaned]) {
+        return POKEMON_ALIASES[cleaned];
+    }
+
+    // 3. Default behavior: replace spaces with hyphens
+    return cleaned.replace(/\s+/g, '-');
+}
+
+/**
  * Search for a sprite reference image using PokeAPI
  * @param {string} subject - Pokemon name
  * @returns {Promise<string|null>} - Image URL or null
  */
 async function searchPokeAPI(subject) {
     try {
-        // PokeAPI uses lowercase with hyphens for special names (ho-oh, mime-jr, etc.)
-        // Only remove characters that aren't letters, numbers, or hyphens
-        const pokemonName = subject.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        const pokemonName = normalizePokemonName(subject);
         console.log(`  → PokeAPI lookup: ${pokemonName}`);
-        const response = await fetch(`${SPRITE_SOURCES.pokeApi.baseUrl}/pokemon/${pokemonName}`);
+        const url = `${SPRITE_SOURCES.pokeApi.baseUrl}/pokemon/${pokemonName}`;
+        console.log(`  → Fetching: ${url}`);
+        const response = await fetch(url);
 
-        if (!response.ok) return null;
+        if (!response.ok) {
+            console.log(`  ⚠ PokeAPI returned ${response.status} for "${pokemonName}"`);
+            return null;
+        }
 
         const data = await response.json();
         const sprite = data.sprites?.front_default || data.sprites?.front_shiny;
 
         if (sprite) {
             console.log(`✓ Found sprite on PokeAPI: ${pokemonName}`);
+            console.log(`  → Sprite URL: ${sprite}`);
             return sprite;
+        } else {
+            console.log(`  ⚠ PokeAPI entry found but no sprite image for "${pokemonName}"`);
         }
     } catch (error) {
         console.log(`⚠ PokeAPI search failed: ${error.message}`);
@@ -86,7 +135,9 @@ export async function searchSpriteReference(subject) {
 
     // Try PokeAPI first (fast and reliable for Pokemon)
     try {
-        if (isSourceConfigured('pokeApi')) {
+        const pokeApiEnabled = isSourceConfigured('pokeApi');
+        console.log(`  → PokeAPI enabled: ${pokeApiEnabled}`);
+        if (pokeApiEnabled) {
             const pokeSprite = await searchPokeAPI(subject);
             if (pokeSprite) return pokeSprite;
         }

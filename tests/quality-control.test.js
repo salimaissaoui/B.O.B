@@ -58,7 +58,7 @@ describe('Quality Control - Phase 1-3', () => {
         expect(meta.handler).toBeDefined();
         expect(meta.type).toBeDefined();
         expect(meta.description).toBeDefined();
-        expect(['vanilla', 'worldedit', 'smart', 'system', 'organic', 'universal']).toContain(meta.type);
+        expect(['vanilla', 'worldedit', 'smart', 'system', 'universal']).toContain(meta.type);
       }
     });
   });
