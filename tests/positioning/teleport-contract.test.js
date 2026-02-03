@@ -8,8 +8,20 @@
  */
 
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { TELEPORT_SKIP_DISTANCE, TELEPORT_VERIFY_TIMEOUT_MS } from '../../src/stages/5-builder.js';
 
 describe('Teleportation - CLAUDE.md Contract Enforcement', () => {
+    describe('Exported constants verification', () => {
+        test('TELEPORT_SKIP_DISTANCE is exported and equals 32', () => {
+            expect(TELEPORT_SKIP_DISTANCE).toBeDefined();
+            expect(TELEPORT_SKIP_DISTANCE).toBe(32);
+        });
+
+        test('TELEPORT_VERIFY_TIMEOUT_MS is exported and equals 3000', () => {
+            expect(TELEPORT_VERIFY_TIMEOUT_MS).toBeDefined();
+            expect(TELEPORT_VERIFY_TIMEOUT_MS).toBe(3000);
+        });
+    });
     describe('INVARIANT: Skip teleport if distance < 32 blocks', () => {
         const TELEPORT_SKIP_THRESHOLD = 32;
 

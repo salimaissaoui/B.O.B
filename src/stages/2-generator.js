@@ -4,9 +4,13 @@ import { optimizeBuildOrder } from './optimization/layering.js';
 import { generateFromWebReference } from '../services/sprite-reference.js';
 import { routeProceduralBuild } from '../generators/index.js';
 import { optimizeBlueprint } from '../utils/blueprint-optimizer.js';
+import { getBlueprintCache } from '../llm/blueprint-cache.js';
 
 // Debug mode - set via environment variable
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+
+// Blueprint cache - CLAUDE.md Priority 2: LLM Response Caching (24h TTL)
+const blueprintCache = getBlueprintCache();
 
 /**
  * Extract subject from pixel art prompt
@@ -106,6 +110,24 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     return proceduralBlueprint;
   }
 
+  // CACHE CHECK: Look up cached blueprint before LLM call
+  // Only cache non-image-reference builds (images are unique)
+  const cacheKey = !reference.hasReference
+    ? blueprintCache.generateKey(userPrompt, buildType, worldEditAvailable)
+    : null;
+
+  if (cacheKey) {
+    const cachedBlueprint = blueprintCache.get(cacheKey);
+    if (cachedBlueprint) {
+      console.log(`📦 Cache HIT: Using cached blueprint (key: ${cacheKey.substring(0, 12)}...)`);
+      const stats = blueprintCache.getStats();
+      console.log(`   Cache stats: ${stats.hits} hits, ${stats.misses} misses (${stats.hitRate}% hit rate)`);
+
+      // Return a copy to prevent mutation of cached data
+      return JSON.parse(JSON.stringify(cachedBlueprint));
+    }
+  }
+
   if (DEBUG) {
     console.log('\n┌─────────────────────────────────────────────────────────');
     console.log('│ DEBUG: Unified Blueprint Generation');
@@ -115,6 +137,7 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
     console.log(`│ Theme: ${analysis.theme?.name || 'default'}`);
     console.log(`│ Suggested Dimensions: ${analysis.hints.dimensions.width}x${analysis.hints.dimensions.height}x${analysis.hints.dimensions.depth}`);
     console.log(`│ WorldEdit: ${worldEditAvailable ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`│ Cache Key: ${cacheKey || 'N/A (image reference)'}`);
     console.log('└─────────────────────────────────────────────────────────\n');
   }
 
@@ -277,6 +300,13 @@ export async function generateBlueprint(analysis, apiKey, worldEditAvailable = f
 
     // POST-PROCESS: Optimize the blueprint (fix coords, merge ops)
     const optimized = optimizeBlueprint(blueprint);
+
+    // CACHE STORE: Save successful LLM-generated blueprint
+    if (cacheKey) {
+      blueprintCache.set(cacheKey, optimized);
+      console.log(`📦 Cache STORE: Blueprint cached (key: ${cacheKey.substring(0, 12)}...)`);
+    }
+
     return optimized;
   } catch (error) {
     if (DEBUG) {

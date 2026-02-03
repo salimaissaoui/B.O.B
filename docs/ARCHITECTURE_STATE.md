@@ -5,10 +5,11 @@
 ---
 
 ## System Status: **STABLE ✅**
-- All tests passing (~660+ tests)
+- All tests passing (835 tests)
 - Documentation synchronized with codebase
 - No ghost systems or deprecated references
 - Contract-test enforcement active
+- Priority 2 Performance optimizations complete
 
 ---
 
@@ -196,7 +197,7 @@ tests/
 
 ### Developer Commands
 ```bash
-npm test                     # Full suite (~660 tests)
+npm test                     # Full suite (835 tests)
 npm run test:worldedit       # WorldEdit-specific
 npm run test:validation      # Validation-specific
 npm run test:builder_v2      # V2 pipeline tests
@@ -217,15 +218,19 @@ npm run test:builder_v2      # V2 pipeline tests
 
 ## 9. TEST COVERAGE STATUS
 
-**Total Tests**: 660+  
-**Pass Rate**: 100%  
-**Critical Gaps Filled**: 4/8 (as of 2026-02-03)
+**Total Tests**: 835
+**Pass Rate**: 100%
+**Critical Gaps Filled**: 8/8 (as of 2026-02-03)
 
 ### Newly Added Tests (Contract Hardening)
 - ✅ `tests/services/schematic-gallery-threshold.test.js` - Gallery 0.6 threshold
 - ✅ `tests/routing/precedence-contract.test.js` - Routing order enforcement
 - ✅ `tests/positioning/teleport-contract.test.js` - Teleport 32-block skip
 - ✅ `tests/stages/build-abort-threshold.test.js` - 25% failure abort
+- ✅ `tests/worldedit/ack-timing.test.js` - ACK polling with exponential backoff
+- ✅ `tests/worldedit/command-batching.test.js` - Selection mode caching
+- ✅ `tests/stages/validator-parallel.test.js` - Parallel validation phases
+- ✅ `tests/llm/blueprint-cache.test.js` - LLM response caching (24h TTL)
 
 ### Existing Well-Guarded Invariants
 - ✅ Circuit Breaker (5/3/30s thresholds)

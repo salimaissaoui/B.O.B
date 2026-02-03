@@ -30,7 +30,8 @@
       "Bash(npm install:*)",
       "Bash(npm run test:v2:*)",
       "Bash(findstr:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git -C /c/repos/B.O.B log --oneline --all -- \"src/builder/BatchOptimizer.js\" \"src/decorator/interior-decorator.js\" \"src/core/envelope.js\")"
     ]
   }
 }

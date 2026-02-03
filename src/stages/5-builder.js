@@ -44,6 +44,11 @@ import { sanitizer } from '../utils/blueprint-sanitizer.js';
 
 const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
+// Teleportation Constants - CLAUDE.md Contract
+// These values are part of the contract and tested in tests/positioning/teleport-contract.test.js
+export const TELEPORT_SKIP_DISTANCE = 32;  // Skip teleport if within this many blocks
+export const TELEPORT_VERIFY_TIMEOUT_MS = 3000;  // Max wait for teleport position verification
+
 /**
  * Build Mutex - Prevents Concurrent Build Race Conditions
  *
@@ -1247,10 +1252,10 @@ export class Builder {
     const distance = beforePos.distanceTo(targetPos);
 
     // P0 Fix: Remote Execution
-    // Skip teleport if target is within safe range (32 blocks)
-    // WorldEdit works in loaded chunks, 32 ensures we are physically close enough
-    if (distance < 32) {
-      // console.log(`    → Skipping teleport (distance ${distance.toFixed(1)} < 32)`);
+    // Skip teleport if target is within safe range (TELEPORT_SKIP_DISTANCE blocks)
+    // WorldEdit works in loaded chunks, ensures we are physically close enough
+    if (distance < TELEPORT_SKIP_DISTANCE) {
+      // console.log(`    → Skipping teleport (distance ${distance.toFixed(1)} < ${TELEPORT_SKIP_DISTANCE})`);
       return true;
     }
 
@@ -1260,7 +1265,7 @@ export class Builder {
     this.bot.chat(`/tp @s ${targetPos.x} ${targetPos.y} ${targetPos.z}`);
 
     // Wait for position update with timeout
-    const maxWaitTime = 3000; // Increased to 3s for slower chunk loads
+    const maxWaitTime = TELEPORT_VERIFY_TIMEOUT_MS;
     const checkInterval = 200;
     let elapsed = 0;
 

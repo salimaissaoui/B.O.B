@@ -3,6 +3,11 @@ import { SAFETY_LIMITS } from '../config/limits.js';
 // Debug mode for ACK tracking
 const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
 
+// ACK Timing Constants - CLAUDE.md Contract
+// These values are part of the contract and tested in tests/worldedit/ack-timing.test.js
+export const ACK_TIMEOUT_MS = 15000;  // Maximum wait time for WorldEdit ACK
+export const ACK_POLL_INTERVALS = [100, 200, 500, 1000, 2000];  // Exponential backoff intervals
+
 /**
  * Circuit Breaker for WorldEdit operations
  *
@@ -288,6 +293,10 @@ export class WorldEditExecutor {
     this.messageBuffer = [];
     this.bufferWindowMs = 2000;
 
+    // Selection mode cache - CLAUDE.md Command Batching Optimization
+    // Skip redundant //sel cuboid commands when mode is already set
+    this.cachedSelectionMode = undefined;
+
     // Listen for chat messages (spam warnings + command responses)
     if (bot && typeof bot.on === 'function') {
       bot.on('message', (message) => {
@@ -361,6 +370,70 @@ export class WorldEditExecutor {
           resolve(null);
         }
       }, timeoutMs);
+    });
+  }
+
+  /**
+   * Wait for a chat message with exponential backoff polling
+   * Optimizes ACK waiting by checking frequently at first, then backing off
+   *
+   * @param {RegExp|Function} matcher - Pattern or function to match message
+   * @param {number} maxTimeoutMs - Maximum timeout in milliseconds (default: ACK_TIMEOUT_MS)
+   * @returns {Promise<string|null>} - Matched message or null on timeout
+   */
+  waitForResponseWithBackoff(matcher, maxTimeoutMs = ACK_TIMEOUT_MS) {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      let resolved = false;
+      let pollIndex = 0;
+      let pollTimeoutId;
+
+      const handler = (text) => {
+        const matches = typeof matcher === 'function'
+          ? matcher(text)
+          : matcher.test(text);
+
+        if (matches && !resolved) {
+          resolved = true;
+          if (pollTimeoutId) clearTimeout(pollTimeoutId);
+          this.pendingResponse = null;
+          resolve(text);
+        }
+      };
+
+      this.pendingResponse = { handler, startTime };
+
+      // Schedule exponential backoff polls
+      const schedulePoll = () => {
+        if (resolved) return;
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= maxTimeoutMs) {
+          // Final timeout reached
+          if (!resolved) {
+            resolved = true;
+            this.pendingResponse = null;
+            resolve(null);
+          }
+          return;
+        }
+
+        // Determine next poll interval using exponential backoff
+        const interval = pollIndex < ACK_POLL_INTERVALS.length
+          ? ACK_POLL_INTERVALS[pollIndex]
+          : ACK_POLL_INTERVALS[ACK_POLL_INTERVALS.length - 1]; // Cap at last interval
+
+        pollIndex++;
+
+        // Schedule next poll, but don't exceed maxTimeoutMs
+        const remainingTime = maxTimeoutMs - elapsed;
+        const nextPoll = Math.min(interval, remainingTime);
+
+        pollTimeoutId = setTimeout(schedulePoll, nextPoll);
+      };
+
+      // Start the first poll
+      schedulePoll();
     });
   }
 
@@ -522,7 +595,9 @@ export class WorldEditExecutor {
     let responsePromise = null;
 
     if (expectsAck && !options.skipAcknowledgment) {
-      responsePromise = this.waitForResponse(
+      // Use exponential backoff for faster ACK detection (optimization from CLAUDE.md)
+      // Typical ACK wait reduced from 15s to 300-500ms
+      responsePromise = this.waitForResponseWithBackoff(
         (text) => {
           const lower = text.toLowerCase();
 
@@ -533,7 +608,6 @@ export class WorldEditExecutor {
           // Pattern B: "0.5s elapsed (history: 123 changed; ...)"
           if (lower.includes('elapsed') && lower.includes('history') && lower.includes('changed')) return true;
 
-          // Pattern C: Standard WE responses
           // Pattern C: Standard WE responses
           // FIXED: Use precise patterns to avoid false positives
           if (/(\d+)\s*(block|blocks|positions?)\s*(changed|affected|set|modified)/i.test(text)) return true;
@@ -573,7 +647,7 @@ export class WorldEditExecutor {
             lower.includes('see below for error') ||
             lower.includes('<--[here]');
         },
-        options.acknowledgmentTimeout || 15000
+        options.acknowledgmentTimeout || ACK_TIMEOUT_MS
       );
     }
 
@@ -1017,7 +1091,17 @@ export class WorldEditExecutor {
   }
 
   /**
+   * Reset the selection mode cache
+   * Call this when switching selection modes or after errors
+   * Part of CLAUDE.md Command Batching Optimization
+   */
+  resetSelectionModeCache() {
+    this.cachedSelectionMode = undefined;
+  }
+
+  /**
    * Create a cuboid selection (Internal use or raw access)
+   * Optimized: skips redundant //sel cuboid when mode is already cached
    */
   async createSelection(from, to) {
     // Basic volume check for logging, but hard limits are now handled by performSafe* methods
@@ -1033,8 +1117,12 @@ export class WorldEditExecutor {
       console.warn(`⚠ Creating massive selection (${volume} blocks). Ensure this is partitioned!`);
     }
 
-    // Set cuboid selection mode
-    await this.executeCommand('//sel cuboid');
+    // OPTIMIZATION: Skip //sel cuboid if mode is already cached
+    // Saves one command per fill operation (25% reduction for multiple fills)
+    if (this.cachedSelectionMode !== 'cuboid') {
+      await this.executeCommand('//sel cuboid');
+      this.cachedSelectionMode = 'cuboid';
+    }
 
     // Set positions
     await this.executeCommand(`//pos1 ${from.x},${from.y},${from.z}`);

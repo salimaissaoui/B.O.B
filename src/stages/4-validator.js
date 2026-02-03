@@ -118,51 +118,136 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
 
   while (retries < SAFETY_LIMITS.maxRetries) {
     const errors = [];
-
-    // 1. JSON Schema Validation
-    const isValidSchema = validateBlueprintSchema(currentBlueprint);
-    if (!isValidSchema) {
-      errors.push(...getValidationErrors(validateBlueprintSchema).map(e => `Schema: ${e}`));
-    }
-
-    // 2. Block Validation (Always check Minecraft blocks - no allowlist)
     const buildType = analysis?.buildType || 'house';
-    const invalidMinecraftBlocks = validateMinecraftBlocks(currentBlueprint);
-    if (invalidMinecraftBlocks.length > 0) {
-      errors.push(`Invalid Minecraft blocks: ${invalidMinecraftBlocks.join(', ')}`);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PARALLEL VALIDATION: Run independent validation phases concurrently
+    // Performance optimization from CLAUDE.md Priority 2
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Define all parallelizable validation phases
+    const parallelValidations = [
+      // 1. JSON Schema Validation
+      async () => {
+        const isValidSchema = validateBlueprintSchema(currentBlueprint);
+        if (!isValidSchema) {
+          return getValidationErrors(validateBlueprintSchema).map(e => `Schema: ${e}`);
+        }
+        return [];
+      },
+
+      // 2. Block Validation (Minecraft blocks)
+      async () => {
+        const invalidMinecraftBlocks = validateMinecraftBlocks(currentBlueprint);
+        logValidationStage('BlockValidation', { errors: invalidMinecraftBlocks.length > 0 ? ['block errors'] : [] });
+        if (invalidMinecraftBlocks.length > 0) {
+          return [`Invalid Minecraft blocks: ${invalidMinecraftBlocks.join(', ')}`];
+        }
+        return [];
+      },
+
+      // 2.5. Placeholder Token Validation
+      async () => {
+        const placeholderErrors = validateNoPlaceholderTokens(currentBlueprint);
+        logValidationStage('PlaceholderValidation', { errors: placeholderErrors });
+        return placeholderErrors;
+      },
+
+      // 3. Operation parameter validation
+      async () => validateOperationParams(currentBlueprint),
+
+      // 4. Coordinate Bounds Checking
+      async () => validateCoordinateBounds(currentBlueprint, analysis),
+
+      // 5. Feature Completeness Check
+      async () => validateFeatures(currentBlueprint, analysis),
+
+      // 5.5. Build-type-specific operation validation
+      async () => validateBuildTypeOperations(currentBlueprint, analysis),
+
+      // 5.6. Geometry validation
+      async () => {
+        const geometryResult = validateGeometry(currentBlueprint, buildType);
+        return geometryResult.valid ? [] : geometryResult.errors;
+      },
+
+      // 6. Volume and Step Limits
+      async () => validateLimits(currentBlueprint),
+
+      // 7. WorldEdit Validation (returns object with errors and stats)
+      async () => {
+        const weResult = WorldEditValidator.validateWorldEditOps(currentBlueprint);
+        return { type: 'worldedit', ...weResult };
+      },
+
+      // 8. Profile-Based Validation
+      async () => {
+        const detectedBuildType = detectBuildType(currentBlueprint, analysis);
+        const profile = getValidationProfile(detectedBuildType);
+        const profileResult = validateWithProfile(currentBlueprint, {
+          buildType: detectedBuildType,
+          intent: analysis
+        });
+        logValidationStage('ProfileValidation', {
+          errors: profileResult.errors,
+          profile: profile.id,
+          qualityScore: profileResult.qualityScore
+        });
+        return { type: 'profile', profile, ...profileResult };
+      },
+
+      // 8.5. Legacy Quality Validation
+      async () => {
+        const quality = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
+        return { type: 'quality', ...quality };
+      }
+    ];
+
+    // Run all validations in parallel
+    const parallelResults = await Promise.all(parallelValidations.map(fn => fn()));
+
+    // Process parallel results
+    let weValidation = { valid: true, errors: [], stats: {} };
+    let profileValidation = { errors: [], warnings: [], qualityScore: 1, safetyPassed: true };
+    let profile = { id: 'default', name: 'Default' };
+
+    for (const result of parallelResults) {
+      if (Array.isArray(result)) {
+        // Simple error array
+        errors.push(...result);
+      } else if (result?.type === 'worldedit') {
+        // WorldEdit result
+        weValidation = result;
+        if (!result.valid) {
+          errors.push(...result.errors);
+        }
+      } else if (result?.type === 'profile') {
+        // Profile validation result
+        profileValidation = result;
+        profile = result.profile;
+        if (result.errors.length > 0) {
+          errors.push(...result.errors.map(e =>
+            typeof e === 'string' ? e : `${e.code}: ${e.message}`
+          ));
+        }
+        if (DEBUG) {
+          console.log(`  [Profile] Using validation profile: ${profile.name} (${profile.id})`);
+          console.log(`  [Profile] Quality score: ${(result.qualityScore * 100).toFixed(1)}%`);
+          if (result.warnings.length > 0) {
+            console.log(`  [Profile] Warnings: ${result.warnings.map(w => w.message).join(', ')}`);
+          }
+        }
+      } else if (result?.type === 'quality') {
+        // Quality score result (handled below)
+        qualityScore = result;
+      }
     }
-    logValidationStage('BlockValidation', { errors: invalidMinecraftBlocks.length > 0 ? ['block errors'] : [] });
 
-    // 2.5. Placeholder Token Validation
-    const placeholderErrors = validateNoPlaceholderTokens(currentBlueprint);
-    if (placeholderErrors.length > 0) {
-      errors.push(...placeholderErrors);
-    }
-    logValidationStage('PlaceholderValidation', { errors: placeholderErrors });
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SEQUENTIAL POST-PROCESSING: Phases with side effects run after parallel
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // 3. Operation parameter validation
-    const opErrors = validateOperationParams(currentBlueprint);
-    errors.push(...opErrors);
-
-    // 4. Coordinate Bounds Checking
-    const boundsErrors = validateCoordinateBounds(currentBlueprint, analysis);
-    errors.push(...boundsErrors);
-
-    // 5. Feature Completeness Check (only for structured builds)
-    const featureErrors = validateFeatures(currentBlueprint, analysis);
-    errors.push(...featureErrors);
-
-    // 5.5. Build-type-specific operation validation
-    const buildTypeErrors = validateBuildTypeOperations(currentBlueprint, analysis);
-    errors.push(...buildTypeErrors);
-
-    // 5.6. Geometry validation (structural correctness)
-    const geometryResult = validateGeometry(currentBlueprint, buildType);
-    if (!geometryResult.valid) {
-      errors.push(...geometryResult.errors);
-    }
-
-    // 5.7. Organic quality validation (trees, plants)
+    // 5.7. Organic quality validation (may auto-fix - must run sequentially)
     if (isOrganicBuild({ buildType })) {
       const organicResult = validateTreeQuality(currentBlueprint);
       if (!organicResult.valid) {
@@ -177,7 +262,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       }
     }
 
-    // 5.8. Spatial connectivity validation (gaps, floating components)
+    // 5.8. Spatial connectivity validation (stores issues on blueprint)
     const connectivityResult = validateConnectivity(currentBlueprint, { verbose: DEBUG });
     logValidationStage('Connectivity', { errors: connectivityResult.issues });
     if (connectivityResult.hasWarnings) {
@@ -199,51 +284,12 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       }
     }
 
-    // 6. Volume and Step Limits
-    const limitErrors = validateLimits(currentBlueprint);
-    errors.push(...limitErrors);
-
-    // 7. WorldEdit Validation
-    const weValidation = WorldEditValidator.validateWorldEditOps(currentBlueprint);
-    if (!weValidation.valid) {
-      errors.push(...weValidation.errors);
-    }
-
-    // 8. Profile-Based Validation (build-type-aware)
-    // Use validation profiles to customize checks based on build type
-    const detectedBuildType = detectBuildType(currentBlueprint, analysis);
-    const profile = getValidationProfile(detectedBuildType);
-    const profileValidation = validateWithProfile(currentBlueprint, {
-      buildType: detectedBuildType,
-      intent: analysis
-    });
-
-    logValidationStage('ProfileValidation', {
-      errors: profileValidation.errors,
-      profile: profile.id,
-      qualityScore: profileValidation.qualityScore
-    });
-
-    if (DEBUG) {
-      console.log(`  [Profile] Using validation profile: ${profile.name} (${profile.id})`);
-      console.log(`  [Profile] Quality score: ${(profileValidation.qualityScore * 100).toFixed(1)}%`);
-      if (profileValidation.warnings.length > 0) {
-        console.log(`  [Profile] Warnings: ${profileValidation.warnings.map(w => w.message).join(', ')}`);
-      }
-    }
-
-    // Add profile safety errors (always enforced)
-    if (profileValidation.errors.length > 0) {
-      errors.push(...profileValidation.errors.map(e =>
-        typeof e === 'string' ? e : `${e.code}: ${e.message}`
-      ));
-    }
-
-    // 8.5. Legacy Quality Validation (for backward compatibility and additional scoring)
-    qualityScore = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // QUALITY SCORING: Combine profile and legacy quality scores
+    // ═══════════════════════════════════════════════════════════════════════════
 
     // Combine profile quality with legacy quality
-    const combinedQualityScore = Math.min(profileValidation.qualityScore, qualityScore.score);
+    const combinedQualityScore = Math.min(profileValidation.qualityScore, qualityScore?.score || 1);
 
     // Only fail on quality if profile says it should AND legacy validator agrees
     if (SAFETY_LIMITS.requireFeatureCompletion && !profileValidation.safetyPassed) {
