@@ -11,13 +11,25 @@ coverage/
 *.swo
 *~
 
+# AI Agent States
+.claude/
+.gemini/
+brain/
+.claudestates
+
+# Runtime Data
+bob-state/
+bob-memory/
+
+# Temporary / Output Files
+*.txt
+nul
+test_output*.txt
+pixel-debug.txt
+
 # Minecraft server files (local development)
 minecraft-server/
 *.jar
-
-# Temporary/documentation files
-schema.json
-LOCAL_SERVER_SETUP.md
 
 # OS files
 Thumbs.db
