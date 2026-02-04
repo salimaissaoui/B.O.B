@@ -14,6 +14,7 @@ import {
   runBuilderV2Pipeline,
   convertToLegacyBlueprint
 } from '../builder_v2/index.js';
+import { isKnownLandmark } from '../builder_v2/landmarks/registry.js';
 
 /**
  * Register chat commands for the bot
@@ -384,8 +385,15 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   }
 
   // Check if Builder v2 should be used
+  // Auto-route known landmarks to V2 for deterministic generation
   const builderVersion = getBuilderVersion();
-  if (builderVersion === 'v2') {
+  const detectedLandmark = isKnownLandmark(cleanPrompt);
+
+  if (detectedLandmark) {
+    console.log(`  [Commands] Detected landmark: "${cleanPrompt}" - routing to V2`);
+  }
+
+  if (builderVersion === 'v2' || detectedLandmark) {
     await handleBuildCommandV2(cleanPrompt, bot, builder, apiKey, username, {
       dryRun: isDryRun,
       exportFormat,

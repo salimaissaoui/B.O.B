@@ -81,12 +81,14 @@ export const BLOCK_CATEGORIES = {
   ],
 
   natural: [
-    'dirt', 'grass_block', 'sand', 'gravel', 'clay',
+    'dirt', 'grass_block', 'sand', 'gravel', 'clay', 'mud', 'rooted_dirt', 'coarse_dirt', 'podzol', 'mycelium',
     'oak_leaves', 'spruce_leaves', 'birch_leaves', 'jungle_leaves', 'acacia_leaves', 'dark_oak_leaves', 'mangrove_leaves', 'cherry_leaves', 'azalea_leaves', 'flowering_azalea_leaves',
     'water', 'lava', 'snow', 'ice', 'glow_lichen',
     'vine', 'lily_pad', 'cactus', 'sugar_cane', 'brown_mushroom', 'red_mushroom',
+    'moss_block', 'moss_carpet', 'hanging_roots', 'spore_blossom', 'big_dripleaf', 'small_dripleaf', 'dripleaf',
     'flower_pot', 'dandelion', 'poppy', 'blue_orchid', 'allium', 'azure_bluet', 'red_tulip', 'orange_tulip', 'white_tulip', 'pink_tulip', 'oxeye_daisy', 'cornflower', 'lily_of_the_valley',
-    'wheat', 'carrots', 'potatoes', 'beetroots', 'pumpkin', 'melon', 'hay_block'
+    'wheat', 'carrots', 'potatoes', 'beetroots', 'pumpkin', 'melon', 'hay_block',
+    'short_grass', 'tall_grass', 'fern', 'large_fern', 'dead_bush', 'seagrass', 'tall_seagrass', 'kelp'
   ],
 
   // Special blocks (used internally for operations like undo)

@@ -421,13 +421,13 @@ describe('Validation Profiles', () => {
       const blueprint = {
         buildType: 'tree',
         steps: [
-          { op: 'fill', from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 100, z: 0 }, block: 'oak_log' }
+          { op: 'fill', from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 250, z: 0 }, block: 'oak_log' }
         ]
       };
 
       const result = validateWithProfile(blueprint);
 
-      // tree maxHeight is 64
+      // tree maxHeight is 200 (updated for Yggdrasil-scale trees)
       expect(result.errors.some(e => e.code === 'EXCEEDS_MAX_HEIGHT')).toBe(true);
     });
 

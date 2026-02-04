@@ -596,13 +596,14 @@ export const BUILD_TYPES = {
     features: ['trunk', 'branches', 'canopy', 'asymmetric_shape', 'natural_variation'],
     buildOrder: ['trunk (tapered)', 'primary_branches', 'secondary_branches', 'main_canopy', 'detail_leaves'],
     tips: [
-      'Use we_sphere for leaf clusters - layer multiple overlapping spheres for organic look',
+      'Use we_fill for leaf clusters - stack irregular boxes at different heights for natural look',
       'Use we_cylinder for trunk sections - taper radius from base to top',
       'Build SILHOUETTE first with large volume ops, then add branches and details',
-      'Offset canopy clusters asymmetrically for natural appearance',
-      'Vary leaf cluster sizes and positions',
-      'For massive trees: use multiple overlapping spheres at different heights',
-      'Roots can use short cylinders or fills spreading from trunk base'
+      'Offset canopy clusters ASYMMETRICALLY from trunk center (not perfectly centered)',
+      'Vary leaf cluster sizes (large 12x6x12, medium 8x4x8, small 5x3x5) and Y positions',
+      'For massive trees: stack 4-6 we_fill clusters at different heights, NOT overlapping spheres',
+      'Roots can use short cylinders or fills spreading from trunk base',
+      'AVOID: we_sphere creates unnatural perfect geometric shapes'
     ]
   },
 
@@ -631,10 +632,11 @@ export const BUILD_TYPES = {
     features: ['base', 'figure', 'details'],
     buildOrder: ['pedestal/base', 'body_core', 'limbs', 'head', 'details'],
     tips: [
-      'Build from bottom up',
-      'Use spheres for rounded parts (head, shoulders)',
-      'Use cylinders for limbs',
-      'Add pedestal/base for stability'
+      'Always build a pedestal/base FIRST using we_fill',
+      'Build from bottom up: base → legs → torso → arms → head',
+      'Use we_fill rectangular shapes for body parts - blocky is authentic',
+      'Use three_d_layers for complex details like faces',
+      'Use move operations to position each part relative to cursor'
     ]
   },
 
@@ -779,10 +781,12 @@ export const BUILD_TYPES = {
     features: ['dome', 'tunnels', 'airlocks', 'lighting'],
     buildOrder: ['main_dome', 'connecting_tunnels', 'interior', 'lighting', 'details'],
     tips: [
-      'Use we_sphere for domes',
-      'Include sea_lantern for lighting',
-      'Glass allows viewing fish',
-      'Prismarine blocks fit underwater theme'
+      'Use we_fill with rounded corners for domes - NOT we_sphere',
+      'Use we_cylinder (hollow) for connecting tube corridors',
+      'Include sea_lantern at regular intervals for lighting',
+      'Glass allows viewing fish - use for windows and dome sections',
+      'Prismarine blocks fit underwater theme',
+      'AVOID: Perfect geometric spheres look unnatural'
     ]
   },
 

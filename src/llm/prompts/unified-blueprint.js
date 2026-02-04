@@ -54,11 +54,29 @@ function getBuildTypeGuidance(buildType, hints) {
     statue: `
 === 3D STATUE BUILD ===
 ${massiveGuidance}
-ESTABLISH PROPORTIONS:
-1. FORM: Use we_sphere/we_cylinder for large muscle groups and limbs.
-2. DETAIL: Use "three_d_layers" for complex facial features or intricate armor.
-3. SILHOUETTE: Build from bottom up: base → legs → torso → arms → head.
-- Use move operations to position each part relative to cursor.
+BUILD ORDER:
+1. PEDESTAL/BASE:
+   - Always start with a solid base platform
+   - Use we_fill for rectangular base
+   - Stone_bricks or quartz for classic look
+   - Height: 2-5 blocks depending on statue size
+
+2. BODY CORE:
+   - Use we_fill boxes for torso/main mass
+   - Build from bottom up: legs → torso → shoulders
+
+3. LIMBS:
+   - Use we_fill rectangular shapes for arms/legs
+   - NOT we_sphere - blocky is more Minecraft-authentic
+   - Position with move operations
+
+4. HEAD:
+   - Use we_fill for head block shape
+   - Add details with individual set operations
+
+5. DETAILS:
+   - Use "three_d_layers" for complex features
+   - Add small accent blocks for facial features, clothing details
 `,
 
     tree: `
@@ -66,15 +84,19 @@ ESTABLISH PROPORTIONS:
 ${massiveGuidance}
 BUILD A NATURAL, ORGANIC TREE:
 1. TRUNK:
-   - Use we_cylinder (tapered radius) or solid box/we_fill
+   - Use we_cylinder (tapered radius) or we_fill box
    - Root base should be wider than top
+   - Use oak_log, spruce_log, or appropriate wood type
 2. BRANCHES:
-   - Angled outward from trunk
-   - Use we_cylinder or heavy lines
+   - Angled outward from trunk at different heights
+   - Use we_cylinder or we_fill for thick branches
 3. CANOPY (Leaves):
-   - CRITICAL: Use we_sphere for leaf clusters!
-   - Overlap multiple spheres for irregular, organic look
-   - Do NOT use a single box.
+   - Use we_fill with irregular box shapes at DIFFERENT HEIGHTS
+   - Offset leaf clusters ASYMMETRICALLY (not centered on trunk)
+   - Stack 3-5 clusters: large ones (12x6x12) in center, smaller (6x4x6) on edges
+   - Vary Y positions so canopy has vertical depth
+   - Use oak_leaves, spruce_leaves, or appropriate leaf type
+   - AVOID: we_sphere creates unnatural perfect geometric shapes!
 `,
 
     treehouse: `
@@ -138,11 +160,154 @@ DETAILS (required):
     castle: `
 === CASTLE/FORTRESS BUILD ===
 ${massiveGuidance}
-- Walls: we_walls or we_fill
-- Towers: we_cylinder (hollow) + roof cone (we_pyramid or manual)
-- Gatehouse: Massive entrance with doors
-- Keep: Central fortified structure
-- Battlements: Crenellations on top of walls
+BUILD IN THIS ORDER:
+1. OUTER WALLS:
+   - Use we_walls or we_fill for thick walls (2-3 blocks)
+   - Height: 10-15 blocks minimum
+   - Add battlements (alternating merlon/crenel pattern) at top
+
+2. CORNER TOWERS:
+   - we_cylinder (hollow) at each corner
+   - Taller than walls by 5-10 blocks
+   - Add conical roof (manual stepped circles) or battlements
+
+3. GATEHOUSE:
+   - Main entrance with large archway
+   - Portcullis area (iron bars)
+   - Flanking towers
+
+4. KEEP (Central building):
+   - Largest, tallest structure inside walls
+   - Multiple floors with windows
+   - Grand entrance with stairs
+
+5. COURTYARD:
+   - Open space between walls and keep
+   - Add well, stables, barracks structures
+
+6. DETAILS:
+   - Arrow slits (1x2 windows)
+   - Torches/lanterns on walls
+   - Banners for decoration
+`,
+
+    ship: `
+=== SHIP/VESSEL BUILD ===
+${massiveGuidance}
+BUILD A PROPER SHIP STRUCTURE:
+1. HULL (Main body):
+   - Use we_fill for hull base - wider in middle, narrow at bow/stern
+   - Build CURVED sides using stepped we_fill boxes at angles
+   - Hull should be hollow with walls 1-2 blocks thick
+   - Use dark_oak_planks or spruce_planks
+
+2. DECK (Floor):
+   - Flat floor on top of hull
+   - Add raised sections (forecastle at front, quarterdeck at rear)
+   - Use trapdoors for hatch details
+
+3. MASTS (Vertical):
+   - Use oak_fence or spruce_log for masts
+   - Position: 1 main mast center, optional fore/mizzen masts
+   - Height should be ~1.5x hull length
+
+4. SAILS:
+   - Use white_wool or light_gray_wool
+   - Attach to masts with horizontal yard arms
+   - Multiple sail levels on each mast
+
+5. DETAILS:
+   - Railings: fence posts around deck edges
+   - Cabin: small room structure at stern
+   - Windows: portholes along hull sides
+`,
+
+    farm: `
+=== FARM/AGRICULTURAL BUILD ===
+${massiveGuidance}
+${designPrinciples}
+BUILD A WORKING FARM:
+1. FIELDS (Growing areas):
+   - Use we_fill for farmland/dirt plots
+   - Leave 1-block water channels every 8 blocks
+   - Separate crop types into distinct sections
+
+2. BARN (Main building):
+   - Large open interior for storage
+   - Wide double doors for cart access
+   - Hay bale storage areas
+   - Use roof_gable with significant overhang
+
+3. PATHS:
+   - Gravel or stone paths between areas
+   - 2-3 blocks wide for cart access
+
+4. FENCES:
+   - Oak or spruce fence around perimeter
+   - Gates at entry points
+   - Animal pens separate from crops
+
+5. WINDMILL (Optional for large farms):
+   - Cylindrical tower using we_fill boxes
+   - Sails made from wool + fence posts
+`,
+
+    pyramid: `
+=== PYRAMID/MONUMENT BUILD ===
+${massiveGuidance}
+BUILD A PROPER PYRAMID:
+1. BASE:
+   - Square foundation using we_fill
+   - Sandstone or smooth_sandstone for Egyptian style
+
+2. LAYERS (Stepped construction):
+   - Use we_pyramid operation for solid pyramids
+   - OR build manually: decreasing we_fill squares stacked vertically
+   - Each layer 1 block smaller on each side
+
+3. ENTRANCE:
+   - Ground-level door on one face
+   - Short tunnel leading to interior chamber
+
+4. CAPSTONE:
+   - Use gold_block or glowstone at apex
+   - Single block or small pyramid tip
+
+5. INTERIOR (Optional):
+   - Central burial chamber
+   - Narrow passages connecting rooms
+   - Use chiseled_sandstone for decoration
+`,
+
+    underwater: `
+=== UNDERWATER/AQUATIC BUILD ===
+${massiveGuidance}
+BUILD AN UNDERWATER STRUCTURE:
+1. MAIN DOME/CHAMBER:
+   - Use we_fill with ROUNDED corners (multiple overlapping boxes)
+   - NOT we_sphere - use stacked cylinders or rounded box arrangements
+   - Glass for visibility, prismarine for structure
+   - Make it hollow for interior space
+
+2. CONNECTING TUBES:
+   - we_cylinder (hollow) for tube corridors
+   - Glass or glass_pane walls for views
+   - 3-5 block diameter minimum
+
+3. AIRLOCKS:
+   - Double-door systems at entrances
+   - Small transition chambers
+
+4. LIGHTING:
+   - Sea_lantern embedded in floors/ceilings
+   - Glowstone behind glass for ambient glow
+   - Place at regular intervals
+
+5. MATERIALS:
+   - Prismarine_bricks for main structure
+   - Dark_prismarine for accents
+   - Glass for windows/domes
+   - AVOID: Perfect spheres look artificial underwater
 `,
 
     tower: `
@@ -163,9 +328,11 @@ MODERN STYLE RULES:
 - Clean geometric shapes with asymmetric composition
 - Large glass facades (glass_pane walls, NOT scattered small windows)
 - Materials: white_concrete, quartz_block, glass, black_concrete trim
-- Cantilevered sections (overhangs without visible supports)
+- Overhangs supported by visible pillars or extending from solid walls
 - Flat or angular roofs with edge trim
 - NO traditional elements (no chimneys, no peaked roofs)
+- Use we_fill for clean rectangular volumes
+- Create visual interest through MATERIAL CONTRAST, not ornamentation
 `
   };
 

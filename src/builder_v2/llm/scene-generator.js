@@ -8,6 +8,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { validateScene, formatValidationErrors } from '../validate/validators.js';
 import { buildScenePrompt, buildRepairPrompt, buildFallbackPrompt } from './prompts.js';
 import { SAFETY_LIMITS } from '../../config/limits.js';
+import { findLandmark, scaleParams, calculateBoundsFromConfig } from '../landmarks/registry.js';
 
 /**
  * Extract JSON from potentially messy LLM output
@@ -139,11 +140,73 @@ export async function generateSceneV2(intent, apiKey, options = {}) {
 }
 
 /**
+ * Generate a deterministic scene for a known landmark
+ */
+function generateLandmarkScene(intent, landmarkKey, landmarkConfig) {
+  const scale = intent.intent?.scale || 'medium';
+  const scaleFactor = landmarkConfig.scale?.[scale] || 1;
+
+  // Scale all component parameters
+  const scaledComponents = landmarkConfig.components.map((comp, idx) => ({
+    ...comp,
+    id: comp.id || `landmark_${idx}`,
+    transform: comp.transform ? {
+      ...comp.transform,
+      position: comp.transform.position ? {
+        x: Math.round((comp.transform.position.x || 0) * scaleFactor),
+        y: Math.round((comp.transform.position.y || 0) * scaleFactor),
+        z: Math.round((comp.transform.position.z || 0) * scaleFactor)
+      } : { x: 0, y: 0, z: 0 }
+    } : { position: { x: 0, y: 0, z: 0 } },
+    params: scaleParams(comp.params, scaleFactor)
+  }));
+
+  const bounds = calculateBoundsFromConfig(
+    landmarkConfig.components,
+    scaleFactor,
+    landmarkConfig.defaultBounds
+  );
+
+  console.log(`  [SceneGenerator] Using landmark template: ${landmarkKey} (scale: ${scale})`);
+
+  return {
+    version: '2.0',
+    intentId: intent.id,
+    description: {
+      title: landmarkKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      summary: `${landmarkKey} landmark structure`
+    },
+    bounds,
+    style: {
+      palette: landmarkConfig.materials || {
+        primary: 'stone_bricks',
+        secondary: 'oak_planks',
+        accent: 'cobblestone'
+      },
+      theme: 'default'
+    },
+    components: scaledComponents,
+    detailPasses: [],
+    // Mark as landmark-generated for debugging
+    _landmarkKey: landmarkKey
+  };
+}
+
+/**
  * Generate a simple deterministic fallback scene
  */
 function generateFallbackScene(intent) {
-  const scale = intent.intent.scale;
-  const category = intent.intent.category;
+  const scale = intent.intent?.scale || 'medium';
+  const category = intent.intent?.category;
+  const reference = intent.intent?.reference || intent.rawPrompt || '';
+
+  // Check for known landmark FIRST
+  if (category === 'landmark' || reference) {
+    const landmarkMatch = findLandmark(reference);
+    if (landmarkMatch) {
+      return generateLandmarkScene(intent, landmarkMatch.key, landmarkMatch.config);
+    }
+  }
 
   // Scale to dimensions mapping
   const scaleDimensions = {
@@ -160,8 +223,8 @@ function generateFallbackScene(intent) {
   // Generate based on category
   let components = [];
 
-  if (category === 'architecture' || category === 'landmark') {
-    // Simple building with room and roof
+  if (category === 'architecture') {
+    // Simple building with room and roof (for non-landmark architecture)
     components = [
       {
         id: 'main_room',
@@ -187,6 +250,34 @@ function generateFallbackScene(intent) {
           depth: dims.d,
           pitch: 0.5,
           overhang: 1
+        }
+      }
+    ];
+  } else if (category === 'landmark') {
+    // Unknown landmark - use a generic tower structure (better than room+roof)
+    components = [
+      {
+        id: 'tower_base',
+        type: 'room',
+        transform: { position: { x: 0, y: 0, z: 0 } },
+        params: {
+          width: dims.w,
+          height: dims.h,
+          depth: dims.d,
+          openings: [
+            { type: 'door', wall: 'south' },
+            { type: 'window', wall: 'north', yOffset: Math.floor(dims.h * 0.7) }
+          ]
+        }
+      },
+      {
+        id: 'tower_top',
+        type: 'tower_top',
+        transform: { position: { x: 0, y: dims.h, z: 0 } },
+        params: {
+          width: dims.w,
+          depth: dims.d,
+          style: 'spire'
         }
       }
     ];
@@ -242,5 +333,6 @@ function generateFallbackScene(intent) {
 export default {
   generateSceneV2,
   extractJSON,
-  generateFallbackScene
+  generateFallbackScene,
+  generateLandmarkScene
 };

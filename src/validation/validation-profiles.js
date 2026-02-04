@@ -82,14 +82,14 @@ export const VALIDATION_PROFILES = {
     requireFoundation: false,
 
     allowFlat: false,
-    allowFloating: false,
+    allowFloating: true, // Canopy naturally floats above trunk
     allowOrganic: true,
     allowIrregular: true,
-    allowExtremeScale: false,
+    allowExtremeScale: true, // Support Yggdrasil-scale trees
 
-    maxHeight: 64,
-    maxWidth: 32,
-    maxDepth: 32,
+    maxHeight: 200, // Tall trees like World Trees
+    maxWidth: 128,  // Wide canopy spread
+    maxDepth: 128,
 
     qualityChecks: ['has_trunk', 'has_canopy', 'organic_shape'],
     qualityWeight: 0.5

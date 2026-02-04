@@ -249,39 +249,53 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
 
     // 5.7. Organic quality validation (may auto-fix - must run sequentially)
     if (isOrganicBuild({ buildType })) {
-      const organicResult = validateTreeQuality(currentBlueprint);
+      let organicResult = validateTreeQuality(currentBlueprint);
+      let autoFixed = false;
+
+      if (!organicResult.valid && organicResult.score >= 0.5) {
+        currentBlueprint = fixTreeQuality(currentBlueprint);
+        autoFixed = true;
+        organicResult = validateTreeQuality(currentBlueprint);
+        if (DEBUG) {
+          console.log('  -> Auto-fixed organic quality issues');
+        }
+      }
+
       if (!organicResult.valid) {
         errors.push(...organicResult.errors.map(e => `Organic quality: ${e}`));
-        // Auto-fix if possible
-        if (organicResult.score >= 0.5) {
-          currentBlueprint = fixTreeQuality(currentBlueprint);
-          if (DEBUG) {
-            console.log('  → Auto-fixed organic quality issues');
-          }
-        }
+      } else if (autoFixed && DEBUG) {
+        console.log('  -> Organic quality re-check passed after fixes');
       }
     }
 
     // 5.8. Spatial connectivity validation (stores issues on blueprint)
-    const connectivityResult = validateConnectivity(currentBlueprint, { verbose: DEBUG });
-    logValidationStage('Connectivity', { errors: connectivityResult.issues });
-    if (connectivityResult.hasWarnings) {
-      // Store connectivity issues for potential repair prompt enhancement
-      currentBlueprint._connectivityIssues = connectivityResult.issues;
+    // Skip connectivity checks for organic builds (trees, nature) where floating is natural
+    const organicBuildTypes = ['tree', 'organic', 'nature', 'plant', 'terrain', 'landscape'];
+    const isOrganicBuildType = organicBuildTypes.includes(currentBlueprint.buildType?.toLowerCase());
 
-      // Only add as errors if there are severe issues
-      const severeIssues = connectivityResult.issues.filter(i => i.severity === 'error');
-      if (severeIssues.length > 0) {
-        errors.push(...severeIssues.map(i => `Connectivity: ${i.message}`));
-      }
+    if (!isOrganicBuildType) {
+      const connectivityResult = validateConnectivity(currentBlueprint, { verbose: DEBUG });
+      logValidationStage('Connectivity', { errors: connectivityResult.issues });
+      if (connectivityResult.hasWarnings) {
+        // Store connectivity issues for potential repair prompt enhancement
+        currentBlueprint._connectivityIssues = connectivityResult.issues;
 
-      // Log warnings even if not blocking
-      if (DEBUG && connectivityResult.issues.length > 0) {
-        console.log('  [Spatial] Connectivity warnings:');
-        for (const issue of connectivityResult.issues) {
-          console.log(`    [${issue.severity}] ${issue.type}: ${issue.message}`);
+        // Only add as errors if there are severe issues
+        const severeIssues = connectivityResult.issues.filter(i => i.severity === 'error');
+        if (severeIssues.length > 0) {
+          errors.push(...severeIssues.map(i => `Connectivity: ${i.message}`));
+        }
+
+        // Log warnings even if not blocking
+        if (DEBUG && connectivityResult.issues.length > 0) {
+          console.log('  [Spatial] Connectivity warnings:');
+          for (const issue of connectivityResult.issues) {
+            console.log(`    [${issue.severity}] ${issue.type}: ${issue.message}`);
+          }
         }
       }
+    } else if (DEBUG) {
+      console.log('  [Spatial] Skipping connectivity validation for organic build type:', currentBlueprint.buildType);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
