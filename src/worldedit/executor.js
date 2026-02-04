@@ -8,6 +8,17 @@ const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
 export const ACK_TIMEOUT_MS = 15000;  // Maximum wait time for WorldEdit ACK
 export const ACK_POLL_INTERVALS = [100, 200, 500, 1000, 2000];  // Exponential backoff intervals
 
+// WorldEdit Type Constants - CLAUDE.md Priority 3: Graceful FAWE Degradation
+export const WORLDEDIT_TYPE = {
+  FAWE: 'fawe',      // FastAsyncWorldEdit - supports async operations
+  VANILLA: 'vanilla', // Standard WorldEdit - synchronous only
+  UNKNOWN: 'unknown'  // Not yet detected
+};
+
+// Health Check Constants - CLAUDE.md Priority 3: Health Check Endpoint
+export const HEALTH_CHECK_INTERVAL_MS = 60000;  // Check every 60 seconds
+export const HEALTH_CHECK_TIMEOUT_MS = 3000;    // 3 second timeout for health check
+
 /**
  * Circuit Breaker for WorldEdit operations
  *
@@ -267,6 +278,14 @@ export class WorldEditExecutor {
     this.spamDetected = false;
     this.backoffMultiplier = 1.0;
 
+    // WorldEdit type detection - CLAUDE.md Priority 3: Graceful FAWE Degradation
+    this.worldEditType = WORLDEDIT_TYPE.UNKNOWN;
+
+    // Health check state - CLAUDE.md Priority 3: Health Check Endpoint
+    this.lastHealthCheck = { healthy: false, latency: 0, timestamp: 0 };
+    this.healthCheckInterval = null;
+    this.consecutiveHealthFailures = 0;
+
     // Circuit Breaker for failure protection
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: 5,      // Open after 5 consecutive failures
@@ -476,7 +495,9 @@ export class WorldEditExecutor {
 
       if (selResponse) {
         this.available = true;
-        console.log('✓ WorldEdit detected via //sel command');
+        // Detect type from sel response
+        this._detectWorldEditType(selResponse);
+        console.log(`✓ WorldEdit detected via //sel command (type: ${this.worldEditType})`);
         return true;
       }
 
@@ -498,7 +519,9 @@ export class WorldEditExecutor {
 
       if (response) {
         this.available = true;
-        console.log(`✓ WorldEdit detected: ${response.substring(0, 60)}...`);
+        // Detect type from version response
+        this._detectWorldEditType(response);
+        console.log(`✓ WorldEdit detected: ${response.substring(0, 60)}... (type: ${this.worldEditType})`);
         return true;
       }
 
@@ -511,6 +534,247 @@ export class WorldEditExecutor {
       this.available = false;
       return false;
     }
+  }
+
+  /**
+   * Detect WorldEdit type from response text
+   * @private
+   */
+  _detectWorldEditType(response) {
+    if (!response) {
+      this.worldEditType = WORLDEDIT_TYPE.UNKNOWN;
+      return;
+    }
+
+    const lower = response.toLowerCase();
+
+    // FAWE indicators
+    if (lower.includes('fastasync') ||
+        lower.includes('fawe') ||
+        lower.includes('asyncworldedit')) {
+      this.worldEditType = WORLDEDIT_TYPE.FAWE;
+      return;
+    }
+
+    // Vanilla WorldEdit indicators
+    if (lower.includes('worldedit') && !lower.includes('async')) {
+      this.worldEditType = WORLDEDIT_TYPE.VANILLA;
+      return;
+    }
+
+    // Could not determine type
+    this.worldEditType = WORLDEDIT_TYPE.UNKNOWN;
+  }
+
+  /**
+   * Check if running FastAsyncWorldEdit
+   * @returns {boolean}
+   */
+  isFawe() {
+    return this.worldEditType === WORLDEDIT_TYPE.FAWE;
+  }
+
+  /**
+   * Check if running vanilla WorldEdit (not FAWE)
+   * @returns {boolean}
+   */
+  isVanillaWorldEdit() {
+    return this.worldEditType === WORLDEDIT_TYPE.VANILLA;
+  }
+
+  /**
+   * Degrade from FAWE to vanilla WorldEdit mode
+   * Called when FAWE-specific features fail repeatedly
+   * @param {string} reason - Reason for degradation
+   */
+  degradeToVanilla(reason = 'unknown') {
+    const previousType = this.worldEditType;
+    this.worldEditType = WORLDEDIT_TYPE.VANILLA;
+    console.warn(`[WorldEdit] Degrading from ${previousType} to vanilla mode: ${reason}`);
+  }
+
+  /**
+   * Get WorldEdit information and capabilities
+   * @returns {Object} WorldEdit info
+   */
+  getWorldEditInfo() {
+    const capabilities = ['selection', 'fill', 'replace', 'copy', 'paste'];
+
+    if (this.worldEditType === WORLDEDIT_TYPE.FAWE) {
+      capabilities.push('async', 'history', 'fast-undo');
+    }
+
+    return {
+      available: this.available,
+      type: this.worldEditType,
+      capabilities
+    };
+  }
+
+  /**
+   * Get ACK matcher function based on WorldEdit type
+   * @returns {Function} Matcher function for ACK responses
+   */
+  getAckMatcher() {
+    return (text) => {
+      const lower = text.toLowerCase();
+
+      // FAWE-specific patterns
+      if (this.worldEditType !== WORLDEDIT_TYPE.VANILLA) {
+        // Pattern A: "Operation completed (123 blocks)."
+        if (lower.includes('operation completed')) return true;
+
+        // Pattern B: "0.5s elapsed (history: 123 changed; ...)"
+        if (lower.includes('elapsed') && lower.includes('history') && lower.includes('changed')) return true;
+      }
+
+      // Standard WorldEdit patterns (work for all types)
+      if (/(\d+)\s*(block|blocks|positions?)\s*(changed|affected|set|modified)/i.test(text)) return true;
+      if (/history\s*(:?)\s*#?\d+\s*changed/i.test(text)) return true;
+
+      // Selection/clipboard responses
+      if (lower.includes('selection cleared') ||
+          lower.includes('region cleared') ||
+          lower.includes('pasted') ||
+          lower.includes('clipboard') ||
+          lower.includes('no blocks')) {
+        return true;
+      }
+
+      // Undo/Redo
+      if (lower.includes('undo successful') || lower.includes('undid') || lower.includes('redo successful')) return true;
+
+      // Error patterns (fail fast)
+      return lower.includes('unknown command') ||
+        lower.includes('no permission') ||
+        lower.includes('error') ||
+        lower.includes('failed');
+    };
+  }
+
+  /**
+   * Perform a health check on WorldEdit
+   * Uses a lightweight command (//sel) to verify responsiveness
+   *
+   * @returns {Promise<Object>} Health status { healthy, latency, timestamp, reason? }
+   */
+  async performHealthCheck() {
+    const startTime = Date.now();
+
+    // If not available, immediately return unhealthy
+    if (!this.available) {
+      this.lastHealthCheck = {
+        healthy: false,
+        latency: 0,
+        timestamp: startTime,
+        reason: 'WorldEdit not available'
+      };
+      this.consecutiveHealthFailures++;
+      return this.lastHealthCheck;
+    }
+
+    try {
+      // Use //sel as a lightweight probe - doesn't modify state
+      this.bot.chat('//sel');
+
+      const response = await this.waitForResponse(
+        (text) => {
+          const lower = text.toLowerCase();
+          return lower.includes('selection') ||
+                 lower.includes('cuboid') ||
+                 lower.includes('cleared') ||
+                 lower.includes('region');
+        },
+        HEALTH_CHECK_TIMEOUT_MS
+      );
+
+      const latency = Date.now() - startTime;
+
+      if (response) {
+        // Healthy
+        this.lastHealthCheck = {
+          healthy: true,
+          latency,
+          timestamp: startTime
+        };
+        this.consecutiveHealthFailures = 0;
+        this.circuitBreaker.recordSuccess();
+      } else {
+        // Timeout - unhealthy
+        this.lastHealthCheck = {
+          healthy: false,
+          latency,
+          timestamp: startTime,
+          reason: 'Health check timeout'
+        };
+        this.consecutiveHealthFailures++;
+        this.circuitBreaker.recordTimeout();
+      }
+    } catch (error) {
+      const latency = Date.now() - startTime;
+      this.lastHealthCheck = {
+        healthy: false,
+        latency,
+        timestamp: startTime,
+        reason: error.message
+      };
+      this.consecutiveHealthFailures++;
+      this.circuitBreaker.recordFailure('health_check_error');
+    }
+
+    return this.lastHealthCheck;
+  }
+
+  /**
+   * Get current health status
+   * @returns {Object} Health status with diagnostic info
+   */
+  getHealthStatus() {
+    return {
+      healthy: this.lastHealthCheck.healthy,
+      lastCheck: this.lastHealthCheck.timestamp,
+      consecutiveFailures: this.consecutiveHealthFailures,
+      circuitBreakerState: this.circuitBreaker.getState().state
+    };
+  }
+
+  /**
+   * Start periodic health checks
+   * @param {number} intervalMs - Interval between checks (default: HEALTH_CHECK_INTERVAL_MS)
+   * @returns {number} Interval ID
+   */
+  startHealthCheck(intervalMs = HEALTH_CHECK_INTERVAL_MS) {
+    if (this.healthCheckInterval) {
+      this.stopHealthCheck();
+    }
+
+    // Run initial check
+    this.performHealthCheck();
+
+    // Schedule periodic checks
+    this.healthCheckInterval = setInterval(() => {
+      this.performHealthCheck();
+    }, intervalMs);
+
+    return this.healthCheckInterval;
+  }
+
+  /**
+   * Stop periodic health checks
+   */
+  stopHealthCheck() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+  }
+
+  /**
+   * Check if health check is currently running
+   * @returns {boolean}
+   */
+  isHealthCheckRunning() {
+    return this.healthCheckInterval !== null;
   }
 
   /**

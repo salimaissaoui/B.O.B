@@ -5,11 +5,13 @@
 ---
 
 ## System Status: **STABLE ✅**
-- All tests passing (835 tests)
+- All tests passing (959 tests)
 - Documentation synchronized with codebase
 - No ghost systems or deprecated references
 - Contract-test enforcement active
 - Priority 2 Performance optimizations complete
+- Priority 3 Reliability optimizations complete
+- Priority 4 V2 components expanded (bridge, wall_gate, tower_top)
 
 ---
 
@@ -81,7 +83,7 @@ Intent → Scene (LLM) → Plan (Deterministic) → Placement → Execution
 ```
 
 **Components Available**:
-- Structural: `lattice_tower`, `arch`, `column`, `platform`, `staircase`, `room`
+- Structural: `lattice_tower`, `arch`, `column`, `platform`, `staircase`, `room`, `bridge`, `wall_gate`, `tower_top`
 - Roofs: `roof_gable`, `roof_dome`
 - Organic: `sphere`, `cylinder`, `statue-armature`
 
@@ -161,24 +163,34 @@ src/
 ├── builder_v2/        # V2 parametric pipeline
 │   ├── components/    # Deterministic component library
 │   ├── compiler/      # Plan → Placement compilation
+│   ├── multi-structure/ # Multi-structure builds (villages)
 │   └── validators/    # V2-specific validation
 ├── config/            # Limits, operations registry, blocks
-├── llm/               # Gemini client, prompts
+├── llm/               # Gemini client, prompts, blueprint cache
 ├── operations/        # V1 building primitives
 ├── positioning/       # BuildStationManager, pathfinding
 ├── services/          # Schematic loader, gallery, sprite gen
 ├── stages/            # V1 pipeline (1,2,4,5)
-├── utils/             # Normalizer, sanitizer, helpers
+├── terrain/           # Terrain modification (flatten, smooth)
+├── ux/                # User experience (progress, preview, fast-path)
+├── utils/             # Normalizer, sanitizer, material substitution
 ├── validation/        # World validator, profiles, quality
 └── worldedit/         # FAWE executor, ACK parser, circuit breaker
 
 tests/
-├── routing/           # NEW: Precedence contract tests
-├── positioning/       # NEW: Teleport contract tests
-├── services/          # NEW: Gallery threshold tests
+├── builder_v2/        # V2 component tests (bridge, wall_gate, tower_top, multi-structure)
+├── llm/               # LLM caching tests
+├── positioning/       # Teleport contract tests
+├── reliability/       # Exponential backoff tests
+├── routing/           # Precedence contract tests
+├── services/          # Gallery threshold tests
 ├── stages/            # Builder, validator, generator tests
-├── worldedit/         # Circuit breaker, ACK pattern tests
-└── ...                # (41 total test files)
+├── state/             # Build state persistence tests
+├── terrain/           # Terrain modification tests
+├── utils/             # Material substitution tests
+├── ux/                # UX tests (progress, preview, fast-path, incremental)
+├── worldedit/         # Circuit breaker, ACK pattern, health check tests
+└── ...                # (65+ total test files)
 ```
 
 ---
@@ -197,7 +209,7 @@ tests/
 
 ### Developer Commands
 ```bash
-npm test                     # Full suite (835 tests)
+npm test                     # Full suite (959 tests)
 npm run test:worldedit       # WorldEdit-specific
 npm run test:validation      # Validation-specific
 npm run test:builder_v2      # V2 pipeline tests
@@ -218,9 +230,21 @@ npm run test:builder_v2      # V2 pipeline tests
 
 ## 9. TEST COVERAGE STATUS
 
-**Total Tests**: 835
+**Total Tests**: 1144
 **Pass Rate**: 100%
 **Critical Gaps Filled**: 8/8 (as of 2026-02-03)
+**Priority 1 User Experience**: ✅ Complete
+  - Streaming Progress: ProgressReporter with phase tracking
+  - Early Build Preview: BuildPreview with dimensions, materials
+  - Failure Fast-Path: FailureFastPath for early detection
+  - Incremental Rendering: IncrementalRenderer for real-time feedback
+**Priority 2 Performance**: ✅ Complete
+**Priority 3 Reliability**: ✅ Complete
+**Priority 4 Feature Expansion**: ✅ Complete
+  - V2 Components: bridge, wall_gate, tower_top
+  - Multi-Structure Builds: villages, layout planning
+  - Terrain Modification: flatten, smooth, fill
+  - Material Substitution: wood types, colors, palettes
 
 ### Newly Added Tests (Contract Hardening)
 - ✅ `tests/services/schematic-gallery-threshold.test.js` - Gallery 0.6 threshold
@@ -231,6 +255,13 @@ npm run test:builder_v2      # V2 pipeline tests
 - ✅ `tests/worldedit/command-batching.test.js` - Selection mode caching
 - ✅ `tests/stages/validator-parallel.test.js` - Parallel validation phases
 - ✅ `tests/llm/blueprint-cache.test.js` - LLM response caching (24h TTL)
+- ✅ `tests/worldedit/fawe-degradation.test.js` - FAWE vs vanilla WE detection
+- ✅ `tests/reliability/exponential-backoff.test.js` - Backoff strategy verification
+- ✅ `tests/worldedit/health-check.test.js` - WorldEdit health monitoring
+- ✅ `tests/state/build-resume.test.js` - Build state persistence and resume
+- ✅ `tests/builder_v2/components/bridge.test.js` - Bridge component
+- ✅ `tests/builder_v2/components/wall-gate.test.js` - Wall gate component
+- ✅ `tests/builder_v2/components/tower-top.test.js` - Tower top component
 
 ### Existing Well-Guarded Invariants
 - ✅ Circuit Breaker (5/3/30s thresholds)

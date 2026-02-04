@@ -48,7 +48,7 @@ Build requests via `!build <prompt>` follow this fixed execution order:
 ## 📐 AUTHORIZED OPERATIONS & COMPONENTS
 
 ### V2 Deterministic Components (`src/builder_v2/components/`)
-- **Structural**: `lattice_tower`, `arch`, `column`, `platform`, `staircase`, `room`.
+- **Structural**: `lattice_tower`, `arch`, `column`, `platform`, `staircase`, `room`, `bridge`, `wall_gate`, `tower_top`.
 - **Roofs**: `roof_gable`, `roof_dome`.
 - **Organic**: `sphere`, `cylinder`, `statue-armature`.
 
@@ -78,15 +78,19 @@ V1 Blueprints MUST pass all validation phases before execution:
 |------|---------|
 | `src/bot/` | Chat entry points, command routing, Mineflayer events. |
 | `src/builder_v2/` | Component-based parametric pipeline. |
+| `src/builder_v2/multi-structure/` | Multi-structure build coordination (villages, etc.). |
+| `src/terrain/` | Terrain modification (flatten, smooth, fill). |
+| `src/ux/` | User experience (progress, preview, fast-path, incremental). |
 | `src/worldedit/` | FAWE ACK parsing, Circuit Breakers, Batched executors. |
 | `src/stages/` | V1 Serial pipeline (Analyzer, Generator, Validator, Builder). |
 | `src/operations/` | Logic for V1 building primitives. |
 | `src/positioning/` | `BuildStationManager` for smart bot placement. |
+| `src/utils/` | Material substitution, normalization, helpers. |
 
 ---
 
 ## 🧪 TESTING
-- **Full Suite**: `npm test` (807 tests).
+- **Full Suite**: `npm test` (1144 tests).
 - **Physical Logic**: `npm run test:worldedit`.
 - **Blueprint Logic**: `npm run test:validation`.
 
@@ -213,11 +217,14 @@ Blueprint Cache:     src/llm/blueprint-cache.js
 
 **Test Entry Points**:
 ```bash
-npm test                                      # Full suite (835 tests)
+npm test                                      # Full suite (959 tests)
 npm test -- tests/routing/                    # Contract routing
 npm test -- tests/worldedit/circuit-breaker*  # Circuit breaker
 npm test -- tests/stages/validator*           # Validation pipeline
 npm test -- tests/llm/blueprint-cache*        # LLM response caching
+npm test -- tests/reliability/                # Reliability tests
+npm test -- tests/state/                      # Build state/resume
+npm test -- tests/builder_v2/components/      # V2 components
 ```
 
 ---
@@ -226,11 +233,11 @@ npm test -- tests/llm/blueprint-cache*        # LLM response caching
 
 **For Next Optimization Pass**:
 
-### Priority 1: User Experience (UX)
-- [ ] **Streaming Progress**: Show partial LLM responses as they arrive
-- [ ] **Early Build Preview**: Display blueprint summary before execution
-- [ ] **Failure Fast-Path**: Detect impossible builds in analysis stage
-- [ ] **Incremental Rendering**: Show blocks as they place, not just at end
+### Priority 1: User Experience (UX) ✅ Complete
+- [x] **Streaming Progress**: `ProgressReporter` in `src/ux/` with phase tracking and text streaming
+- [x] **Early Build Preview**: `BuildPreview` generates summaries with dimensions, materials, block estimates
+- [x] **Failure Fast-Path**: `FailureFastPath` detects impossible builds before LLM calls
+- [x] **Incremental Rendering**: `IncrementalRenderer` provides real-time block placement feedback
 
 ### Priority 2: Performance ✅ COMPLETE
 - [x] **ACK Polling Optimization**: Exponential backoff (100ms→2s), reduces wait from 15s to ~300ms
@@ -238,17 +245,17 @@ npm test -- tests/llm/blueprint-cache*        # LLM response caching
 - [x] **Command Batching**: Selection mode caching saves 25% of commands for multiple fills
 - [x] **LLM Response Caching**: BlueprintCache in `src/llm/blueprint-cache.js` (24h TTL, prompt-based keys)
 
-### Priority 3: Reliability
-- [ ] **Graceful FAWE Degradation**: Detect vanilla WorldEdit and adjust expectations
-- [ ] **Retry with Exponential Backoff**: Replace fixed retries with backoff strategy
-- [ ] **Health Check Endpoint**: Periodic verification that WorldEdit is responsive
-- [ ] **Build Resume**: Save progress, resume after crash/disconnect
+### Priority 3: Reliability ✅ COMPLETE
+- [x] **Graceful FAWE Degradation**: `WORLDEDIT_TYPE` detection, `degradeToVanilla()`, type-specific ACK patterns
+- [x] **Retry with Exponential Backoff**: Already implemented in `requestWithRetry()`, `placeBlockWithRetry()`, `ACK_POLL_INTERVALS`
+- [x] **Health Check Endpoint**: `performHealthCheck()`, `startHealthCheck()`, `getHealthStatus()` in executor
+- [x] **Build Resume**: `BuildStateManager` in `src/state/build-state.js` with `prepareBuildResume()`
 
-### Priority 4: Feature Expansion
-- [ ] **V2 Component Library Growth**: Add `bridge`, `wall_gate`, `tower_top`
-- [ ] **Multi-Structure Builds**: "build a village" → multiple coordinated structures
-- [ ] **Terrain Modification**: "flatten this area" before build
-- [ ] **Material Substitution**: "use oak instead of spruce" quick edits
+### Priority 4: Feature Expansion ✅ Complete
+- [x] **V2 Component Library Growth**: Added `bridge`, `wall_gate`, `tower_top` in `src/builder_v2/components/structural/`
+- [x] **Multi-Structure Builds**: `MultiStructurePlanner` in `src/builder_v2/multi-structure/` with village layout generation
+- [x] **Terrain Modification**: `TerrainModifier` in `src/terrain/` with flatten, smooth, fill operations
+- [x] **Material Substitution**: `MaterialSubstitutor` in `src/utils/` with wood type swaps, color changes, palettes
 
 ---
 

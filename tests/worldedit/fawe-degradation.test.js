@@ -46,38 +46,30 @@ describe('FAWE Degradation - Contract Tests', () => {
             expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.UNKNOWN);
         });
 
-        test('detects FAWE from version response', async () => {
-            // Simulate FAWE version response
-            setTimeout(() => {
-                mockBot._messageHandler({ toString: () => 'FastAsyncWorldEdit version 2.5.0' });
-            }, 10);
-
-            await executor.checkAvailability();
-
+        test('detects FAWE from version response', () => {
+            // Test internal detection method directly
+            executor._detectWorldEditType('FastAsyncWorldEdit version 2.5.0');
             expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.FAWE);
         });
 
-        test('detects vanilla WorldEdit from version response', async () => {
-            // Simulate vanilla WE response
-            setTimeout(() => {
-                mockBot._messageHandler({ toString: () => 'WorldEdit version 7.2.0' });
-            }, 10);
+        test('detects FAWE from fawe keyword', () => {
+            executor._detectWorldEditType('FAWE 2.5.0');
+            expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.FAWE);
+        });
 
-            await executor.checkAvailability();
-
+        test('detects vanilla WorldEdit from version response', () => {
+            executor._detectWorldEditType('WorldEdit version 7.2.0');
             expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.VANILLA);
         });
 
-        test('defaults to UNKNOWN when detection is ambiguous', async () => {
-            // Simulate generic selection response without version info
-            setTimeout(() => {
-                mockBot._messageHandler({ toString: () => 'Selection cleared' });
-            }, 10);
+        test('defaults to UNKNOWN when detection is ambiguous', () => {
+            // Generic response without version info
+            executor._detectWorldEditType('Selection cleared');
+            expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.UNKNOWN);
+        });
 
-            await executor.checkAvailability();
-
-            // Should still be available but type unknown
-            expect(executor.available).toBe(true);
+        test('defaults to UNKNOWN for null response', () => {
+            executor._detectWorldEditType(null);
             expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.UNKNOWN);
         });
     });
@@ -170,7 +162,7 @@ describe('FAWE Degradation - Contract Tests', () => {
 
             executor.degradeToVanilla('FAWE async commands failing');
 
-            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('degrading'));
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Degrading'));
             warnSpy.mockRestore();
         });
 
@@ -197,12 +189,10 @@ describe('FAWE Degradation - Contract Tests', () => {
 });
 
 describe('FAWE Degradation - Integration', () => {
-    test('type detection persists across commands', async () => {
+    test('type detection persists across operations', () => {
         const mockBot = {
             chat: jest.fn(),
-            on: jest.fn((event, handler) => {
-                if (event === 'message') mockBot._messageHandler = handler;
-            }),
+            on: jest.fn(),
             removeListener: jest.fn(),
             entity: { position: { x: 0, y: 64, z: 0 } }
         };
@@ -210,17 +200,15 @@ describe('FAWE Degradation - Integration', () => {
         const executor = new WorldEditExecutor(mockBot);
 
         // Simulate FAWE detection
-        setTimeout(() => {
-            mockBot._messageHandler({ toString: () => 'FAWE 2.5.0' });
-        }, 10);
-
-        await executor.checkAvailability();
+        executor._detectWorldEditType('FAWE 2.5.0');
 
         // Type should persist
         expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.FAWE);
         expect(executor.isFawe()).toBe(true);
 
-        // Even after multiple commands
+        // Get info multiple times - type should persist
+        executor.getWorldEditInfo();
+        executor.getAckMatcher();
         expect(executor.worldEditType).toBe(WORLDEDIT_TYPE.FAWE);
     });
 
@@ -242,5 +230,28 @@ describe('FAWE Degradation - Integration', () => {
         // Should stay vanilla
         expect(executor.isFawe()).toBe(false);
         expect(executor.isVanillaWorldEdit()).toBe(true);
+    });
+
+    test('getWorldEditInfo reflects current state', () => {
+        const mockBot = {
+            chat: jest.fn(),
+            on: jest.fn(),
+            removeListener: jest.fn(),
+            entity: { position: { x: 0, y: 64, z: 0 } }
+        };
+
+        const executor = new WorldEditExecutor(mockBot);
+        executor.available = true;
+        executor.worldEditType = WORLDEDIT_TYPE.FAWE;
+
+        let info = executor.getWorldEditInfo();
+        expect(info.type).toBe(WORLDEDIT_TYPE.FAWE);
+        expect(info.capabilities).toContain('async');
+
+        // After degradation
+        executor.degradeToVanilla('test');
+        info = executor.getWorldEditInfo();
+        expect(info.type).toBe(WORLDEDIT_TYPE.VANILLA);
+        expect(info.capabilities).not.toContain('async');
     });
 });

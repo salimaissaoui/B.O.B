@@ -10,6 +10,9 @@ import { arch } from './structural/arch.js';
 import { column } from './structural/column.js';
 import { platform } from './structural/platform.js';
 import { staircase } from './structural/staircase.js';
+import { bridge } from './structural/bridge.js';
+import { wallGate } from './structural/wall-gate.js';
+import { towerTop } from './structural/tower-top.js';
 import { room } from './rooms/room.js';
 import { roofGable } from './roofs/roof-gable.js';
 import { roofDome } from './roofs/roof-dome.js';
@@ -28,6 +31,9 @@ export const COMPONENT_REGISTRY = {
   column: column,
   platform: platform,
   staircase: staircase,
+  bridge: bridge,
+  wall_gate: wallGate,
+  tower_top: towerTop,
 
   // Rooms
   room: room,
