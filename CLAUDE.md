@@ -36,6 +36,45 @@ Build requests via `!build <prompt>` follow this fixed execution order:
     - **Reset**: Re-tests via HALF_OPEN after `30,000ms`.
 - **Vanilla Fallback**: If `fallbackOnError: true` (default), WE failures attempt to retry via standard `bot.placeBlock()`.
 
+### Build Quality Invariants
+- **Trees**: Trunks MUST have ≥3 segments; Canopies MUST have ≥2 clusters.
+- **Towers/Landmarks**: Must have ≥3 distinct vertical segments/tiers (base, body, topper) with varying widths.
+- **Mapping**: "Big Ben" keyword maps to `tower` classification (Stage 1) and uses `infrastructure/landmark` profile (Stage 4).
+
+### Core → Structure → Detail (CSD) Build Philosophy
+**Location**: `src/llm/prompts/unified-blueprint.js` (Mandatory Build Phases section)
+
+The CSD philosophy enforces a three-phase build approach that prevents "boxy" or simplistic builds and preserves semantic nuance from user prompts.
+
+**Phase Distribution**:
+| Phase | Operations | Purpose |
+|-------|------------|---------|
+| CORE | 25-35% | Primary mass (1-2 large volumes, bounding shape) |
+| STRUCTURE | 30-40% | Secondary forms (break up core, add asymmetry) |
+| DETAIL | 30-40% | Texture, accents, carving (MANDATORY) |
+
+**Key Rules**:
+1. **Detail is Mandatory**: Builds with <10 detail operations are considered failures
+2. **Carving with Air**: Use `set`/`box` with `"air"` block to create negative space (arches, lattices, hollows)
+3. **Solid → Carve Pattern**: For open structures (Eiffel Tower, lattices), build solid envelope first, then carve voids
+4. **Semantic Preservation**: Nuanced prompts ("gnarled tree", "Gothic arch") must translate to corresponding visual elements
+
+**Build Type Implementations**:
+- **Tree (CSD)**: Core trunk → Structure taper + branches + canopy clusters → Detail roots/bark texture/vines
+- **Tower (CSD)**: Core shaft → Structure tiers + protrusions → Detail windows/carvings/spire
+- **Lattice**: Solid envelope → Carve major voids → Add bracing/platforms/rivets
+
+**Anti-Patterns**:
+- ❌ Single we_fill for entire structure (no phase separation)
+- ❌ Skipping detail phase to "save operations"
+- ❌ Solid slabs for open structures (should use carving)
+- ❌ Symmetric-only builds when prompt implies organic/irregular forms
+
+### Mutation Policies
+- **Repair**: `fixTreeQuality` is strictly for primitive-safety replacement; preserves segment counts.
+- **Optimization**: `blueprint-optimizer` merge guard requires contiguity; no silent gaps.
+- **Layers**: V1 Pipeline: 1:Analyzer -> 2:Generator -> 4:Validator (Repair) -> 5:Builder (Optimize/Sanitize).
+
 ### Positioning & Execution
 - **Teleportation**: Bot uses `/tp @s` for relocation.
     - **Smart Skip**: Skip teleport if distance to target is `< 32` blocks.
@@ -346,6 +385,6 @@ npm test -- tests/builder_v2/components/      # V2 components
 ---
 
 **END OF CONTRACT**  
-**Last Updated**: 2026-02-03  
-**Total Test Coverage**: 807 tests  
+**Last Updated**: 2026-02-05  
+**Total Test Coverage**: 1198 tests  
 **Status**: ✅ Production Ready

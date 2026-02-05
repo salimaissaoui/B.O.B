@@ -144,7 +144,7 @@ export function validateTreeQuality(blueprint) {
 
       if (!result.passed) {
         results.errors.push(result.reason);
-        results.score -= 0.15;
+        results.score -= 0.35;
       }
 
       if (result.suggestion) {
@@ -212,25 +212,32 @@ export function fixTreeQuality(blueprint) {
     }
 
     if (step.op === 'we_cylinder' && step.block?.includes('log')) {
-      // Convert cylinder to tapered trunk
+      // Convert cylinder to tapered trunk (3 segments for natural taper)
       const base = step.base || step.pos || { x: 0, y: 0, z: 0 };
       const height = step.height || 5;
+      const radius = step.radius || 1;
 
       fixed.steps.splice(i, 1,
         {
           op: 'we_fill',
-          from: { x: base.x - 1, y: base.y, z: base.z - 1 },
-          to: { x: base.x + 1, y: base.y + 2, z: base.z + 1 },
+          from: { x: base.x - radius, y: base.y, z: base.z - radius },
+          to: { x: base.x + radius, y: base.y + Math.floor(height * 0.4) - 1, z: base.z + radius },
           block: step.block
         },
         {
           op: 'we_fill',
-          from: { x: base.x, y: base.y + 2, z: base.z },
-          to: { x: base.x, y: base.y + height, z: base.z },
+          from: { x: base.x - Math.max(1, radius - 1), y: base.y + Math.floor(height * 0.4), z: base.z - Math.max(1, radius - 1) },
+          to: { x: base.x + Math.max(1, radius - 1), y: base.y + Math.floor(height * 0.8) - 1, z: base.z + Math.max(1, radius - 1) },
+          block: step.block
+        },
+        {
+          op: 'we_fill',
+          from: { x: base.x, y: base.y + Math.floor(height * 0.8), z: base.z },
+          to: { x: base.x, y: base.y + height - 1, z: base.z },
           block: step.block
         }
       );
-      i++;
+      i += 2;
     }
   }
 

@@ -9,24 +9,24 @@ import { getCharacterPalettePrompt } from '../../config/character-palettes.js';
  * Check if this is a creative build type where LLM has block freedom
  */
 function isCreativeBuild(buildType) {
-  return ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'three_d_layers'].includes(buildType);
+   return ['pixel_art', 'statue', 'character', 'art', 'sculpture', 'three_d_layers'].includes(buildType);
 }
 
 /**
  * Get build type-specific guidance
  */
 function getBuildTypeGuidance(buildType, hints) {
-  const isMassive = hints.size === 'massive' || hints.size === 'colossal' || hints.size === 'large';
+   const isMassive = hints.size === 'massive' || hints.size === 'colossal' || hints.size === 'large';
 
-  const massiveGuidance = isMassive ? `
+   const massiveGuidance = isMassive ? `
 === MASSIVE SCALE ENABLED ===
 - You are authorized to build HUGE structures (50-100+ blocks).
 - USE WorldEdit operations (we_sphere, we_cylinder, we_fill, we_walls) for main shapes.
 - Do NOT build small boxy structures. Think grand scale.
 ` : '';
 
-  // Universal design principles for visually impressive builds
-  const designPrinciples = `
+   // Universal design principles for visually impressive builds
+   const designPrinciples = `
 === ARCHITECTURAL DESIGN PRINCIPLES (MANDATORY) ===
 1. DEPTH & LAYERING: Never flat walls. Add pillars, recesses, overhangs.
 2. MATERIAL VARIETY: Use 3-5 block types. Primary(60%), Secondary(25%), Accent(15%).
@@ -35,8 +35,8 @@ function getBuildTypeGuidance(buildType, hints) {
 5. NO PLAIN BOXES: Every surface needs visual interest.
 `;
 
-  const guidance = {
-    pixel_art: `
+   const guidance = {
+      pixel_art: `
 === PIXEL ART BUILD ===
 ⚠️ CRITICAL: You MUST use the "pixel_art" operation.
 - SIZE: Use 32x32 to 64x64 for detail.
@@ -51,7 +51,7 @@ function getBuildTypeGuidance(buildType, hints) {
   - Use ANY block that matches the color (Concrete, Terracotta, Gold, etc.)
 `,
 
-    statue: `
+      statue: `
 === 3D STATUE BUILD ===
 ${massiveGuidance}
 BUILD ORDER:
@@ -79,27 +79,33 @@ BUILD ORDER:
    - Add small accent blocks for facial features, clothing details
 `,
 
-    tree: `
-=== TREE BUILD ===
+      tree: `
+=== TREE BUILD (CSD Philosophy) ===
 ${massiveGuidance}
-BUILD A NATURAL, ORGANIC TREE:
-1. TRUNK:
-   - Use we_cylinder (tapered radius) or we_fill box
-   - Root base should be wider than top
-   - Use oak_log, spruce_log, or appropriate wood type
-2. BRANCHES:
-   - Angled outward from trunk at different heights
-   - Use we_cylinder or we_fill for thick branches
-3. CANOPY (Leaves):
-   - Use we_fill with irregular box shapes at DIFFERENT HEIGHTS
-   - Offset leaf clusters ASYMMETRICALLY (not centered on trunk)
-   - Stack 3-5 clusters: large ones (12x6x12) in center, smaller (6x4x6) on edges
-   - Vary Y positions so canopy has vertical depth
-   - Use oak_leaves, spruce_leaves, or appropriate leaf type
-   - AVOID: we_sphere creates unnatural perfect geometric shapes!
+
+PHASE 1 – CORE (Trunk Base):
+- ONE we_cylinder or we_fill for the main trunk mass
+- Start wide at base, this is just the core shape
+
+PHASE 2 – STRUCTURE (Trunk Taper + Branches + Canopy):
+- Add 2-3 additional trunk segments, each NARROWER than below
+- Add 3-5 BRANCHES using we_fill or line, angled outward
+- Add 2-4 CANOPY CLUSTERS using we_fill boxes at DIFFERENT heights
+- Offset clusters ASYMMETRICALLY (not centered on trunk)
+
+PHASE 3 – DETAIL (Texture + Hollows + Roots):
+- Add ROOTS spreading from base using small we_fill or line ops
+- Add BARK TEXTURE by setting mossy/cracked blocks on trunk surface
+- CARVE a TREE HOLLOW using set with "air" block (optional, adds realism)
+- Add HANGING VINES using line of vine blocks from canopy edges
+- Add SMALL LEAF CLUSTERS (3x3x3) to fill gaps in canopy
+- Add LANTERNS or FLOWERS in/around tree for builds with that theme
+
+CRITICAL: A tree with only trunk + leaves is INCOMPLETE.
+You MUST have roots OR bark texture OR vines OR small detail clusters.
 `,
 
-    treehouse: `
+      treehouse: `
 === TREEHOUSE BUILD ===
 ${massiveGuidance}
 A TREEHOUSE MUST HAVE CONNECTED PARTS - NO FLOATING SECTIONS!
@@ -142,7 +148,7 @@ CONNECTIVITY RULES:
 - Ladder/stairs connect ground to platform
 `,
 
-    house: `
+      house: `
 === HOUSE/MANSION BUILD ===
 ${massiveGuidance}
 ${designPrinciples}
@@ -157,7 +163,7 @@ DETAILS (required):
 - Flower boxes (trapdoors + flowers)
 `,
 
-    castle: `
+      castle: `
 === CASTLE/FORTRESS BUILD ===
 ${massiveGuidance}
 BUILD IN THIS ORDER:
@@ -191,7 +197,7 @@ BUILD IN THIS ORDER:
    - Banners for decoration
 `,
 
-    ship: `
+      ship: `
 === SHIP/VESSEL BUILD ===
 ${massiveGuidance}
 BUILD A PROPER SHIP STRUCTURE:
@@ -222,7 +228,7 @@ BUILD A PROPER SHIP STRUCTURE:
    - Windows: portholes along hull sides
 `,
 
-    farm: `
+      farm: `
 === FARM/AGRICULTURAL BUILD ===
 ${massiveGuidance}
 ${designPrinciples}
@@ -252,7 +258,7 @@ BUILD A WORKING FARM:
    - Sails made from wool + fence posts
 `,
 
-    pyramid: `
+      pyramid: `
 === PYRAMID/MONUMENT BUILD ===
 ${massiveGuidance}
 BUILD A PROPER PYRAMID:
@@ -279,7 +285,7 @@ BUILD A PROPER PYRAMID:
    - Use chiseled_sandstone for decoration
 `,
 
-    underwater: `
+      underwater: `
 === UNDERWATER/AQUATIC BUILD ===
 ${massiveGuidance}
 BUILD AN UNDERWATER STRUCTURE:
@@ -310,17 +316,37 @@ BUILD AN UNDERWATER STRUCTURE:
    - AVOID: Perfect spheres look artificial underwater
 `,
 
-    tower: `
-=== TOWER BUILD ===
+      tower: `
+=== TOWER/LANDMARK BUILD (CSD Philosophy) ===
 ${massiveGuidance}
 ${designPrinciples}
-- Shaft: we_cylinder (hollow) or octagonal we_walls
-- Interior: spiral_staircase (central)
-- Levels: Multiple floors with windows
-- Top: Spire (we_pyramid), dome (we_sphere), or battlements
+
+PHASE 1 – CORE (Main Shaft):
+- ONE we_cylinder or we_walls for the primary vertical mass
+- This is the overall height and width envelope
+
+PHASE 2 – STRUCTURE (Tiers + Protrusions):
+- Divide into 3-5 DISTINCT TIERS (base wider, top narrower)
+- Add HORIZONTAL BANDS/TRIM at tier boundaries using box or line
+- Add BALCONIES or BUTTRESSES protruding from corners
+- For CLOCK TOWERS (Big Ben): Add distinct clock face tier with recessed face
+
+PHASE 3 – DETAIL (Windows + Carvings + Spire):
+- Add WINDOW STRIPS at regular vertical intervals using window_strip
+- CARVE decorative arches using set with "air" (gothic/ornate towers)
+- Add CORNER PILASTERS using vertical line of accent blocks
+- Add SPIRE or FINIAL at top using small pyramid or line
+- For LATTICE TOWERS (Eiffel): 
+  * Build solid A-frame, then CARVE grid pattern with air blocks
+  * Add DIAGONAL BRACING using line operations between legs
+
+CRITICAL FOR LATTICE/SKELETON STRUCTURES:
+- Build the SOLID FRAME first
+- Then CARVE the open spaces using box with "air" block
+- Result: Open lattice, not solid slab
 `,
 
-    modern: `
+      modern: `
 === MODERN ARCHITECTURE ===
 ${massiveGuidance}
 ${designPrinciples}
@@ -333,10 +359,43 @@ MODERN STYLE RULES:
 - NO traditional elements (no chimneys, no peaked roofs)
 - Use we_fill for clean rectangular volumes
 - Create visual interest through MATERIAL CONTRAST, not ornamentation
-`
-  };
+`,
 
-  return guidance[buildType] || `
+      lattice: `
+=== LATTICE/SKELETON/OPEN FRAME STRUCTURES ===
+${massiveGuidance}
+
+USE THIS FOR: Eiffel Tower, radio towers, cranes, scaffolding, bridges, geodesic domes
+
+CRITICAL BUILD METHOD (Solid → Carve):
+1. Build the SOLID ENVELOPE first (the shape if it were filled in)
+2. CARVE the open spaces using set/box with "air" block
+
+PHASE 1 – CORE (Solid Envelope):
+- Build the overall shape AS IF it were solid
+- Example: Eiffel Tower = solid tapered pyramid
+
+PHASE 2 – STRUCTURE (Major Voids):
+- CARVE large openings between legs/supports
+- Use box with "air" to remove rectangular sections
+- Leave only the frame/skeleton
+
+PHASE 3 – DETAIL (Bracing + Rivets):
+- Add DIAGONAL BRACING between supports using line
+- Add HORIZONTAL PLATFORMS at intervals
+- Add small accent blocks for "rivets" or joints
+
+EXAMPLE – Eiffel Tower:
+1. Core: we_pyramid (solid, iron_block, base 40x40, height 120)
+2. Structure: Carve 4 large arch voids at base (box with air)
+3. Structure: Carve rectangular voids between platform levels
+4. Detail: Add horizontal platforms at 3-4 heights
+5. Detail: Add diagonal braces between legs
+6. Detail: Add small accent blocks at joints
+`
+   };
+
+   return guidance[buildType] || `
 === STANDARD BUILD ===
 ${massiveGuidance}
 ${designPrinciples}
@@ -350,14 +409,14 @@ ${designPrinciples}
  * Get WorldEdit guidance section
  */
 function getWorldEditGuidance(worldEditAvailable) {
-  if (!worldEditAvailable) {
-    return `
+   if (!worldEditAvailable) {
+      return `
 === WORLDEDIT: DISABLED ===
 Use vanilla operations only (box, wall, line, set, door, window_strip, etc.)
 `;
-  }
+   }
 
-  return `
+   return `
 === WORLDEDIT: ENABLED ===
 WorldEdit operations available for large volumes (auto-used by universal operations).
 
@@ -387,7 +446,7 @@ IMPORTANT:
  * Get operation reference
  */
 function getOperationReference() {
-  return `
+   return `
 === AVAILABLE OPERATIONS ===
 
 UNIVERSAL OPERATIONS (PREFER THESE - Cursor-aware, auto-optimized):
@@ -429,10 +488,16 @@ SMART OPERATIONS (Procedural generation):
 - smart_floor: Procedural floor. Params: from, to, palette, pattern ("checker", "tiled", "parquet", "radial")
 - smart_roof: Procedural roof. Params: from, to, block, style ("gable", "dome", "pagoda", "a-frame")
 
+CARVING OPERATIONS (for negative space):
+- set with air: Remove a single block. {"op": "set", "pos": {...}, "block": "air"}
+- box with air: Carve a rectangular void. {"op": "box", "from": {...}, "to": {...}, "block": "air"}
+  USE FOR: Windows, arches, lattice gaps, hollow interiors, wear/damage
+  CRITICAL: Build solid first, then carve. This creates clean negative space.
+
 LEGACY OPERATIONS (avoid if possible, use universal ops instead):
 - fill: Use 'box' instead
 - hollow_box: Use 'wall' instead
-- set: Use for single blocks only
+- set: Use for single blocks only (or carving with air)
 - line: Use for lines only
 `;
 }
@@ -441,12 +506,12 @@ LEGACY OPERATIONS (avoid if possible, use universal ops instead):
  * Get quality-specific guidance
  */
 function getQualityGuidance(quality) {
-  if (!quality || quality.quality === 'standard') {
-    return '';
-  }
+   if (!quality || quality.quality === 'standard') {
+      return '';
+   }
 
-  if (quality.quality === 'exceptional') {
-    return `
+   if (quality.quality === 'exceptional') {
+      return `
 === EXCEPTIONAL QUALITY REQUESTED ===
 ⭐ The user wants a MASTERPIECE. Go above and beyond!
 
@@ -466,10 +531,10 @@ ${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it impressive!'}
 
 DO NOT create a basic or minimal build. This should be SHOWCASE quality.
 `;
-  }
+   }
 
-  if (quality.quality === 'high') {
-    return `
+   if (quality.quality === 'high') {
+      return `
 === HIGH QUALITY REQUESTED ===
 The user wants something nice - add appropriate details.
 
@@ -482,19 +547,19 @@ QUALITY REQUIREMENTS:
 QUALITY TIPS:
 ${quality.tips?.map(t => `- ${t}`).join('\n') || '- Make it look good!'}
 `;
-  }
+   }
 
-  return '';
+   return '';
 }
 
 /**
  * Main unified blueprint prompt
  */
 export function unifiedBlueprintPrompt(analysis, worldEditAvailable, hasImage = false) {
-  const { userPrompt, buildType, theme, hints, quality, character } = analysis;
+   const { userPrompt, buildType, theme, hints, quality, character } = analysis;
 
-  const themeName = theme?.name || 'default';
-  const themeSection = theme ? `
+   const themeName = theme?.name || 'default';
+   const themeSection = theme ? `
 THEME: ${theme.name}
 Theme materials:
 - Primary: ${theme.materials.primary}
@@ -504,13 +569,13 @@ Theme materials:
 - Windows: ${theme.materials.windows}
 ` : '';
 
-  const qualitySection = getQualityGuidance(quality);
-  const creativeBuild = isCreativeBuild(buildType);
+   const qualitySection = getQualityGuidance(quality);
+   const creativeBuild = isCreativeBuild(buildType);
 
-  // NEW: Character palette injection
-  const characterSection = getCharacterPalettePrompt(character);
+   // NEW: Character palette injection
+   const characterSection = getCharacterPalettePrompt(character);
 
-  const imageInstruction = hasImage ? `
+   const imageInstruction = hasImage ? `
 === VISUAL ANALYSIS MODE ===
 An image has been provided.
 1. ANALYZE the image to understand the architectural style, proportions, and materials.
@@ -518,7 +583,7 @@ An image has been provided.
 3. IGNORE generic style rules if they conflict with the image.
 ` : '';
 
-  return `
+   return `
 You are an expert Minecraft architect. Build: "${userPrompt}"
 ${imageInstruction}
 ${characterSection}
@@ -584,23 +649,39 @@ PRIORITIZE VISUAL IMPACT over simplicity:
 - EXAGGERATED PROPORTIONS: Taller towers, wider bases, dramatic angles
 - DO NOT limit yourself based on old conventions - be creative!
 
-=== MANDATORY BUILD PHASES ===
-You MUST build in this order:
+=== MANDATORY BUILD PHASES (CSD Philosophy) ===
+You MUST build in this order. Skipping phases = failed build.
 
-PHASE 1 - SILHOUETTE (~40% of operations):
-- Establish overall shape and mass
-- Use: we_sphere, we_cylinder, we_fill, box, wall
-- This defines the build's profile from a distance
+PHASE 1 – CORE (~25-35% of operations):
+- Establish the PRIMARY MASS only (one or two large volumes)
+- Use: we_fill, we_walls, we_cylinder, box, wall
+- This is the "bounding shape" seen from far away
+- DO NOT add details here. Keep it simple.
 
-PHASE 2 - SECONDARY FORMS (~35% of operations):
-- Major features and structural elements
-- Use: we_fill, fill, hollow_box, three_d_layers
-- Branches, towers, major protrusions
+PHASE 2 – STRUCTURE (~30-40% of operations):
+- Add SECONDARY FORMS that break up the core mass
+- Use: we_fill, box, wall, three_d_layers, line
+- Examples: towers on a castle, branches on a tree, tiers on a tower
+- These should create ASYMMETRY and VISUAL INTEREST
+- Each secondary form should be DISTINCT (different size, position, or angle)
 
-PHASE 3 - DETAILS (~25% of operations):
-- Fine details and finishing
-- Use: set, line, stairs, slab, three_d_layers
-- Windows, doors, trim, decorations
+PHASE 3 – DETAIL (~30-40% of operations):
+- Add TEXTURE, ACCENTS, and CARVING
+- Use: set, line, stairs, slab, trapdoor, fence, lantern, door, window_strip
+- Use: set with "air" block to CARVE negative space (arches, lattices, holes)
+- This phase is MANDATORY. You may NOT skip it.
+- If you have fewer than 10 detail operations, you have FAILED.
+
+CARVING EXAMPLES (use "air" block):
+- Gothic arch: Fill rectangular window, then carve pointed top with air
+- Lattice tower: Fill solid frame, then carve grid of air gaps
+- Tree hollow: Fill trunk cylinder, then carve oval void with air
+- Wear/ruins: Randomly set air blocks on edges for crumbling effect
+
+PHASE BALANCE CHECK (before outputting):
+- Count your operations by phase
+- Core: 25-35%, Structure: 30-40%, Detail: 30-40%
+- If Detail < 25%, add more detail operations before outputting
 
 ${getWorldEditGuidance(worldEditAvailable)}
 
@@ -687,12 +768,17 @@ CRITICAL CONSTRAINTS – MUST FOLLOW:
    - For pixel_art/three_d_layers: ALL rows must have EXACTLY the same length
    - Use "$primary", "$secondary" etc. for themed blocks
 
-6. EFFICIENCY – FEWER OPERATIONS IS BETTER:
-   - Prefer ONE large we_fill over MANY small set operations
-   - Use we_sphere/we_cylinder for organic shapes, not many boxes
-   - Use we_walls for hollow structures, not 4 separate wall ops
-   - A good build has 10-50 operations, not 500+
+6. CSD PHILOSOPHY – DETAIL IS MANDATORY:
+   - FEWER core ops is better; FEWER detail ops is WORSE
+   - Prefer ONE large we_fill for core, then ADD detail operations on top
+   - Use we_sphere/we_cylinder for organic shapes
+   - Use we_walls for hollow structures
+   - A good build has 30-80 operations total:
+     * Core: 5-15 ops (large, simple shapes)
+     * Structure: 10-25 ops (secondary forms, breaking up mass)
+     * Detail: 15-40 ops (texture, accents, carving with air)
    - ALWAYS use WorldEdit ops (we_*) for volumes > 10 blocks
+   - Detail operations (set, line, slab, stairs, door) are CHEAP – use many!
 `;
 }
 

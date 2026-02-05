@@ -200,6 +200,13 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       async () => {
         const quality = QualityValidator.scoreBlueprint(currentBlueprint, analysis);
         return { type: 'quality', ...quality };
+      },
+
+      // 9. CSD Phase Balance Validation (CLAUDE.md: Core → Structure → Detail)
+      async () => {
+        const csdResult = validateCSDPhaseBalance(currentBlueprint);
+        logValidationStage('CSDPhaseBalance', { errors: csdResult.warnings });
+        return { type: 'csd', ...csdResult };
       }
     ];
 
@@ -240,6 +247,20 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       } else if (result?.type === 'quality') {
         // Quality score result (handled below)
         qualityScore = result;
+      } else if (result?.type === 'csd') {
+        // CSD Phase Balance result (warnings only, no hard failures per CLAUDE.md)
+        if (DEBUG && result.warnings?.length > 0) {
+          console.log('  [CSD] Phase balance warnings:');
+          for (const warning of result.warnings) {
+            console.log(`    ⚠ ${warning.code}: ${warning.message}`);
+          }
+          if (result.percentages) {
+            console.log(`    Phase distribution: Core=${result.percentages.core.toFixed(1)}%, Structure=${result.percentages.structure.toFixed(1)}%, Detail=${result.percentages.detail.toFixed(1)}%`);
+          }
+        }
+        // Store CSD info on blueprint for downstream use (non-blocking)
+        currentBlueprint._csdPhases = result.phases;
+        currentBlueprint._csdWarnings = result.warnings;
       }
     }
 
@@ -252,7 +273,7 @@ export async function validateBlueprint(blueprint, analysis, apiKey) {
       let organicResult = validateTreeQuality(currentBlueprint);
       let autoFixed = false;
 
-      if (!organicResult.valid && organicResult.score >= 0.5) {
+      if (organicResult && !organicResult.valid && organicResult.checks?.noUnnaturalGeometry?.passed === false) {
         currentBlueprint = fixTreeQuality(currentBlueprint);
         autoFixed = true;
         organicResult = validateTreeQuality(currentBlueprint);
@@ -624,6 +645,109 @@ function validateMinecraftBlocks(blueprint, minecraftVersion = null) {
   }
 
   return invalidBlocks;
+}
+
+/**
+ * CSD Phase Classification
+ * Classifies operations into CORE, STRUCTURE, or DETAIL phases
+ * per CLAUDE.md "Core → Structure → Detail (CSD) Build Philosophy"
+ */
+const CSD_PHASE_CLASSIFICATION = {
+  // CORE: Primary mass operations (25-35% of build)
+  CORE: ['we_fill', 'we_walls', 'we_cylinder', 'we_sphere', 'we_pyramid', 'box', 'wall'],
+
+  // STRUCTURE: Secondary forms that break up core (30-40% of build)
+  STRUCTURE: ['three_d_layers', 'roof_gable', 'roof_hip', 'roof_flat', 'smart_roof', 'outline'],
+
+  // DETAIL: Texture, accents, carving (30-40% of build, MANDATORY)
+  DETAIL: ['set', 'line', 'slab', 'stairs', 'door', 'window_strip', 'fence_connect',
+           'balcony', 'spiral_staircase', 'lantern', 'trapdoor', 'flower_pot']
+};
+
+/**
+ * Classify a single operation into CSD phase
+ * @param {Object} step - Blueprint operation step
+ * @returns {string} - 'CORE', 'STRUCTURE', or 'DETAIL'
+ */
+function classifyCSDPhase(step) {
+  if (!step || !step.op) return 'DETAIL'; // Default to detail for safety
+
+  // Any operation using "air" block is DETAIL (carving)
+  if (step.block === 'air') return 'DETAIL';
+
+  const op = step.op.toLowerCase();
+
+  if (CSD_PHASE_CLASSIFICATION.CORE.includes(op)) return 'CORE';
+  if (CSD_PHASE_CLASSIFICATION.STRUCTURE.includes(op)) return 'STRUCTURE';
+  if (CSD_PHASE_CLASSIFICATION.DETAIL.includes(op)) return 'DETAIL';
+
+  // Default: small ops are DETAIL, large ops are STRUCTURE
+  return 'STRUCTURE';
+}
+
+/**
+ * Validate CSD phase balance per CLAUDE.md requirements
+ * Returns WARNINGS only (no hard failures per implementation rules)
+ *
+ * Contract thresholds:
+ * - CORE: 25-35%
+ * - STRUCTURE: 30-40%
+ * - DETAIL: 30-40% (MANDATORY, minimum 10 operations)
+ */
+function validateCSDPhaseBalance(blueprint) {
+  const warnings = [];
+  const steps = blueprint.steps || [];
+
+  if (steps.length === 0) return { warnings, phases: {} };
+
+  // Classify all steps
+  const phases = { CORE: 0, STRUCTURE: 0, DETAIL: 0 };
+  for (const step of steps) {
+    const phase = classifyCSDPhase(step);
+    phases[phase]++;
+  }
+
+  const total = steps.length;
+  const detailPercent = (phases.DETAIL / total) * 100;
+  const corePercent = (phases.CORE / total) * 100;
+
+  // Check DETAIL minimum (CLAUDE.md: "fewer than 10 detail operations = FAILED")
+  // Per instruction: emit WARNING only, not hard failure
+  if (phases.DETAIL < 10) {
+    warnings.push({
+      code: 'CSD_DETAIL_COUNT',
+      message: `Detail phase has only ${phases.DETAIL} operations (minimum: 10). Build may appear flat or unfinished.`,
+      severity: 'warning'
+    });
+  }
+
+  // Check DETAIL percentage (CLAUDE.md: 30-40%)
+  if (detailPercent < 25) {
+    warnings.push({
+      code: 'CSD_DETAIL_PERCENT',
+      message: `Detail phase is ${detailPercent.toFixed(1)}% of operations (expected: 30-40%). Consider adding texture, accents, or carving.`,
+      severity: 'warning'
+    });
+  }
+
+  // Check CORE percentage (shouldn't dominate)
+  if (corePercent > 50) {
+    warnings.push({
+      code: 'CSD_CORE_HEAVY',
+      message: `Core phase is ${corePercent.toFixed(1)}% of operations (expected: 25-35%). Build may appear boxy or simplistic.`,
+      severity: 'warning'
+    });
+  }
+
+  return {
+    warnings,
+    phases,
+    percentages: {
+      core: corePercent,
+      structure: (phases.STRUCTURE / total) * 100,
+      detail: detailPercent
+    }
+  };
 }
 
 /**

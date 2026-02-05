@@ -430,7 +430,7 @@ export const BUILD_TYPES = {
   // =====================
   tower: {
     name: 'Tower',
-    keywords: ['tower', 'lighthouse', 'watchtower', 'bell tower', 'spire', 'turret', 'minaret'],
+    keywords: ['tower', 'lighthouse', 'watchtower', 'bell tower', 'spire', 'turret', 'minaret', 'big ben', 'monument', 'landmark', 'heritage'],
     description: 'Tall vertical structure, often cylindrical',
     primaryOperations: ['we_cylinder', 'hollow_box', 'spiral_staircase', 'roof_gable'],
     dimensions: {

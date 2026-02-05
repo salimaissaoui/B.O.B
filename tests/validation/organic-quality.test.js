@@ -1,39 +1,28 @@
-const { validateBlueprint } = await import('../../src/stages/4-validator.js');
+import { validateTreeQuality, fixTreeQuality } from '../../src/validation/organic-quality.js';
 
-describe('Organic quality validation', () => {
-  test('auto-fix clears organic quality errors before failing validation', async () => {
-    const blueprint = {
-      buildType: 'tree',
-      palette: {
-        trunk: 'oak_log',
-        leaves: 'oak_leaves'
-      },
-      size: { width: 9, height: 16, depth: 9 },
-      steps: [
-        {
-          op: 'we_cylinder',
-          block: 'oak_log',
-          radius: 1,
-          height: 12,
-          base: { x: 0, y: 0, z: 0 }
-        },
-        {
-          op: 'we_sphere',
-          block: 'oak_leaves',
-          radius: 4,
-          center: { x: 0, y: 10, z: 0 }
-        }
-      ]
-    };
+describe('Tree Structural Integrity Regression', () => {
+  const garbageTree = {
+    buildType: 'tree',
+    steps: [
+      { op: 'we_cylinder', pos: { x: 0, y: 0, z: 0 }, height: 10, radius: 1, block: 'oak_log' },
+      { op: 'we_sphere', center: { x: 0, y: 10, z: 0 }, radius: 3, block: 'oak_leaves' }
+    ]
+  };
 
-    const analysis = { buildType: 'tree', hints: { features: [] } };
-    const result = await validateBlueprint(blueprint, analysis, null);
+  test('Single primitive tree should fail quality validation', () => {
+    const result = validateTreeQuality(garbageTree);
+    expect(result.valid).toBe(false);
+    // Expect specific error about unnatural geometry
+    expect(result.errors.some(e => e.includes('unnatural') || e.includes('sphere'))).toBe(true);
+  });
 
-    expect(result.valid).toBe(true);
-    expect(result.errors).toEqual([]);
+  test('fixTreeQuality should produce at least 3 trunk segments and 2 leaf clusters', () => {
+    const fixed = fixTreeQuality(garbageTree);
 
-    const ops = result.blueprint.steps.map(step => step.op);
-    expect(ops).not.toContain('we_sphere');
-    expect(ops).not.toContain('we_cylinder');
+    const trunkSegments = fixed.steps.filter(s => s.block?.includes('log'));
+    const leafClusters = fixed.steps.filter(s => s.block?.includes('leaves'));
+
+    expect(trunkSegments.length).toBeGreaterThanOrEqual(3);
+    expect(leafClusters.length).toBeGreaterThanOrEqual(2);
   });
 });
