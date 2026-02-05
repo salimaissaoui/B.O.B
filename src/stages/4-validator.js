@@ -648,40 +648,57 @@ function validateMinecraftBlocks(blueprint, minecraftVersion = null) {
 }
 
 /**
- * CSD Phase Classification
+ * CSD Phase Classification v1.1
  * Classifies operations into CORE, STRUCTURE, or DETAIL phases
  * per CLAUDE.md "Core → Structure → Detail (CSD) Build Philosophy"
+ *
+ * v1.1 Hygiene fixes:
+ * - Added missing ops: fill, hollow_box, smart_wall, smart_floor, pixel_art
+ * - Added EXCLUDED list for movement/system ops that don't count toward totals
  */
 const CSD_PHASE_CLASSIFICATION = {
   // CORE: Primary mass operations (25-35% of build)
-  CORE: ['we_fill', 'we_walls', 'we_cylinder', 'we_sphere', 'we_pyramid', 'box', 'wall'],
+  // Large volume fills that establish the bounding shape
+  CORE: ['we_fill', 'we_walls', 'we_cylinder', 'we_sphere', 'we_pyramid',
+         'box', 'wall', 'fill', 'hollow_box'],
 
   // STRUCTURE: Secondary forms that break up core (30-40% of build)
-  STRUCTURE: ['three_d_layers', 'roof_gable', 'roof_hip', 'roof_flat', 'smart_roof', 'outline'],
+  // Intermediate complexity, roofs, procedural surfaces
+  STRUCTURE: ['three_d_layers', 'roof_gable', 'roof_hip', 'roof_flat', 'smart_roof',
+              'outline', 'smart_wall', 'smart_floor', 'we_replace'],
 
   // DETAIL: Texture, accents, carving (30-40% of build, MANDATORY)
+  // Fine-grained ops, single blocks, creative pixel work
   DETAIL: ['set', 'line', 'slab', 'stairs', 'door', 'window_strip', 'fence_connect',
-           'balcony', 'spiral_staircase', 'lantern', 'trapdoor', 'flower_pot']
+           'balcony', 'spiral_staircase', 'lantern', 'trapdoor', 'flower_pot',
+           'pixel_art'],
+
+  // EXCLUDED: Movement and system ops that don't represent build content
+  // These are filtered out before calculating phase percentages
+  EXCLUDED: ['move', 'cursor_reset', 'site_prep']
 };
 
 /**
  * Classify a single operation into CSD phase
  * @param {Object} step - Blueprint operation step
- * @returns {string} - 'CORE', 'STRUCTURE', or 'DETAIL'
+ * @returns {string|null} - 'CORE', 'STRUCTURE', 'DETAIL', or null for excluded ops
  */
 function classifyCSDPhase(step) {
   if (!step || !step.op) return 'DETAIL'; // Default to detail for safety
 
+  const op = step.op.toLowerCase();
+
+  // EXCLUDED: Movement and system ops don't count toward CSD balance
+  if (CSD_PHASE_CLASSIFICATION.EXCLUDED.includes(op)) return null;
+
   // Any operation using "air" block is DETAIL (carving)
   if (step.block === 'air') return 'DETAIL';
-
-  const op = step.op.toLowerCase();
 
   if (CSD_PHASE_CLASSIFICATION.CORE.includes(op)) return 'CORE';
   if (CSD_PHASE_CLASSIFICATION.STRUCTURE.includes(op)) return 'STRUCTURE';
   if (CSD_PHASE_CLASSIFICATION.DETAIL.includes(op)) return 'DETAIL';
 
-  // Default: small ops are DETAIL, large ops are STRUCTURE
+  // Default: unrecognized ops fall to STRUCTURE (conservative)
   return 'STRUCTURE';
 }
 
@@ -698,16 +715,29 @@ function validateCSDPhaseBalance(blueprint) {
   const warnings = [];
   const steps = blueprint.steps || [];
 
-  if (steps.length === 0) return { warnings, phases: {} };
+  if (steps.length === 0) return { warnings, phases: {}, excluded: 0 };
 
-  // Classify all steps
+  // Classify all steps, filtering out EXCLUDED ops (movement, system)
   const phases = { CORE: 0, STRUCTURE: 0, DETAIL: 0 };
+  let excludedCount = 0;
+
   for (const step of steps) {
     const phase = classifyCSDPhase(step);
-    phases[phase]++;
+    if (phase === null) {
+      excludedCount++;
+    } else {
+      phases[phase]++;
+    }
   }
 
-  const total = steps.length;
+  // Total for percentage calculation excludes movement/system ops
+  const total = phases.CORE + phases.STRUCTURE + phases.DETAIL;
+
+  // Edge case: all ops were excluded (e.g., pure cursor movement blueprint)
+  if (total === 0) {
+    return { warnings, phases, excluded: excludedCount, percentages: { core: 0, structure: 0, detail: 0 } };
+  }
+
   const detailPercent = (phases.DETAIL / total) * 100;
   const corePercent = (phases.CORE / total) * 100;
 
@@ -742,6 +772,7 @@ function validateCSDPhaseBalance(blueprint) {
   return {
     warnings,
     phases,
+    excluded: excludedCount,
     percentages: {
       core: corePercent,
       structure: (phases.STRUCTURE / total) * 100,
