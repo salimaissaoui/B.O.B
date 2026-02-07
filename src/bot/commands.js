@@ -385,15 +385,24 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
   }
 
   // Check if Builder v2 should be used
-  // Auto-route known landmarks to V2 for deterministic generation
+  // Auto-route known landmarks and specific build types to V2 for better quality
   const builderVersion = getBuilderVersion();
   const detectedLandmark = isKnownLandmark(cleanPrompt);
 
-  if (detectedLandmark) {
-    console.log(`  [Commands] Detected landmark: "${cleanPrompt}" - routing to V2`);
-  }
+  // Build types that benefit from V2's deterministic components
+  const v2BuildTypes = ['lattice', 'statue', 'armature', 'humanoid', 'quadruped', 'monument'];
+  const promptLower = cleanPrompt.toLowerCase();
+  const hasV2BuildType = v2BuildTypes.some(type => promptLower.includes(type));
 
-  if (builderVersion === 'v2' || detectedLandmark) {
+  // Auto-route to V2 for:
+  // 1. Explicit v2 mode
+  // 2. Known landmarks (Eiffel Tower, etc.)
+  // 3. Build types that V2 handles better (statues, lattices)
+  const shouldUseV2 = builderVersion === 'v2' || detectedLandmark || hasV2BuildType;
+
+  if (shouldUseV2) {
+    const reason = detectedLandmark ? 'landmark' : (hasV2BuildType ? 'build type' : 'explicit v2');
+    console.log(`  [Commands] Auto-routing to V2 (${reason}): "${cleanPrompt}"`);
     await handleBuildCommandV2(cleanPrompt, bot, builder, apiKey, username, {
       dryRun: isDryRun,
       exportFormat,

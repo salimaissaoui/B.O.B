@@ -9,11 +9,13 @@ const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
 
 /**
  * Operations that create unnatural geometric shapes for organic builds
+ * NOTE: we_sphere is ALLOWED for canopies when used with variation (multiple overlapping spheres)
+ * Single perfect spheres are discouraged but multiple overlapping ones create natural shapes
  */
 const UNNATURAL_OPS_FOR_ORGANIC = [
-  'we_sphere',   // Perfect spheres look unnatural for trees
-  'we_cylinder', // Perfect cylinders look unnatural for trunks
   'we_pyramid'   // Perfect pyramids look unnatural for canopies
+  // we_sphere: ALLOWED - overlapping spheres create organic shapes
+  // we_cylinder: ALLOWED - can be used for trunk tapering
 ];
 
 /**
@@ -44,23 +46,35 @@ export const TREE_QUALITY_CHECKS = {
   },
 
   /**
-   * Check for canopy asymmetry - perfect spheres look unnatural
+   * Check for canopy asymmetry - SINGLE perfect sphere looks unnatural,
+   * but MULTIPLE overlapping spheres create organic shapes
    */
   hasCanopyAsymmetry: (blueprint) => {
     const leafSteps = blueprint.steps.filter(s =>
       s.block?.includes('leaves') || s.block?.includes('leaf')
     );
 
-    // Check for we_sphere usage on leaves
-    const hasPerfectSphereLeaves = blueprint.steps.some(s =>
+    // Count sphere operations on leaves
+    const sphereLeafSteps = blueprint.steps.filter(s =>
       s.op === 'we_sphere' && (s.block?.includes('leaves') || s.block?.includes('leaf'))
     );
 
-    if (hasPerfectSphereLeaves) {
-      return { passed: false, reason: 'Perfect sphere canopies look unnatural' };
+    // Single sphere canopy = unnatural (perfect ball)
+    // Multiple spheres = organic (overlapping creates irregular shape)
+    if (sphereLeafSteps.length === 1) {
+      return {
+        passed: false,
+        reason: 'Single sphere canopy looks unnatural - use 2-4 overlapping spheres',
+        suggestion: 'Add 2-3 more spheres at offset positions with varied radii'
+      };
     }
 
-    // Multiple leaf operations suggest varied canopy
+    // Multiple spheres are great for organic shapes
+    if (sphereLeafSteps.length >= 2) {
+      return { passed: true, reason: 'Multiple overlapping spheres create natural canopy' };
+    }
+
+    // Multiple leaf operations (non-sphere) also suggest varied canopy
     if (leafSteps.length >= 2) {
       return { passed: true, reason: 'Multiple leaf sections suggest natural canopy' };
     }
@@ -70,6 +84,8 @@ export const TREE_QUALITY_CHECKS = {
 
   /**
    * Check that no unnatural geometric ops are used for organic parts
+   * NOTE: we_sphere and we_cylinder are now ALLOWED for organic builds
+   * Only we_pyramid is still considered unnatural for trees
    */
   noUnnaturalGeometry: (blueprint) => {
     for (const step of blueprint.steps) {
@@ -80,7 +96,7 @@ export const TREE_QUALITY_CHECKS = {
           return {
             passed: false,
             reason: `${step.op} creates unnatural shapes for ${block}`,
-            suggestion: 'Use we_fill with multiple sections for natural variation'
+            suggestion: 'Use spheres or fills with multiple sections for natural variation'
           };
         }
       }
@@ -177,6 +193,7 @@ export function validateTreeQuality(blueprint) {
 
 /**
  * Fix common tree quality issues in a blueprint
+ * Strategy: Add VARIATION to geometric shapes rather than replacing them with boxes
  *
  * @param {Object} blueprint - Blueprint to fix
  * @returns {Object} Fixed blueprint
@@ -184,60 +201,83 @@ export function validateTreeQuality(blueprint) {
 export function fixTreeQuality(blueprint) {
   const fixed = JSON.parse(JSON.stringify(blueprint));
 
-  // Replace we_sphere/we_cylinder with we_fill for leaves/trunk
+  // Count existing sphere operations for leaves
+  const sphereLeafIndices = [];
+  for (let i = 0; i < fixed.steps.length; i++) {
+    const step = fixed.steps[i];
+    if (step.op === 'we_sphere' && step.block?.includes('leaves')) {
+      sphereLeafIndices.push(i);
+    }
+  }
+
+  // If there's only ONE sphere for leaves, add 2 more overlapping spheres for organic feel
+  // Multiple spheres create irregular, natural-looking canopies
+  if (sphereLeafIndices.length === 1) {
+    const idx = sphereLeafIndices[0];
+    const step = fixed.steps[idx];
+    const center = step.center || step.pos || { x: 0, y: 0, z: 0 };
+    const radius = step.radius || 3;
+
+    // Add 2 more overlapping spheres at offset positions with varied radii
+    // This creates an organic, asymmetric canopy shape
+    const additionalSpheres = [
+      {
+        op: 'we_sphere',
+        center: { x: center.x + 2, y: center.y + 1, z: center.z + 1 },
+        radius: Math.max(2, radius - 1),
+        block: step.block
+      },
+      {
+        op: 'we_sphere',
+        center: { x: center.x - 1, y: center.y - 1, z: center.z + 2 },
+        radius: Math.max(2, radius - 1),
+        block: step.block
+      }
+    ];
+
+    // Insert additional spheres after the original
+    fixed.steps.splice(idx + 1, 0, ...additionalSpheres);
+  }
+
+  // For cylinders used as trunks, convert to tapered trunk using multiple cylinder sections
+  // or we_fill boxes to simulate natural tapering
   for (let i = 0; i < fixed.steps.length; i++) {
     const step = fixed.steps[i];
 
-    if (step.op === 'we_sphere' && step.block?.includes('leaves')) {
-      // Convert sphere to multiple fills for more natural look
-      const center = step.center || step.pos || { x: 0, y: 0, z: 0 };
-      const radius = step.radius || 3;
-
-      // Replace with 3 overlapping boxes for organic feel
-      fixed.steps.splice(i, 1,
-        {
-          op: 'we_fill',
-          from: { x: center.x - radius, y: center.y - 1, z: center.z - radius },
-          to: { x: center.x + radius, y: center.y + 1, z: center.z + radius },
-          block: step.block
-        },
-        {
-          op: 'we_fill',
-          from: { x: center.x - radius + 1, y: center.y - 2, z: center.z - radius + 1 },
-          to: { x: center.x + radius - 1, y: center.y + 2, z: center.z + radius - 1 },
-          block: step.block
-        }
-      );
-      i++; // Skip the newly inserted step
-    }
-
     if (step.op === 'we_cylinder' && step.block?.includes('log')) {
-      // Convert cylinder to tapered trunk (3 segments for natural taper)
+      // Convert single cylinder to tapered trunk (3 segments for natural taper)
       const base = step.base || step.pos || { x: 0, y: 0, z: 0 };
       const height = step.height || 5;
       const radius = step.radius || 1;
 
-      fixed.steps.splice(i, 1,
+      // Use cylinders with decreasing radii for taper (preserves roundness)
+      // Bottom: full radius, Middle: radius-1, Top: 1 block wide
+      const taperedTrunk = [
         {
-          op: 'we_fill',
-          from: { x: base.x - radius, y: base.y, z: base.z - radius },
-          to: { x: base.x + radius, y: base.y + Math.floor(height * 0.4) - 1, z: base.z + radius },
+          op: 'we_cylinder',
+          base: { x: base.x, y: base.y, z: base.z },
+          radius: radius,
+          height: Math.floor(height * 0.4),
           block: step.block
         },
         {
-          op: 'we_fill',
-          from: { x: base.x - Math.max(1, radius - 1), y: base.y + Math.floor(height * 0.4), z: base.z - Math.max(1, radius - 1) },
-          to: { x: base.x + Math.max(1, radius - 1), y: base.y + Math.floor(height * 0.8) - 1, z: base.z + Math.max(1, radius - 1) },
+          op: 'we_cylinder',
+          base: { x: base.x, y: base.y + Math.floor(height * 0.4), z: base.z },
+          radius: Math.max(1, radius - 1),
+          height: Math.floor(height * 0.4),
           block: step.block
         },
         {
-          op: 'we_fill',
-          from: { x: base.x, y: base.y + Math.floor(height * 0.8), z: base.z },
-          to: { x: base.x, y: base.y + height - 1, z: base.z },
+          op: 'we_cylinder',
+          base: { x: base.x, y: base.y + Math.floor(height * 0.8), z: base.z },
+          radius: 1,
+          height: height - Math.floor(height * 0.8),
           block: step.block
         }
-      );
-      i += 2;
+      ];
+
+      fixed.steps.splice(i, 1, ...taperedTrunk);
+      i += 2; // Skip the newly inserted steps
     }
   }
 

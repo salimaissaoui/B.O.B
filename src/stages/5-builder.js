@@ -14,7 +14,7 @@ import { roofFlat } from '../operations/roof-flat.js';
 import { weFill } from '../operations/we-fill.js';
 import { weWalls } from '../operations/we-walls.js';
 import { wePyramid } from '../operations/we-pyramid.js';
-import { weCylinder } from '../operations/we-cylinder.js';
+import { weCylinder, weCone } from '../operations/we-cylinder.js';
 import { weSphere } from '../operations/we-sphere.js';
 import { weReplace } from '../operations/we-replace.js';
 import { stairs } from '../operations/stairs.js';
@@ -118,6 +118,7 @@ const OPERATION_MAP = {
   we_walls: weWalls,
   we_pyramid: wePyramid,
   we_cylinder: weCylinder,
+  we_cone: weCone,
   we_sphere: weSphere,
   we_replace: weReplace,
   stairs,
@@ -136,6 +137,7 @@ const OPERATION_MAP = {
   // New Mappings
   sphere: (step) => ({ type: 'worldedit', command: 'sphere', ...step }),
   cylinder: (step) => ({ type: 'worldedit', command: 'cylinder', ...step }),
+  cone: weCone,  // Cone is tapered cylinder with topRadius=0
   smooth: (step) => ({ type: 'organic', command: 'smooth', ...step }),
   grow_tree: (step) => ({ type: 'organic', command: 'grow_tree', ...step })
 };

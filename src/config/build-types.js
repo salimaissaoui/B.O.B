@@ -596,14 +596,14 @@ export const BUILD_TYPES = {
     features: ['trunk', 'branches', 'canopy', 'asymmetric_shape', 'natural_variation'],
     buildOrder: ['trunk (tapered)', 'primary_branches', 'secondary_branches', 'main_canopy', 'detail_leaves'],
     tips: [
-      'Use we_fill for leaf clusters - stack irregular boxes at different heights for natural look',
+      'Use 3-5 OVERLAPPING we_sphere operations for canopy - creates natural irregular shapes',
+      'Vary sphere radii by 1-2 blocks and offset centers asymmetrically',
       'Use we_cylinder for trunk sections - taper radius from base to top',
       'Build SILHOUETTE first with large volume ops, then add branches and details',
       'Offset canopy clusters ASYMMETRICALLY from trunk center (not perfectly centered)',
-      'Vary leaf cluster sizes (large 12x6x12, medium 8x4x8, small 5x3x5) and Y positions',
-      'For massive trees: stack 4-6 we_fill clusters at different heights, NOT overlapping spheres',
+      'AVOID: Single sphere canopy (looks like lollipop) - use 3+ overlapping spheres',
       'Roots can use short cylinders or fills spreading from trunk base',
-      'AVOID: we_sphere creates unnatural perfect geometric shapes'
+      'Add small we_sphere (radius 1-2) clusters to fill gaps in canopy'
     ]
   },
 
@@ -781,12 +781,12 @@ export const BUILD_TYPES = {
     features: ['dome', 'tunnels', 'airlocks', 'lighting'],
     buildOrder: ['main_dome', 'connecting_tunnels', 'interior', 'lighting', 'details'],
     tips: [
-      'Use we_fill with rounded corners for domes - NOT we_sphere',
+      'Use we_sphere (hollow) for dome shapes - perfect for underwater bases',
+      'For organic-looking domes: use 2-3 overlapping we_sphere operations',
       'Use we_cylinder (hollow) for connecting tube corridors',
       'Include sea_lantern at regular intervals for lighting',
       'Glass allows viewing fish - use for windows and dome sections',
-      'Prismarine blocks fit underwater theme',
-      'AVOID: Perfect geometric spheres look unnatural'
+      'Prismarine blocks fit underwater theme'
     ]
   },
 

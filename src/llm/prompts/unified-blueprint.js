@@ -88,21 +88,26 @@ PHASE 1 – CORE (Trunk Base):
 - Start wide at base, this is just the core shape
 
 PHASE 2 – STRUCTURE (Trunk Taper + Branches + Canopy):
-- Add 2-3 additional trunk segments, each NARROWER than below
-- Add 3-5 BRANCHES using we_fill or line, angled outward
-- Add 2-4 CANOPY CLUSTERS using we_fill boxes at DIFFERENT heights
-- Offset clusters ASYMMETRICALLY (not centered on trunk)
+- Add 2-3 additional trunk segments, each NARROWER than below (tapering trunk)
+- Add 3-5 BRANCHES using we_fill or we_cylinder, angled outward from trunk
+- CANOPY: Use 3-5 OVERLAPPING we_sphere operations at DIFFERENT positions
+  * Vary sphere radii by 1-2 blocks (e.g., radius 4, 3, 3, 4, 2)
+  * Offset sphere centers asymmetrically (+/-2 blocks in X/Z, +/-1 in Y)
+  * Overlapping spheres create NATURAL, IRREGULAR canopy shapes
+  * DO NOT use a single sphere (looks like a lollipop)
 
 PHASE 3 – DETAIL (Texture + Hollows + Roots):
 - Add ROOTS spreading from base using small we_fill or line ops
 - Add BARK TEXTURE by setting mossy/cracked blocks on trunk surface
 - CARVE a TREE HOLLOW using set with "air" block (optional, adds realism)
 - Add HANGING VINES using line of vine blocks from canopy edges
-- Add SMALL LEAF CLUSTERS (3x3x3) to fill gaps in canopy
+- Add SMALL LEAF CLUSTERS (we_sphere radius 1-2) to fill gaps in canopy
 - Add LANTERNS or FLOWERS in/around tree for builds with that theme
 
-CRITICAL: A tree with only trunk + leaves is INCOMPLETE.
-You MUST have roots OR bark texture OR vines OR small detail clusters.
+CRITICAL: A tree with only trunk + single-sphere canopy is INCOMPLETE.
+You MUST have:
+- Multiple overlapping spheres for canopy (3-5 minimum)
+- Roots OR bark texture OR vines for organic detail
 `,
 
       treehouse: `
@@ -290,8 +295,8 @@ BUILD A PROPER PYRAMID:
 ${massiveGuidance}
 BUILD AN UNDERWATER STRUCTURE:
 1. MAIN DOME/CHAMBER:
-   - Use we_fill with ROUNDED corners (multiple overlapping boxes)
-   - NOT we_sphere - use stacked cylinders or rounded box arrangements
+   - Use we_sphere (hollow) for dome shapes - spheres work great for underwater domes!
+   - For irregular shapes: use 2-3 overlapping we_sphere operations
    - Glass for visibility, prismarine for structure
    - Make it hollow for interior space
 
@@ -313,7 +318,7 @@ BUILD AN UNDERWATER STRUCTURE:
    - Prismarine_bricks for main structure
    - Dark_prismarine for accents
    - Glass for windows/domes
-   - AVOID: Perfect spheres look artificial underwater
+   - TIP: Combine 2-3 overlapping spheres for organic-looking domes
 `,
 
       tower: `

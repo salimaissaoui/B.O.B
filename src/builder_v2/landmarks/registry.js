@@ -235,35 +235,256 @@ export const LANDMARK_REGISTRY = {
     },
     scale: { tiny: 0.25, small: 0.5, medium: 1, large: 1.5 },
     defaultBounds: { width: 95, height: 30, depth: 95 }
+  },
+
+  // Additional landmarks
+  space_needle: {
+    aliases: ['space needle', 'seattle tower', 'seattle space needle'],
+    components: [
+      {
+        id: 'base',
+        type: 'platform',
+        transform: { position: { x: 0, y: 0, z: 0 } },
+        params: {
+          width: 25,
+          depth: 25,
+          thickness: 3
+        }
+      },
+      {
+        id: 'legs',
+        type: 'lattice_tower',
+        transform: { position: { x: 0, y: 3, z: 0 } },
+        params: {
+          height: 50,
+          baseWidth: 20,
+          taperRatio: 0.1,
+          legCount: 3
+        }
+      },
+      {
+        id: 'observation',
+        type: 'cylinder',
+        transform: { position: { x: 12, y: 53, z: 12 } },
+        params: {
+          radius: 15,
+          height: 8,
+          hollow: true
+        }
+      }
+    ],
+    materials: {
+      primary: 'white_concrete',
+      secondary: 'light_gray_concrete',
+      accent: 'glass'
+    },
+    scale: { tiny: 0.3, small: 0.5, medium: 1, large: 1.5 },
+    defaultBounds: { width: 35, height: 65, depth: 35 }
+  },
+
+  christ_redeemer: {
+    aliases: ['christ the redeemer', 'rio statue', 'christ redeemer', 'redeemer statue', 'rio jesus'],
+    components: [
+      {
+        id: 'pedestal',
+        type: 'platform',
+        transform: { position: { x: 0, y: 0, z: 0 } },
+        params: {
+          width: 20,
+          depth: 20,
+          thickness: 8
+        }
+      },
+      {
+        id: 'figure',
+        type: 'statue_armature',
+        transform: { position: { x: 10, y: 8, z: 10 } },
+        params: {
+          height: 38,
+          style: 'humanoid',
+          armPose: 'outstretched'  // Arms spread wide
+        }
+      }
+    ],
+    materials: {
+      primary: 'white_concrete',
+      secondary: 'smooth_quartz',
+      pedestal: 'stone_bricks'
+    },
+    scale: { tiny: 0.3, small: 0.5, medium: 1, large: 1.5, massive: 2 },
+    defaultBounds: { width: 45, height: 50, depth: 25 }
+  },
+
+  washington_monument: {
+    aliases: ['washington monument', 'dc obelisk', 'washington obelisk'],
+    components: [
+      {
+        id: 'base',
+        type: 'platform',
+        transform: { position: { x: 0, y: 0, z: 0 } },
+        params: {
+          width: 16,
+          depth: 16,
+          thickness: 3
+        }
+      },
+      {
+        id: 'obelisk',
+        type: 'column',
+        transform: { position: { x: 8, y: 3, z: 8 } },
+        params: {
+          height: 80,
+          radius: 5,
+          style: 'simple',
+          taperTop: true
+        }
+      }
+    ],
+    materials: {
+      primary: 'white_concrete',
+      secondary: 'smooth_quartz',
+      accent: 'light_gray_concrete'
+    },
+    scale: { tiny: 0.25, small: 0.5, medium: 1, large: 1.5 },
+    defaultBounds: { width: 20, height: 90, depth: 20 }
+  },
+
+  sydney_opera: {
+    aliases: ['sydney opera house', 'sydney opera', 'opera house sydney'],
+    components: [
+      {
+        id: 'platform',
+        type: 'platform',
+        transform: { position: { x: 0, y: 0, z: 0 } },
+        params: {
+          width: 80,
+          depth: 50,
+          thickness: 5
+        }
+      },
+      {
+        id: 'shell1',
+        type: 'roof_dome',
+        transform: { position: { x: 10, y: 5, z: 10 } },
+        params: {
+          radius: 15,
+          heightRatio: 1.5
+        }
+      },
+      {
+        id: 'shell2',
+        type: 'roof_dome',
+        transform: { position: { x: 30, y: 5, z: 15 } },
+        params: {
+          radius: 18,
+          heightRatio: 1.5
+        }
+      },
+      {
+        id: 'shell3',
+        type: 'roof_dome',
+        transform: { position: { x: 50, y: 5, z: 10 } },
+        params: {
+          radius: 12,
+          heightRatio: 1.5
+        }
+      }
+    ],
+    materials: {
+      primary: 'white_concrete',
+      secondary: 'smooth_quartz',
+      accent: 'white_glazed_terracotta'
+    },
+    scale: { tiny: 0.25, small: 0.5, medium: 1, large: 1.5 },
+    defaultBounds: { width: 85, height: 35, depth: 55 }
   }
 };
 
 /**
- * Find landmark configuration by keyword
- * @param {string} keyword - Search term (e.g., "eiffel tower", "statue of liberty")
- * @returns {Object|null} { key, config } or null if not found
+ * Calculate similarity score between query and landmark aliases
+ * @param {string} query - Search term
+ * @param {Object} config - Landmark config with aliases
+ * @returns {number} Score between 0-1
  */
-export function findLandmark(keyword) {
+function calculateLandmarkSimilarity(query, config) {
+  const normalized = query.toLowerCase().replace(/[_-]/g, ' ').trim();
+  const queryWords = normalized.split(/\s+/).filter(w => w.length > 1);
+
+  if (queryWords.length === 0) return 0;
+
+  let bestScore = 0;
+
+  // Check each alias
+  for (const alias of (config.aliases || [])) {
+    const aliasLower = alias.toLowerCase();
+
+    // Exact alias match
+    if (normalized === aliasLower || normalized.includes(aliasLower)) {
+      return 1.0;
+    }
+
+    // Word-based matching
+    const aliasWords = aliasLower.split(/\s+/).filter(w => w.length > 1);
+    let matches = 0;
+
+    for (const word of queryWords) {
+      if (aliasWords.includes(word)) {
+        matches += 1;
+      } else {
+        // Partial match
+        for (const aliasWord of aliasWords) {
+          if (aliasWord.includes(word) || word.includes(aliasWord)) {
+            matches += 0.5;
+            break;
+          }
+        }
+      }
+    }
+
+    const score = matches / Math.max(queryWords.length, aliasWords.length);
+    bestScore = Math.max(bestScore, score);
+  }
+
+  return bestScore;
+}
+
+/**
+ * Find landmark configuration by keyword with fuzzy matching
+ * @param {string} keyword - Search term (e.g., "eiffel tower", "statue of liberty")
+ * @param {number} threshold - Minimum similarity score for fuzzy match (default 0.6)
+ * @returns {Object|null} { key, config, score } or null if not found
+ */
+export function findLandmark(keyword, threshold = 0.6) {
   if (!keyword || typeof keyword !== 'string') {
     return null;
   }
 
   const normalized = keyword.toLowerCase().replace(/[_-]/g, ' ').trim();
 
+  let bestMatch = null;
+  let bestScore = 0;
+
   for (const [key, config] of Object.entries(LANDMARK_REGISTRY)) {
-    // Check exact key match
+    // Check exact key match (highest priority)
     const normalizedKey = key.replace(/[_-]/g, ' ');
     if (normalizedKey === normalized) {
-      return { key, config };
+      return { key, config, score: 1.0 };
     }
 
-    // Check aliases
+    // Check exact alias match (high priority)
     if (config.aliases?.some(alias => normalized.includes(alias.toLowerCase()))) {
-      return { key, config };
+      return { key, config, score: 1.0 };
+    }
+
+    // Fuzzy match on aliases
+    const score = calculateLandmarkSimilarity(keyword, config);
+    if (score > bestScore && score >= threshold) {
+      bestScore = score;
+      bestMatch = { key, config, score };
     }
   }
 
-  return null;
+  return bestMatch;
 }
 
 /**

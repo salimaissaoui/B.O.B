@@ -14,12 +14,50 @@ const blueprintCache = getBlueprintCache();
 
 /**
  * Extract subject from pixel art prompt
+ * Handles various patterns:
+ * - "build a pikachu pixel art" → "pikachu"
+ * - "pixel art of charizard" → "charizard"
+ * - "charizard sprite" → "charizard"
+ * - "make mario pixelart" → "mario"
  */
 function extractPixelArtSubject(userPrompt) {
+  const patterns = [
+    // "build a pikachu pixel art" or "pikachu pixel art"
+    /(?:build\s+)?(?:a\s+)?(.+?)\s+pixel\s*art/i,
+    // "pixel art of charizard"
+    /pixel\s*art\s+(?:of\s+)?(.+)/i,
+    // "charizard sprite" or "pikachu sprite"
+    /(.+?)\s+sprite/i,
+    // "make/create mario pixelart"
+    /(?:make|create|draw)\s+(?:a\s+)?(.+?)\s*(?:pixel|sprite)?/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = userPrompt.match(pattern);
+    if (match && match[1]) {
+      // Clean up the extracted subject
+      const subject = match[1].trim()
+        .replace(/\b(pixel|art|pixelart|sprite)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (subject.length > 0) {
+        return subject;
+      }
+    }
+  }
+
+  // Fallback to original simple extraction
   return userPrompt.toLowerCase()
     .replace(/pixel\s*art/gi, '')
+    .replace(/pixelart/gi, '')
+    .replace(/sprite/gi, '')
     .replace(/build/gi, '')
+    .replace(/make/gi, '')
+    .replace(/create/gi, '')
+    .replace(/draw/gi, '')
     .replace(/\ba\b/gi, '')  // Only match standalone "a" (word boundary)
+    .replace(/\bof\b/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
