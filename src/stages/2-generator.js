@@ -6,8 +6,7 @@ import { routeProceduralBuild } from '../generators/index.js';
 import { optimizeBlueprint } from '../utils/blueprint-optimizer.js';
 import { getBlueprintCache } from '../llm/blueprint-cache.js';
 
-// Debug mode - set via environment variable
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { DEBUG } from '../utils/debug.js';
 
 // Blueprint cache - CLAUDE.md Priority 2: LLM Response Caching (24h TTL)
 const blueprintCache = getBlueprintCache();

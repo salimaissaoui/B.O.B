@@ -5,7 +5,7 @@
  * Enforces quality constraints for natural-looking structures.
  */
 
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { DEBUG } from '../utils/debug.js';
 
 /**
  * Operations that create unnatural geometric shapes for organic builds

@@ -256,12 +256,4 @@ export class WorldEditValidator {
     };
   }
 
-  /**
-   * Calculate volume for from/to coordinates
-   */
-  static calculateVolume(from, to) {
-    return Math.abs(to.x - from.x + 1) *
-      Math.abs(to.y - from.y + 1) *
-      Math.abs(to.z - from.z + 1);
-  }
 }

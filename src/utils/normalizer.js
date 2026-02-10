@@ -8,8 +8,7 @@
  * - Full blueprint normalization with change tracking
  */
 
-// Debug mode
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { DEBUG } from './debug.js';
 
 /**
  * Block name aliases - maps common variants to valid Minecraft block names

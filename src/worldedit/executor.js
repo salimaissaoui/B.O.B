@@ -1,4 +1,17 @@
 import { SAFETY_LIMITS } from '../config/limits.js';
+import { CircuitBreaker } from './circuit-breaker.js';
+import {
+  parseBlockCount,
+  parseAffectedRegion,
+  getAckMatcher,
+  isAckMessage as _isAckMessage,
+  commandExpectsAck as _commandExpectsAck,
+  commandExpectsBlockChange as _commandExpectsBlockChange,
+  classifyError as _classifyError,
+  validateCommand as _validateCommand
+} from './ack-parser.js';
+import { sliceRegion as _sliceRegion } from './region-slicer.js';
+import { sleep } from '../utils/sleep.js';
 
 // Debug mode for ACK tracking
 const DEBUG_ACK = process.env.BOB_DEBUG_ACK === 'true';
@@ -19,250 +32,8 @@ export const WORLDEDIT_TYPE = {
 export const HEALTH_CHECK_INTERVAL_MS = 60000;  // Check every 60 seconds
 export const HEALTH_CHECK_TIMEOUT_MS = 3000;    // 3 second timeout for health check
 
-/**
- * Circuit Breaker for WorldEdit operations
- *
- * Prevents cascade failures when server is unresponsive or experiencing issues.
- * Implements the circuit breaker pattern with three states:
- * - CLOSED: Normal operation, commands execute normally
- * - OPEN: Circuit tripped, commands fail fast without execution
- * - HALF_OPEN: Testing recovery, limited commands allowed
- */
-export class CircuitBreaker {
-  constructor(options = {}) {
-    // Configuration
-    this.failureThreshold = options.failureThreshold || 5;
-    this.timeoutThreshold = options.timeoutThreshold || 3;
-    this.resetTimeoutMs = options.resetTimeoutMs || 30000;
-    this.halfOpenRequests = options.halfOpenRequests || 2;
-
-    // State
-    this.state = 'CLOSED';
-    this.consecutiveFailures = 0;
-    this.consecutiveTimeouts = 0;
-    this.lastFailureTime = null;
-    this.lastFailureReason = null;
-    this.halfOpenSuccesses = 0;
-
-    // Statistics
-    this.stats = {
-      totalFailures: 0,
-      totalTimeouts: 0,
-      totalSuccesses: 0,
-      circuitOpenCount: 0,
-      lastStateChange: null
-    };
-  }
-
-  /**
-   * Record a successful operation
-   * Resets failure counters and may close the circuit
-   */
-  recordSuccess() {
-    this.consecutiveFailures = 0;
-    this.consecutiveTimeouts = 0;
-    this.stats.totalSuccesses++;
-
-    if (this.state === 'HALF_OPEN') {
-      this.halfOpenSuccesses++;
-
-      if (this.halfOpenSuccesses >= this.halfOpenRequests) {
-        this._transitionTo('CLOSED');
-        this.halfOpenSuccesses = 0;
-        console.log('[CircuitBreaker] Circuit CLOSED - service recovered');
-      }
-    }
-  }
-
-  /**
-   * Record a failed operation
-   * May trip the circuit if threshold is exceeded
-   */
-  recordFailure(reason = 'unknown') {
-    this.consecutiveFailures++;
-    this.consecutiveTimeouts = 0; // Reset timeout counter on explicit failure
-    this.lastFailureTime = Date.now();
-    this.lastFailureReason = reason;
-    this.stats.totalFailures++;
-
-    if (this.state === 'HALF_OPEN') {
-      // Any failure in half-open immediately reopens circuit
-      this._transitionTo('OPEN');
-      console.warn(`[CircuitBreaker] Circuit re-OPENED - failure during recovery test: ${reason}`);
-      return;
-    }
-
-    if (this.state === 'CLOSED' && this.consecutiveFailures >= this.failureThreshold) {
-      this._transitionTo('OPEN');
-      console.warn(`[CircuitBreaker] Circuit OPEN - ${this.consecutiveFailures} consecutive failures (${reason})`);
-    }
-  }
-
-  /**
-   * Record a timeout (no ACK received)
-   * Timeouts are tracked separately and may trip the circuit
-   */
-  recordTimeout() {
-    this.consecutiveTimeouts++;
-    this.lastFailureTime = Date.now();
-    this.lastFailureReason = 'timeout';
-    this.stats.totalTimeouts++;
-
-    if (this.state === 'HALF_OPEN') {
-      // Timeout in half-open reopens circuit
-      this._transitionTo('OPEN');
-      console.warn('[CircuitBreaker] Circuit re-OPENED - timeout during recovery test');
-      return;
-    }
-
-    if (this.state === 'CLOSED' && this.consecutiveTimeouts >= this.timeoutThreshold) {
-      this._transitionTo('OPEN');
-      console.warn(`[CircuitBreaker] Circuit OPEN - ${this.consecutiveTimeouts} consecutive timeouts`);
-    }
-  }
-
-  /**
-   * Check if an operation can proceed
-   * Returns true if operation should be attempted, false if it should fail fast
-   */
-  canProceed() {
-    if (this.state === 'CLOSED') {
-      return true;
-    }
-
-    if (this.state === 'OPEN') {
-      // Check if reset timeout has elapsed
-      const timeSinceFailure = Date.now() - this.lastFailureTime;
-
-      if (timeSinceFailure >= this.resetTimeoutMs) {
-        this._transitionTo('HALF_OPEN');
-        this.halfOpenSuccesses = 0;
-        console.log('[CircuitBreaker] Circuit HALF_OPEN - testing recovery');
-        return true;
-      }
-
-      return false;
-    }
-
-    // HALF_OPEN: allow limited requests for testing
-    return true;
-  }
-
-  /**
-   * Get remaining time until circuit may transition from OPEN to HALF_OPEN
-   * Returns 0 if not in OPEN state
-   */
-  getTimeUntilRetry() {
-    if (this.state !== 'OPEN' || !this.lastFailureTime) {
-      return 0;
-    }
-
-    const elapsed = Date.now() - this.lastFailureTime;
-    return Math.max(0, this.resetTimeoutMs - elapsed);
-  }
-
-  /**
-   * Get current circuit breaker state information
-   */
-  getState() {
-    return {
-      state: this.state,
-      consecutiveFailures: this.consecutiveFailures,
-      consecutiveTimeouts: this.consecutiveTimeouts,
-      lastFailureTime: this.lastFailureTime,
-      lastFailureReason: this.lastFailureReason,
-      timeUntilRetry: this.getTimeUntilRetry(),
-      stats: { ...this.stats }
-    };
-  }
-
-  /**
-   * Forcefully reset the circuit breaker to CLOSED state
-   * Use with caution - typically for manual recovery
-   */
-  reset() {
-    this._transitionTo('CLOSED');
-    this.consecutiveFailures = 0;
-    this.consecutiveTimeouts = 0;
-    this.halfOpenSuccesses = 0;
-    this.lastFailureTime = null;
-    this.lastFailureReason = null;
-    console.log('[CircuitBreaker] Circuit manually reset to CLOSED');
-  }
-
-  /**
-   * Internal state transition
-   */
-  _transitionTo(newState) {
-    if (this.state !== newState) {
-      this.state = newState;
-      this.stats.lastStateChange = Date.now();
-
-      if (newState === 'OPEN') {
-        this.stats.circuitOpenCount++;
-      }
-    }
-  }
-}
-
-/**
- * Parse block count from WorldEdit response message
- * @param {string} text - Response text
- * @returns {number|null} Block count or null if not found
- */
-function parseBlockCount(text) {
-  if (!text) return null;
-
-  // Pattern 1: "123 blocks changed/affected/set"
-  const match1 = text.match(/(\d+)\s*(block|blocks)\s*(changed|affected|set|modified)/i);
-  if (match1) return parseInt(match1[1], 10);
-
-  // Pattern 2: "Operation completed (123 blocks)"
-  const match2 = text.match(/operation completed\s*\(?\s*(\d+)\s*block/i);
-  if (match2) return parseInt(match2[1], 10);
-
-  // Pattern 3: "history: 123 changed"
-  const match3 = text.match(/history[:\s#]*(\d+)\s*changed/i);
-  if (match3) return parseInt(match3[1], 10);
-
-  return null;
-}
-
-/**
- * Parse affected region bounds from WorldEdit response (if available)
- * Note: Most WorldEdit responses don't include bounds, but some do
- * @param {string} text - Response text
- * @param {Object} expectedBounds - Expected bounds from operation {from, to}
- * @returns {Object|null} Bounds {from, to} or null if not parseable
- */
-function parseAffectedRegion(text, expectedBounds = null) {
-  if (!text) return null;
-
-  // Pattern: "Set blocks from (x1, y1, z1) to (x2, y2, z2)"
-  const boundsMatch = text.match(/from\s*\(?\s*(-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)\s*\)?\s*to\s*\(?\s*(-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)/i);
-  if (boundsMatch) {
-    return {
-      from: {
-        x: parseInt(boundsMatch[1], 10),
-        y: parseInt(boundsMatch[2], 10),
-        z: parseInt(boundsMatch[3], 10)
-      },
-      to: {
-        x: parseInt(boundsMatch[4], 10),
-        y: parseInt(boundsMatch[5], 10),
-        z: parseInt(boundsMatch[6], 10)
-      }
-    };
-  }
-
-  // If we have expected bounds and operation succeeded, use those
-  // This helps with cursor tracking even when exact bounds aren't in response
-  if (expectedBounds) {
-    return expectedBounds;
-  }
-
-  return null;
-}
+// Re-export CircuitBreaker for backward compatibility
+export { CircuitBreaker };
 
 /**
  * WorldEdit Executor
@@ -613,43 +384,11 @@ export class WorldEditExecutor {
 
   /**
    * Get ACK matcher function based on WorldEdit type
+   * Delegates to consolidated ack-parser module.
    * @returns {Function} Matcher function for ACK responses
    */
   getAckMatcher() {
-    return (text) => {
-      const lower = text.toLowerCase();
-
-      // FAWE-specific patterns
-      if (this.worldEditType !== WORLDEDIT_TYPE.VANILLA) {
-        // Pattern A: "Operation completed (123 blocks)."
-        if (lower.includes('operation completed')) return true;
-
-        // Pattern B: "0.5s elapsed (history: 123 changed; ...)"
-        if (lower.includes('elapsed') && lower.includes('history') && lower.includes('changed')) return true;
-      }
-
-      // Standard WorldEdit patterns (work for all types)
-      if (/(\d+)\s*(block|blocks|positions?)\s*(changed|affected|set|modified)/i.test(text)) return true;
-      if (/history\s*(:?)\s*#?\d+\s*changed/i.test(text)) return true;
-
-      // Selection/clipboard responses
-      if (lower.includes('selection cleared') ||
-          lower.includes('region cleared') ||
-          lower.includes('pasted') ||
-          lower.includes('clipboard') ||
-          lower.includes('no blocks')) {
-        return true;
-      }
-
-      // Undo/Redo
-      if (lower.includes('undo successful') || lower.includes('undid') || lower.includes('redo successful')) return true;
-
-      // Error patterns (fail fast)
-      return lower.includes('unknown command') ||
-        lower.includes('no permission') ||
-        lower.includes('error') ||
-        lower.includes('failed');
-    };
+    return getAckMatcher(this.worldEditType);
   }
 
   /**
@@ -838,7 +577,7 @@ export class WorldEditExecutor {
     const timeSinceLastCmd = now - this.lastCommandTime;
 
     if (timeSinceLastCmd < effectiveDelay) {
-      await this.sleep(effectiveDelay - timeSinceLastCmd);
+      await sleep(effectiveDelay - timeSinceLastCmd);
     }
 
     // Validation (unless explicitly skipped)
@@ -861,56 +600,9 @@ export class WorldEditExecutor {
     if (expectsAck && !options.skipAcknowledgment) {
       // Use exponential backoff for faster ACK detection (optimization from CLAUDE.md)
       // Typical ACK wait reduced from 15s to 300-500ms
+      // Uses consolidated matcher from ack-parser module
       responsePromise = this.waitForResponseWithBackoff(
-        (text) => {
-          const lower = text.toLowerCase();
-
-          // 1. FAWE/WorldEdit Success Patterns
-          // Pattern A: "Operation completed (123 blocks)."
-          if (lower.includes('operation completed')) return true;
-
-          // Pattern B: "0.5s elapsed (history: 123 changed; ...)"
-          if (lower.includes('elapsed') && lower.includes('history') && lower.includes('changed')) return true;
-
-          // Pattern C: Standard WE responses
-          // FIXED: Use precise patterns to avoid false positives
-          if (/(\d+)\s*(block|blocks|positions?)\s*(changed|affected|set|modified)/i.test(text)) return true;
-          if (/history\s*(:?)\s*#?\d+\s*changed/i.test(text)) return true;
-          if (lower.includes('set to') && !lower.includes('selection type')) return true;
-
-          // Selection clearing / clipboard
-          if (lower.includes('selection cleared') ||
-            lower.includes('region cleared') ||
-            lower.includes('pasted') ||
-            lower.includes('clipboard') ||
-            lower.includes('no blocks') ||
-            lower.includes('operation completed')) {
-            return true;
-          }
-
-          // Selection mode confirmation
-          if (/cuboid.*left click|left click.*cuboid/i.test(text)) return true;
-
-          // Undo/Redo
-          if (lower.includes('undo successful') || lower.includes('undid') || lower.includes('redo successful')) return true;
-
-          // 2. Failure patterns (Fail fast)
-          return lower.includes('unknown command') ||
-            lower.includes('no permission') ||
-            lower.includes('don\'t have permission') ||
-            lower.includes('not permitted') ||
-            lower.includes('selection too large') ||
-            lower.includes('invalid value') ||
-            lower.includes('does not match a valid block type') ||
-            lower.includes('acceptable values are') ||
-            lower.includes('maximum') ||
-            lower.includes('error') ||
-            lower.includes('cannot') ||
-            lower.includes('failed') ||
-            lower.includes('unknown or incomplete command') ||
-            lower.includes('see below for error') ||
-            lower.includes('<--[here]');
-        },
+        getAckMatcher(this.worldEditType),
         options.acknowledgmentTimeout || ACK_TIMEOUT_MS
       );
     }
@@ -1014,7 +706,7 @@ export class WorldEditExecutor {
 
     // For commands not expecting ACK, add small safety delay
     const executionDelay = options.executionDelay || 300;
-    await this.sleep(executionDelay);
+    await sleep(executionDelay);
 
     return {
       success: true,
@@ -1026,332 +718,56 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Validate a WorldEdit command for safety
+   * Validate a WorldEdit command for safety.
+   * Delegates to ack-parser module.
    * @param {string} command - The command to validate
    * @throws {Error} If command is invalid or potentially dangerous
    */
   validateCommand(command) {
-    if (!command || typeof command !== 'string') {
-      throw new Error('Invalid command: must be a non-empty string');
-    }
-
-    const trimmedCmd = command.trim();
-
-    // Must start with // for WorldEdit commands
-    if (!trimmedCmd.startsWith('//') && !trimmedCmd.startsWith('/')) {
-      throw new Error(`Invalid WorldEdit command format: ${command}`);
-    }
-
-    // Block dangerous commands
-    const dangerousPatterns = [
-      /\/\/script/i,
-      /\/\/cs\s/i,
-      /\/\/craftscript/i,
-      /\.js\s*$/i,
-      /eval/i,
-      /exec/i
-    ];
-
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(trimmedCmd)) {
-        throw new Error(`Potentially dangerous command blocked: ${command}`);
-      }
-    }
+    _validateCommand(command);
   }
 
   /**
-   * Check if a command expects acknowledgment from the server
+   * Check if a command expects acknowledgment from the server.
+   * Delegates to ack-parser module.
    * @param {string} command - The command to check
    * @returns {boolean} True if the command expects an ACK response
    */
   commandExpectsAck(command) {
-    const lower = command.toLowerCase();
-
-    // Block-changing commands that modify the world
-    const blockChangingPatterns = [
-      /\/\/set\s/,
-      /\/\/replace\s/,
-      /\/\/walls\s/,
-      /\/\/fill\s/,
-      /\/\/stack\s/,
-      /\/\/move\s/,
-      /\/\/copy/,
-      /\/\/paste/,
-      /\/\/cut/,
-      /\/\/pyramid\s/,
-      /\/\/hpyramid\s/,
-      /\/\/cyl\s/,
-      /\/\/hcyl\s/,
-      /\/\/sphere\s/,
-      /\/\/hsphere\s/,
-      /\/\/undo/,
-      /\/\/redo/,
-      /\/\/drain/,
-      /\/\/fixwater/,
-      /\/\/fixlava/,
-      /\/\/snow/,
-      /\/\/thaw/,
-      /\/\/green/,
-      /\/\/flora/,
-      /\/\/forest/,
-      /\/\/overlay\s/,
-      /\/\/naturalize/,
-      /\/\/smooth/,
-      /\/\/deform/,
-      /\/\/hollow/,
-      /\/\/center\s/,
-      /\/\/line\s/,
-      /\/\/curve\s/,
-      /\/\/regen/
-    ];
-
-    // State-changing commands that affect selection
-    const stateChangingPatterns = [
-      /\/\/pos1/,
-      /\/\/pos2/,
-      /\/\/hpos1/,
-      /\/\/hpos2/,
-      /\/\/sel\s/,
-      /\/\/desel/,
-      /\/\/(contract|expand|shift|outset|inset)\s/
-    ];
-
-    // Check for block-changing commands
-    for (const pattern of blockChangingPatterns) {
-      if (pattern.test(lower)) return true;
-    }
-
-    // Check for state-changing commands
-    for (const pattern of stateChangingPatterns) {
-      if (pattern.test(lower)) return true;
-    }
-
-    return false;
+    return _commandExpectsAck(command);
   }
 
   /**
-   * Check if a command is expected to change blocks in the world
+   * Check if a command is expected to change blocks in the world.
+   * Delegates to ack-parser module.
    * @param {string} command - The command to check
    * @returns {boolean} True if the command changes blocks
    */
   commandExpectsBlockChange(command) {
-    const lower = command.toLowerCase();
-
-    const blockChangingPatterns = [
-      /\/\/set\s/,
-      /\/\/replace\s/,
-      /\/\/walls\s/,
-      /\/\/fill\s/,
-      /\/\/stack\s/,
-      /\/\/move\s/,
-      /\/\/paste/,
-      /\/\/cut/,
-      /\/\/pyramid\s/,
-      /\/\/hpyramid\s/,
-      /\/\/cyl\s/,
-      /\/\/hcyl\s/,
-      /\/\/sphere\s/,
-      /\/\/hsphere\s/,
-      /\/\/drain/,
-      /\/\/fixwater/,
-      /\/\/fixlava/,
-      /\/\/snow/,
-      /\/\/thaw/,
-      /\/\/green/,
-      /\/\/flora/,
-      /\/\/forest/,
-      /\/\/overlay\s/,
-      /\/\/naturalize/,
-      /\/\/smooth/,
-      /\/\/deform/,
-      /\/\/hollow/,
-      /\/\/center\s/,
-      /\/\/line\s/,
-      /\/\/curve\s/,
-      /\/\/regen/
-    ];
-
-    for (const pattern of blockChangingPatterns) {
-      if (pattern.test(lower)) return true;
-    }
-
-    return false;
+    return _commandExpectsBlockChange(command);
   }
 
   /**
-   * Classify an error response from WorldEdit
+   * Classify an error response from WorldEdit.
+   * Delegates to ack-parser module.
    * @param {string} response - The error response text
    * @param {string} command - The command that caused the error
    * @returns {Object|null} Error classification or null if not an error
    */
   classifyError(response, command) {
-    const lower = response.toLowerCase();
-
-    // Permission errors
-    if (lower.includes('no permission') ||
-      lower.includes("don't have permission") ||
-      lower.includes('not permitted') ||
-      lower.includes('you cannot')) {
-      return {
-        type: 'PERMISSION_DENIED',
-        message: `Permission denied for command: ${command}`,
-        suggestedFix: 'Check that the bot has WorldEdit permissions'
-      };
-    }
-
-    // Command not recognized
-    if (lower.includes('unknown command') ||
-      lower.includes('unknown or incomplete command') ||
-      lower.includes('see below for error') ||
-      lower.includes('<--[here]')) {
-      return {
-        type: 'COMMAND_NOT_RECOGNIZED',
-        message: `Command not recognized: ${command}`,
-        suggestedFix: 'Check command syntax and WorldEdit version'
-      };
-    }
-
-    // No selection
-    if (lower.includes('no selection') ||
-      lower.includes('make a selection') ||
-      lower.includes('select a region') ||
-      lower.includes('make a region selection') ||
-      lower.includes('selection not defined') ||
-      lower.includes('you haven\'t made a selection') ||
-      lower.includes('selection was removed')) {
-      return {
-        type: 'NO_SELECTION',
-        message: `No selection defined for command: ${command}`,
-        suggestedFix: 'Create a selection with //pos1 and //pos2 first. If this happened during building, WorldEdit state may have been cleared by another plugin.'
-      };
-    }
-
-    // Selection too large
-    if (lower.includes('selection too large') ||
-      lower.includes('too many blocks') ||
-      lower.includes('maximum allowed') ||
-      (lower.includes('maximum') && lower.includes('blocks'))) {
-      return {
-        type: 'SELECTION_TOO_LARGE',
-        message: `Selection too large for command: ${command}`,
-        suggestedFix: 'Reduce selection size or use chunked operations'
-      };
-    }
-
-    // Invalid syntax / block type
-    if (lower.includes('invalid value') ||
-      lower.includes('does not match a valid block') ||
-      lower.includes('acceptable values are') ||
-      lower.includes('invalid block') ||
-      lower.includes('unknown block')) {
-      return {
-        type: 'INVALID_SYNTAX',
-        message: `Invalid syntax or block type in command: ${command}`,
-        suggestedFix: 'Check block names and command syntax'
-      };
-    }
-
-    // Internal error
-    if (lower.includes('internal error') ||
-      lower.includes('exception') ||
-      lower.includes('error occurred') ||
-      lower.includes('failed')) {
-      return {
-        type: 'INTERNAL_ERROR',
-        message: `Internal error executing command: ${command}`,
-        suggestedFix: 'Try again or check server logs. If using FAWE, ensure you are not in a restricted region.'
-      };
-    }
-
-    // Not an error - return null
-    return null;
+    return _classifyError(response, command);
   }
 
-  /**
-   * Helper: Sleep for MS
-   */
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   /**
-   * Helper: Slice a region into smaller chunks if it exceeds volume/dimension limits
-   * Recursively splits the longest axis until chunks are safe.
+   * Helper: Slice a region into smaller chunks if it exceeds volume/dimension limits.
+   * Delegates to region-slicer module.
    * @param {Object} from - Start pos {x,y,z}
    * @param {Object} to - End pos {x,y,z}
    * @returns {Array} Array of {from, to} objects
    */
   sliceRegion(from, to) {
-    const dx = Math.abs(to.x - from.x) + 1;
-    const dy = Math.abs(to.y - from.y) + 1;
-    const dz = Math.abs(to.z - from.z) + 1;
-    const volume = dx * dy * dz;
-
-    const MAX_VOL = SAFETY_LIMITS.worldEdit.maxSelectionVolume || 50000;
-    const MAX_DIM = SAFETY_LIMITS.worldEdit.maxSelectionDimension || 100;
-
-    // Base case: Region is safe
-    if (volume <= MAX_VOL && dx <= MAX_DIM && dy <= MAX_DIM && dz <= MAX_DIM) {
-      return [{ from, to }];
-    }
-
-    // Recursive step: Split along longest axis
-    let splitAxis = 'x';
-    let maxLen = dx;
-    if (dy > maxLen) { splitAxis = 'y'; maxLen = dy; }
-    if (dz > maxLen) { splitAxis = 'z'; maxLen = dz; }
-
-    const chunks = [];
-    const mid = Math.floor(maxLen / 2);
-
-    const from1 = { ...from };
-    const to1 = { ...to };
-    const from2 = { ...from };
-    const to2 = { ...to };
-
-    // Coordinates are absolute world coords, so we split based on min/max
-    const minVal = Math.min(from[splitAxis], to[splitAxis]);
-    const maxVal = Math.max(from[splitAxis], to[splitAxis]);
-    const splitPoint = minVal + mid; // Absolute coordinate
-
-    // Adjust boundaries
-    if (from[splitAxis] < to[splitAxis]) {
-      to1[splitAxis] = splitPoint - 1;
-      from2[splitAxis] = splitPoint;
-    } else {
-      to1[splitAxis] = splitPoint;
-      from2[splitAxis] = splitPoint - 1;
-      // Correcting split logic for inverted coordinates:
-      // If from > to (e.g. 10 to 0), mid point 5.
-      // Chunk 1: 10 down to 6. Chunk 2: 5 down to 0.
-      // Simpler to normalize first, but let's just stick to Min/Max for splitting
-    }
-
-    // Normalized Split Strategy to avoid sign confusion
-    const x1 = Math.min(from.x, to.x); const x2 = Math.max(from.x, to.x);
-    const y1 = Math.min(from.y, to.y); const y2 = Math.max(from.y, to.y);
-    const z1 = Math.min(from.z, to.z); const z2 = Math.max(from.z, to.z);
-
-    let sub1From, sub1To, sub2From, sub2To;
-
-    if (splitAxis === 'x') {
-      const splitX = Math.floor((x1 + x2) / 2);
-      sub1From = { x: x1, y: y1, z: z1 }; sub1To = { x: splitX, y: y2, z: z2 };
-      sub2From = { x: splitX + 1, y: y1, z: z1 }; sub2To = { x: x2, y: y2, z: z2 };
-    } else if (splitAxis === 'y') {
-      const splitY = Math.floor((y1 + y2) / 2);
-      sub1From = { x: x1, y: y1, z: z1 }; sub1To = { x: x2, y: splitY, z: z2 };
-      sub2From = { x: x1, y: splitY + 1, z: z1 }; sub2To = { x: x2, y: y2, z: z2 };
-    } else {
-      const splitZ = Math.floor((z1 + z2) / 2);
-      sub1From = { x: x1, y: y1, z: z1 }; sub1To = { x: x2, y: y2, z: splitZ };
-      sub2From = { x: x1, y: y1, z: splitZ + 1 }; sub2To = { x: x2, y: y2, z: z2 };
-    }
-
-    chunks.push(...this.sliceRegion(sub1From, sub1To));
-    chunks.push(...this.sliceRegion(sub2From, sub2To));
-
-    return chunks;
+    return _sliceRegion(from, to);
   }
 
   /**
@@ -1513,7 +929,7 @@ export class WorldEditExecutor {
     const timeSinceLastCmd = now - this.lastCommandTime;
 
     if (timeSinceLastCmd < effectiveDelay) {
-      await this.sleep(effectiveDelay - timeSinceLastCmd);
+      await sleep(effectiveDelay - timeSinceLastCmd);
     }
 
     // Validate
@@ -1596,20 +1012,13 @@ export class WorldEditExecutor {
   }
 
   /**
-   * Check if a message looks like a WorldEdit ACK
+   * Check if a message looks like a WorldEdit ACK.
+   * Delegates to ack-parser module.
+   * @param {string} text - Chat message text
+   * @returns {boolean}
    */
   isAckMessage(text) {
-    const lower = text.toLowerCase();
-    return /\d+\s*blocks?\s*(changed|affected|set)/i.test(text) ||
-      lower.includes('operation completed') ||
-      (lower.includes('elapsed') && lower.includes('changed')) ||
-      (lower.includes('set to') && !lower.includes('selection type')) ||
-      lower.includes('selection cleared') ||
-      lower.includes('undo successful') ||
-      lower.includes('no blocks') ||
-      lower.includes('unknown command') ||
-      lower.includes('no permission') ||
-      lower.includes('error');
+    return _isAckMessage(text);
   }
 
   /**
@@ -1640,7 +1049,7 @@ export class WorldEditExecutor {
       }
 
       if (allConfirmed) break;
-      await this.sleep(100);
+      await sleep(100);
     }
 
     // Count results
@@ -1785,12 +1194,5 @@ export class WorldEditExecutor {
     this.commandHistory = [];
 
     return { undone, failed };
-  }
-
-  /**
-   * Sleep helper
-   */
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

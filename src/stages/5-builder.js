@@ -1,53 +1,28 @@
 import { Vec3 } from 'vec3';
-import pathfinderPkg from 'mineflayer-pathfinder';
-const { pathfinder, goals } = pathfinderPkg;
-import { volume as universalVolume } from '../operations/universal/volume.js';
+import { OPERATION_MAP } from '../operations/index.js';
 import { BuildCursor } from '../operations/universal/cursor.js';
 import { optimizeBlockGroups } from './optimization/batching.js';
-import { fill } from '../operations/fill.js';
-import { hollowBox } from '../operations/hollow-box.js';
-import { set } from '../operations/set.js';
-import { line } from '../operations/line.js';
-import { windowStrip } from '../operations/window-strip.js';
-import { roofGable } from '../operations/roof-gable.js';
-import { roofFlat } from '../operations/roof-flat.js';
-import { weFill } from '../operations/we-fill.js';
-import { weWalls } from '../operations/we-walls.js';
-import { wePyramid } from '../operations/we-pyramid.js';
-import { weCylinder, weCone } from '../operations/we-cylinder.js';
-import { weSphere } from '../operations/we-sphere.js';
-import { weReplace } from '../operations/we-replace.js';
-import { stairs } from '../operations/stairs.js';
-import { slab } from '../operations/slab.js';
-import { fenceConnect } from '../operations/fence-connect.js';
-import { door } from '../operations/door.js';
-import { spiralStaircase } from '../operations/spiral-staircase.js';
-import { balcony } from '../operations/balcony.js';
-import { roofHip } from '../operations/roof-hip.js';
-import { pixelArt } from '../operations/pixel-art.js';
-import { threeDLayers } from '../operations/three-d-layers.js';
-import { smartWall } from '../operations/smart-wall.js';
-import { smartFloor } from '../operations/smart-floor.js';
-import { smartRoof } from '../operations/smart-roof.js';
 import { WorldEditExecutor } from '../worldedit/executor.js';
+import { WorldEditDispatcher } from './worldedit-dispatch.js';
 import { SAFETY_LIMITS } from '../config/limits.js';
-import { isWorldEditOperation, OPERATIONS_REGISTRY } from '../config/operations-registry.js';
+import { OPERATIONS_REGISTRY } from '../config/operations-registry.js';
 import { buildMetrics } from '../utils/performance-metrics.js';
 import { ActionQueue } from '../utils/queue/action-queue.js';
 import { InventoryManager, formatValidationResult } from '../utils/inventory-manager.js';
-import { PathfindingHelper, calculateDistance } from '../utils/pathfinding-helper.js';
+import { PathfindingHelper } from '../utils/pathfinding-helper.js';
 import { BuildStationManager } from '../positioning/BuildStationManager.js';
-import { validateBuildArea, clampToWorldBoundaries, safeBlockAt, scanTerrainFootprint, WORLD_BOUNDARIES } from '../validation/world-validator.js';
+import { validateBuildArea, safeBlockAt, scanTerrainFootprint, WORLD_BOUNDARIES } from '../validation/world-validator.js';
 import { BuildStateManager } from '../state/build-state.js';
 
+import { sleep } from '../utils/sleep.js';
 import { sanitizer } from '../utils/blueprint-sanitizer.js';
 
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { DEBUG } from '../utils/debug.js';
 
 // Teleportation Constants - CLAUDE.md Contract
-// These values are part of the contract and tested in tests/positioning/teleport-contract.test.js
-export const TELEPORT_SKIP_DISTANCE = 32;  // Skip teleport if within this many blocks
-export const TELEPORT_VERIFY_TIMEOUT_MS = 3000;  // Max wait for teleport position verification
+// Canonical definition is in worldedit-dispatch.js; re-exported here for backward compatibility.
+// Tested in tests/positioning/teleport-contract.test.js
+export { TELEPORT_SKIP_DISTANCE, TELEPORT_VERIFY_TIMEOUT_MS } from './worldedit-dispatch.js';
 
 /**
  * Build Mutex - Prevents Concurrent Build Race Conditions
@@ -88,60 +63,6 @@ class BuildMutex {
   }
 }
 
-const OPERATION_MAP = {
-  // Universal Ops (Cursor-aware & Auto-optimized)
-  box: universalVolume,
-  wall: (step, ctx) => universalVolume({ ...step, hollow: true }, ctx),
-  outline: (step, ctx) => universalVolume({ ...step, hollow: true }, ctx),
-  move: (step, ctx) => {
-    if (ctx && ctx.cursor) {
-      ctx.cursor.move(step.offset);
-    }
-    return []; // No blocks to place
-  },
-  cursor_reset: (step, ctx) => {
-    if (ctx && ctx.cursor) {
-      ctx.cursor.reset();
-    }
-    return []; // No blocks to place
-  },
-  fill: universalVolume,
-  hollow_box: (step, ctx) => universalVolume({ ...step, hollow: true }, ctx),
-
-  // Legacy mappings
-  set,
-  line,
-  window_strip: windowStrip,
-  roof_gable: roofGable,
-  roof_flat: roofFlat,
-  we_fill: weFill,
-  we_walls: weWalls,
-  we_pyramid: wePyramid,
-  we_cylinder: weCylinder,
-  we_cone: weCone,
-  we_sphere: weSphere,
-  we_replace: weReplace,
-  stairs,
-  slab,
-  fence_connect: fenceConnect,
-  door,
-  spiral_staircase: spiralStaircase,
-  balcony,
-  roof_hip: roofHip,
-  pixel_art: pixelArt,
-  three_d_layers: threeDLayers,
-  smart_wall: smartWall,
-  smart_floor: smartFloor,
-  smart_roof: smartRoof,
-
-  // New Mappings
-  sphere: (step) => ({ type: 'worldedit', command: 'sphere', ...step }),
-  cylinder: (step) => ({ type: 'worldedit', command: 'cylinder', ...step }),
-  cone: weCone,  // Cone is tapered cylinder with topRadius=0
-  smooth: (step) => ({ type: 'organic', command: 'smooth', ...step }),
-  grow_tree: (step) => ({ type: 'organic', command: 'grow_tree', ...step })
-};
-
 /**
  * Builder class - Executes blueprints in Minecraft
  */
@@ -179,6 +100,16 @@ export class Builder {
 
     // State persistence for crash recovery
     this.stateManager = new BuildStateManager();
+
+    // WorldEdit dispatch delegation
+    this.weDispatch = new WorldEditDispatcher({
+      getWorldEdit: () => this.worldEdit,
+      getBot: () => this.bot,
+      sleep,
+      getCursor: () => this.cursor,
+      getCurrentBuild: () => this.currentBuild,
+      getWorldEditHistory: () => this.worldEditHistory
+    });
 
     // Progress tracking configuration
     this.progressUpdateInterval = 10; // Emit progress every N blocks
@@ -304,50 +235,6 @@ export class Builder {
       count: obstructions.length,
       obstructions: obstructions.slice(0, 10) // First 10 for logging
     };
-  }
-
-  /**
-   * Clear obstructions in the build area using WorldEdit or vanilla
-   * @param {Object} startPos - Build start position
-   * @param {Object} size - Build dimensions
-   * @returns {Promise<boolean>} True if cleared
-   */
-  async clearObstructions(startPos, size) {
-    if (this.worldEditEnabled) {
-      const from = {
-        x: startPos.x - 1,
-        y: startPos.y,
-        z: startPos.z - 1
-      };
-      const to = {
-        x: startPos.x + (size.width || 10) + 1,
-        y: startPos.y + (size.height || 10) + 1,
-        z: startPos.z + (size.depth || 10) + 1
-      };
-
-      try {
-        await this.worldEdit.createSelection(from, to);
-        await this.worldEdit.fillSelection('air');
-        await this.worldEdit.clearSelection();
-
-        // Record to history for undo support
-        this.worldEditHistory.push({
-          step: { op: 'obstruction_clear', block: 'air', from, to },
-          startPos: { x: 0, y: 0, z: 0 }, // Absolute coords already in from/to
-          timestamp: Date.now(),
-          type: 'worldedit'
-        });
-
-        console.log('    ✓ Obstructions cleared (WorldEdit)');
-        return true;
-      } catch (e) {
-        console.warn(`    ⚠ Clearing failed: ${e.message}`);
-        return false;
-      }
-    }
-
-    console.log('    ⚠ Obstruction clearing requires WorldEdit (skipped)');
-    return false;
   }
 
   /**
@@ -509,7 +396,7 @@ export class Builder {
 
             // Rate limiting: Delay between batches to prevent server kick (ECONNRESET)
             // Reduced from 500ms to 300ms for better performance
-            await this.sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 300);
+            await sleep(SAFETY_LIMITS.worldEdit.commandMinDelayMs || 300);
           }
 
           // Continue with only the non-batched blocks
@@ -574,7 +461,7 @@ export class Builder {
       buildMetrics.recordVanillaOperation();
 
       // Rate limiting
-      await this.sleep(this.getPlacementDelayMs());
+      await sleep(this.getPlacementDelayMs());
     }
   }
 
@@ -611,7 +498,7 @@ export class Builder {
         return true;
       } catch (err) {
         const backoff = Math.pow(2, i) * 100;
-        if (i < maxRetries - 1) await this.sleep(backoff);
+        if (i < maxRetries - 1) await sleep(backoff);
       }
     }
     return false;
@@ -720,7 +607,8 @@ export class Builder {
       // Reset WorldEdit executor for new build
       this.worldEdit.reset();
       // P0 Fix: Clear WE history for new build
-      this.worldEditHistory = [];
+      // Use .length = 0 to preserve reference shared with WorldEditDispatcher
+      this.worldEditHistory.length = 0;
 
       // Start state tracking for crash recovery
       const buildId = this.stateManager.startBuild(blueprint, startPos);
@@ -757,7 +645,7 @@ export class Builder {
       // Safety delay: Wait for WorldEdit server-side processing to complete
       // Prevents race condition where build starts before area is fully cleared
       if (this.worldEditEnabled) {
-        await this.sleep(SAFETY_LIMITS.worldEdit?.postClearDelayMs || 500);
+        await sleep(SAFETY_LIMITS.worldEdit?.postClearDelayMs || 500);
       }
 
       const resolveBlock = (blockName) => {
@@ -1116,127 +1004,21 @@ export class Builder {
    * Dispatches to specific WorldEdit execution methods based on command
    */
   async executeWorldEditDescriptor(descriptor, startPos) {
-    if (!descriptor || descriptor.type !== 'worldedit') return;
-
-    // Calculate expected bounds for cursor reconciliation
-    let expectedBounds = null;
-    if (descriptor.from && descriptor.to) {
-      expectedBounds = {
-        from: {
-          x: startPos.x + descriptor.from.x,
-          y: startPos.y + descriptor.from.y,
-          z: startPos.z + descriptor.from.z
-        },
-        to: {
-          x: startPos.x + descriptor.to.x,
-          y: startPos.y + descriptor.to.y,
-          z: startPos.z + descriptor.to.z
-        }
-      };
-    }
-
-    let operationResult = null;
-
-    try {
-      switch (descriptor.command) {
-        case 'fill':
-          operationResult = await this.executeWorldEditFill(descriptor, startPos);
-          break;
-        case 'walls':
-          operationResult = await this.executeWorldEditWalls(descriptor, startPos);
-          break;
-        case 'pyramid':
-          operationResult = await this.executeWorldEditPyramid(descriptor, startPos);
-          break;
-        case 'cylinder':
-          operationResult = await this.executeWorldEditCylinder(descriptor, startPos);
-          break;
-        case 'sphere':
-          operationResult = await this.executeWorldEditSphere(descriptor, startPos);
-          break;
-        case 'replace':
-          operationResult = await this.executeWorldEditReplace(descriptor, startPos);
-          break;
-        default:
-          throw new Error(`Unknown WorldEdit command: ${descriptor.command}`);
-      }
-
-      // Cursor reconciliation after WorldEdit operation
-      if (this.cursor && expectedBounds) {
-        const expectedEndPos = expectedBounds.to;
-        const reconcileResult = this.cursor.reconcile(expectedEndPos, {
-          success: true,
-          actualBounds: operationResult?.actualBounds || expectedBounds,
-          blocksChanged: operationResult?.blocksChanged
-        });
-
-        if (reconcileResult.corrected) {
-          if (DEBUG) {
-            console.log(`    [Cursor] Drift corrected: ${reconcileResult.drift.magnitude} blocks`);
-          }
-        }
-        if (reconcileResult.warning) {
-          console.warn(`    [Cursor] ${reconcileResult.warning}`);
-        }
-      }
-
-      // Track SUCCESSFUL execution in history
-      this.worldEditHistory.push({
-        step: descriptor.step || descriptor, // Use original step so it has op name for tracking
-        startPos,
-        timestamp: Date.now(),
-        type: 'worldedit'
-      });
-      if (this.currentBuild) {
-        this.currentBuild.worldEditOpsExecuted++;
-      }
-      buildMetrics.recordWorldEditOp(descriptor.step?.op || `we_${descriptor.command}`);
-
-    } catch (err) {
-      console.error(`WorldEdit Execution Error (${descriptor.command}): ${err.message}`);
-      throw err; // Re-throw so caller can handle fallback
-    }
+    return this.weDispatch.executeDescriptor(descriptor, startPos);
   }
-
-  // ...
 
   /**
    * Execute WorldEdit fill command (Adaptive Safe Fill)
    */
   async executeWorldEditFill(descriptor, startPos) {
-    const worldFrom = {
-      x: startPos.x + descriptor.from.x,
-      y: startPos.y + descriptor.from.y,
-      z: startPos.z + descriptor.from.z
-    };
-
-    const worldTo = {
-      x: startPos.x + descriptor.to.x,
-      y: startPos.y + descriptor.to.y,
-      z: startPos.z + descriptor.to.z
-    };
-
-    // Use safe fill to handle slicing automatically
-    await this.worldEdit.performSafeFill(worldFrom, worldTo, descriptor.block);
+    return this.weDispatch.executeFill(descriptor, startPos);
   }
 
   /**
    * Execute WorldEdit walls command (Adaptive Safe Walls)
    */
   async executeWorldEditWalls(descriptor, startPos) {
-    const worldFrom = {
-      x: startPos.x + descriptor.from.x,
-      y: startPos.y + descriptor.from.y,
-      z: startPos.z + descriptor.from.z
-    };
-
-    const worldTo = {
-      x: startPos.x + descriptor.to.x,
-      y: startPos.y + descriptor.to.y,
-      z: startPos.z + descriptor.to.z
-    };
-
-    await this.worldEdit.performSafeWalls(worldFrom, worldTo, descriptor.block);
+    return this.weDispatch.executeWalls(descriptor, startPos);
   }
 
   /**
@@ -1246,85 +1028,15 @@ export class Builder {
    * @returns {Promise<boolean>} - True if teleport succeeded
    */
   async teleportAndVerify(targetPos, tolerance = 2) {
-    if (!this.bot || !this.bot.entity) {
-      throw new Error('Bot entity not available for teleport');
-    }
-
-    const beforePos = this.bot.entity.position.clone();
-    const distance = beforePos.distanceTo(targetPos);
-
-    // P0 Fix: Remote Execution
-    // Skip teleport if target is within safe range (TELEPORT_SKIP_DISTANCE blocks)
-    // WorldEdit works in loaded chunks, ensures we are physically close enough
-    if (distance < TELEPORT_SKIP_DISTANCE) {
-      // console.log(`    → Skipping teleport (distance ${distance.toFixed(1)} < ${TELEPORT_SKIP_DISTANCE})`);
-      return true;
-    }
-
-    console.log(`    → Teleporting to target (distance ${distance.toFixed(1)})`);
-
-    // P0 Optimization: Use @s for specific targeting and wait for chunks
-    this.bot.chat(`/tp @s ${targetPos.x} ${targetPos.y} ${targetPos.z}`);
-
-    // Wait for position update with timeout
-    const maxWaitTime = TELEPORT_VERIFY_TIMEOUT_MS;
-    const checkInterval = 200;
-    let elapsed = 0;
-
-    while (elapsed < maxWaitTime) {
-      await this.sleep(checkInterval);
-      elapsed += checkInterval;
-
-      const currentPos = this.bot.entity.position;
-      const dx = Math.abs(currentPos.x - targetPos.x);
-      const dy = Math.abs(currentPos.y - targetPos.y);
-      const dz = Math.abs(currentPos.z - targetPos.z);
-
-      if (dx <= tolerance && dy <= tolerance && dz <= tolerance) {
-        console.log(`    → Teleported to ${targetPos.x}, ${targetPos.y}, ${targetPos.z}`);
-        return true;
-      }
-    }
-
-    // Check if position changed at all
-    const currentPos = this.bot.entity.position;
-    const moved = beforePos.distanceTo(currentPos) > 0.5;
-
-    if (!moved) {
-      console.warn(`    ⚠ Teleport may have failed (no position change detected)`);
-      console.warn(`    ⚠ Expected: ${targetPos.x}, ${targetPos.y}, ${targetPos.z}`);
-      console.warn(`    ⚠ Current: ${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)}`);
-      return false;
-    }
-
-    // Moved but not to exact target - partial success
-    console.warn(`    ⚠ Teleport position mismatch (may still work)`);
-    return true;
+    return this.weDispatch.teleportAndVerify(targetPos, tolerance);
   }
-
-  /**
-   * Execute WorldEdit cancel
-   */
-  // ...
 
   /**
    * Execute WorldEdit pyramid command
    * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditPyramid(descriptor, startPos) {
-    const worldBase = {
-      x: startPos.x + descriptor.base.x,
-      y: startPos.y + descriptor.base.y,
-      z: startPos.z + descriptor.base.z
-    };
-
-    // P0 Fix: Teleport and verify position
-    const teleported = await this.teleportAndVerify(worldBase);
-    if (!teleported) {
-      throw new Error(`Failed to teleport to pyramid base position (${worldBase.x}, ${worldBase.y}, ${worldBase.z})`);
-    }
-
-    await this.worldEdit.createPyramid(descriptor.block, descriptor.height, descriptor.hollow);
+    return this.weDispatch.executePyramid(descriptor, startPos);
   }
 
   /**
@@ -1332,24 +1044,7 @@ export class Builder {
    * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditCylinder(descriptor, startPos) {
-    const worldBase = {
-      x: startPos.x + descriptor.base.x,
-      y: startPos.y + descriptor.base.y,
-      z: startPos.z + descriptor.base.z
-    };
-
-    // P0 Fix: Teleport and verify position
-    const teleported = await this.teleportAndVerify(worldBase);
-    if (!teleported) {
-      throw new Error(`Failed to teleport to cylinder base position (${worldBase.x}, ${worldBase.y}, ${worldBase.z})`);
-    }
-
-    await this.worldEdit.createCylinder(
-      descriptor.block,
-      descriptor.radius,
-      descriptor.height,
-      descriptor.hollow
-    );
+    return this.weDispatch.executeCylinder(descriptor, startPos);
   }
 
   /**
@@ -1357,40 +1052,14 @@ export class Builder {
    * P0 Fix: Verify teleport before executing
    */
   async executeWorldEditSphere(descriptor, startPos) {
-    const worldCenter = {
-      x: startPos.x + descriptor.center.x,
-      y: startPos.y + descriptor.center.y,
-      z: startPos.z + descriptor.center.z
-    };
-
-    // P0 Fix: Teleport and verify position
-    const teleported = await this.teleportAndVerify(worldCenter);
-    if (!teleported) {
-      throw new Error(`Failed to teleport to sphere center position (${worldCenter.x}, ${worldCenter.y}, ${worldCenter.z})`);
-    }
-
-    await this.worldEdit.createSphere(descriptor.block, descriptor.radius, descriptor.hollow);
+    return this.weDispatch.executeSphere(descriptor, startPos);
   }
 
   /**
    * Execute WorldEdit replace command
    */
   async executeWorldEditReplace(descriptor, startPos) {
-    const worldFrom = {
-      x: startPos.x + descriptor.from.x,
-      y: startPos.y + descriptor.from.y,
-      z: startPos.z + descriptor.from.z
-    };
-
-    const worldTo = {
-      x: startPos.x + descriptor.to.x,
-      y: startPos.y + descriptor.to.y,
-      z: startPos.z + descriptor.to.z
-    };
-
-    await this.worldEdit.createSelection(worldFrom, worldTo);
-    await this.worldEdit.replaceBlocks(descriptor.fromBlock, descriptor.toBlock);
-    await this.worldEdit.clearSelection();
+    return this.weDispatch.executeReplace(descriptor, startPos);
   }
 
 
@@ -1480,18 +1149,6 @@ export class Builder {
     return optimizeBlockGroups(blocks, 10, options);
   }
 
-  // Legacy groupings removed (groupByPlane, processSlices, findMaximalRectangles, createRunOp)
-
-
-  /**
-   * Calculate volume of a region (kept for potential future use)
-   */
-  calculateVolume(from, to) {
-    const dx = Math.abs(to.x - from.x) + 1;
-    const dy = Math.abs(to.y - from.y) + 1;
-    const dz = Math.abs(to.z - from.z) + 1;
-    return dx * dy * dz;
-  }
 
   /**
    * Place a single block in the world
@@ -1509,7 +1166,7 @@ export class Builder {
     if (this.hasSetblockAccess && typeof this.bot.chat === 'function') {
       this.bot.chat(`/setblock ${Math.floor(pos.x)} ${Math.floor(pos.y)} ${Math.floor(pos.z)} ${blockType}`);
       // Small delay to prevent command flooding
-      await this.sleep(10);
+      await sleep(10);
       return;
     }
 
@@ -1521,7 +1178,7 @@ export class Builder {
     if (typeof this.bot.chat === 'function') {
       // Fallback for when setBlock isn't available but user might have manual op perms
       this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${blockType}`);
-      await this.sleep(50);
+      await sleep(50);
       return;
     }
 
@@ -1556,7 +1213,8 @@ export class Builder {
       }
 
       // Clear WE history after undo attempt
-      this.worldEditHistory = [];
+      // Use .length = 0 to preserve reference shared with WorldEditDispatcher
+      this.worldEditHistory.length = 0;
     }
 
     // Undo vanilla operations
@@ -1567,7 +1225,7 @@ export class Builder {
       for (const { pos, previousBlock } of lastBuild.reverse()) {
         try {
           await this.placeBlock(pos, previousBlock);
-          await this.sleep(this.getPlacementDelayMs());
+          await sleep(this.getPlacementDelayMs());
         } catch (error) {
           console.error(`Failed to restore block at ${pos.x},${pos.y},${pos.z}`);
         }
@@ -1627,12 +1285,6 @@ export class Builder {
     };
   }
 
-  /**
-   * Sleep helper for rate limiting
-   */
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   getPlacementDelayMs() {
     const baseDelay = 1000 / SAFETY_LIMITS.buildRateLimit;

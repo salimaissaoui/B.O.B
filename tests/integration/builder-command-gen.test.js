@@ -90,7 +90,8 @@ describe('Integration: Builder Command Generation', () => {
             .mockResolvedValue({ success: true, blocksChanged: 10 });
 
         // Mock teleportAndVerify to avoid slow timeouts/logic inside unit test
-        builder.teleportAndVerify = jest.fn().mockResolvedValue(true);
+        // After extraction to WorldEditDispatcher, teleportAndVerify lives on weDispatch
+        builder.weDispatch.teleportAndVerify = jest.fn().mockResolvedValue(true);
         // Mock autoClearArea to avoid extraneous executor calls
         builder.autoClearArea = jest.fn().mockResolvedValue();
         // Mock sleep to speed up test execution
@@ -135,7 +136,7 @@ describe('Integration: Builder Command Generation', () => {
         // Check teleport (Builder function mocked)
         // Since we mocked teleportAndVerify, checking mockBot.chat for /tp will fail
         // Instead we check if the mock was called
-        expect(builder.teleportAndVerify).toHaveBeenCalled();
+        expect(builder.weDispatch.teleportAndVerify).toHaveBeenCalled();
 
         // Check command (Executor function)
         // Note: Observed behavior shows a second argument {executionDelay: 700}. 
@@ -164,7 +165,7 @@ describe('Integration: Builder Command Generation', () => {
         await builder.executeBlueprint(blueprint, { x: 100, y: 64, z: 100 });
 
         // Target: 102, 64, 102
-        expect(builder.teleportAndVerify).toHaveBeenCalled();
+        expect(builder.weDispatch.teleportAndVerify).toHaveBeenCalled();
 
         // Check command
         expect(executorSpy).toHaveBeenCalledWith(

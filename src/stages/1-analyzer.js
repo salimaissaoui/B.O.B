@@ -2,7 +2,7 @@ import { detectBuildType, detectTheme, analyzePrompt as analyzeBuildTypes } from
 import { INTENT_SCALE_MAP } from '../config/creative-scales.js';
 import { detectCharacter } from '../config/character-palettes.js';
 
-const DEBUG = process.env.BOB_DEBUG === 'true' || process.env.DEBUG === 'true';
+import { DEBUG } from '../utils/debug.js';
 
 /**
  * Detect intent-based scale from prompt

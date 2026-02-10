@@ -5,14 +5,7 @@
  * Handles ECONNRESET, timeouts, and other transient network failures.
  */
 
-/**
- * Sleep for a specified duration
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise<void>}
- */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+import { sleep } from './sleep.js';
 
 /**
  * Check if an error is retryable (transient network issue)

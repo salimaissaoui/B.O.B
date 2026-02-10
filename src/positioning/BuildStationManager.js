@@ -1,6 +1,8 @@
 import { Vec3 } from 'vec3';
 import pathfinderPkg from 'mineflayer-pathfinder';
 const { goals } = pathfinderPkg;
+import { sleep } from '../utils/sleep.js';
+import { calculateDistance } from '../utils/pathfinding-helper.js';
 
 /**
  * Build Station Manager
@@ -185,7 +187,7 @@ export class BuildStationManager {
 
     for (const i of uncovered) {
       const block = blocks[i];
-      const dist = this.calculateDistance(station, {
+      const dist = calculateDistance(station, {
         x: block.worldX,
         y: block.worldY,
         z: block.worldZ
@@ -199,15 +201,6 @@ export class BuildStationManager {
     return covered;
   }
 
-  /**
-   * Calculate 3D distance between two positions
-   */
-  calculateDistance(posA, posB) {
-    const dx = posA.x - posB.x;
-    const dy = posA.y - posB.y;
-    const dz = posA.z - posB.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
-  }
 
   /**
    * Move bot to a build station
@@ -224,7 +217,7 @@ export class BuildStationManager {
     const targetPos = station.position;
 
     // Already close enough?
-    if (this.calculateDistance(botPos, targetPos) < 1.5) {
+    if (calculateDistance(botPos, targetPos) < 1.5) {
       return true;
     }
 
@@ -257,7 +250,7 @@ export class BuildStationManager {
     this.bot.chat(`/tp @s ${pos.x} ${pos.y + 1} ${pos.z}`);
 
     // Wait for teleport
-    await this.sleep(500);
+    await sleep(500);
     return true;
   }
 
@@ -270,7 +263,7 @@ export class BuildStationManager {
     }
 
     const botPos = this.bot.entity.position;
-    return this.calculateDistance(botPos, blockPos) <= this.reach;
+    return calculateDistance(botPos, blockPos) <= this.reach;
   }
 
   /**
@@ -320,12 +313,6 @@ export class BuildStationManager {
     };
   }
 
-  /**
-   * Sleep helper
-   */
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 }
 
 /**

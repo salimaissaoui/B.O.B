@@ -6,15 +6,7 @@
  */
 
 import { isRetryableError } from '../utils/network-resilience.js';
-
-/**
- * Sleep for a specified duration
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise<void>}
- */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+import { sleep } from '../utils/sleep.js';
 
 /**
  * ReconnectManager handles automatic bot reconnection

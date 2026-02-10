@@ -10,16 +10,7 @@
  * - Hollow mode support
  */
 
-import { calculateBounds } from '../../utils/coordinates.js';
-
-/**
- * Calculate volume of a region
- */
-function calculateVolume(from, to) {
-    return (Math.abs(to.x - from.x) + 1) *
-        (Math.abs(to.y - from.y) + 1) *
-        (Math.abs(to.z - from.z) + 1);
-}
+import { calculateBounds, calculateVolume } from '../../utils/coordinates.js';
 
 /**
  * Convert absolute coordinates to relative (to startPos)

@@ -3,14 +3,7 @@
  * Fills a large rectangular region using //set command
  */
 
-/**
- * Calculate volume of a cuboid
- */
-function calculateVolume(from, to) {
-  return Math.abs(to.x - from.x + 1) *
-         Math.abs(to.y - from.y + 1) *
-         Math.abs(to.z - from.z + 1);
-}
+import { calculateVolume } from '../utils/coordinates.js';
 
 /**
  * WorldEdit fill operation

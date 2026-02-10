@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SAFETY_LIMITS } from '../config/limits.js';
 import { BaseLLMClient } from './base-client.js';
+import { sleep } from '../utils/sleep.js';
 
 /**
  * Gemini LLM Client
@@ -289,7 +290,7 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
         // Exponential backoff: 1s, 2s, 4s...
         const delay = SAFETY_LIMITS.llmRetryDelayMs * Math.pow(2, attempt);
         console.warn(`⚠ ${label} request failed, retrying in ${delay}ms (${attempt + 1}/${SAFETY_LIMITS.llmMaxRetries})`);
-        await this.sleep(delay);
+        await sleep(delay);
       }
     }
 
@@ -328,9 +329,6 @@ Fix the specific errors mentioned above. Output only the corrected JSON blueprin
     });
   }
 
-  sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   parseJsonResponse(text, label) {
     // Step 1: Try direct parse

@@ -10,6 +10,7 @@
 
 import { Vec3 } from 'vec3';
 import { SAFETY_LIMITS } from '../config/limits.js';
+import { sleep } from './sleep.js';
 
 export class ScaffoldingHelper {
     constructor(bot, builder) {
@@ -114,7 +115,7 @@ export class ScaffoldingHelper {
         } else {
             // Vanilla placement
             this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} minecraft:${this.scaffoldBlock}`);
-            await this.sleep(100);
+            await sleep(100);
         }
     }
 
@@ -125,9 +126,9 @@ export class ScaffoldingHelper {
         // Simple jump to climb scaffolding
         if (this.bot?.setControlState) {
             this.bot.setControlState('jump', true);
-            await this.sleep(300);
+            await sleep(300);
             this.bot.setControlState('jump', false);
-            await this.sleep(200);
+            await sleep(200);
         }
     }
 
@@ -181,7 +182,7 @@ export class ScaffoldingHelper {
             await this.builder.worldEdit.executeCommand('//set air');
         } else {
             this.bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} minecraft:air`);
-            await this.sleep(50);
+            await sleep(50);
         }
     }
 
@@ -205,9 +206,6 @@ export class ScaffoldingHelper {
         this.scaffoldPositions = [];
     }
 
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
 }
 
 export default ScaffoldingHelper;

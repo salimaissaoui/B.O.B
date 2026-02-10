@@ -15,6 +15,7 @@ import {
   convertToLegacyBlueprint
 } from '../builder_v2/index.js';
 import { isKnownLandmark } from '../builder_v2/landmarks/registry.js';
+import { calculateBuildPosition } from '../positioning/build-position.js';
 
 /**
  * Register chat commands for the bot
@@ -305,27 +306,7 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
       safeChat(bot, `  Blocks: ${blueprint.palette.length} types, ${blueprint.steps.length} ops`);
 
       // Calculate build position
-      let buildPos;
-      if (coordFlags?.position) {
-        buildPos = coordFlags.position;
-      } else {
-        let targetEntity = bot.entity;
-        if (username && bot.players[username] && bot.players[username].entity) {
-          targetEntity = bot.players[username].entity;
-        }
-
-        const viewDir = {
-          x: -Math.sin(targetEntity.yaw),
-          z: -Math.cos(targetEntity.yaw)
-        };
-
-        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
-        buildPos = {
-          x: Math.floor(startPos.x),
-          y: Math.floor(startPos.y),
-          z: Math.floor(startPos.z)
-        };
-      }
+      const buildPos = calculateBuildPosition(bot, username, coordFlags);
 
       safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
       await builder.executeBlueprint(blueprint, buildPos);
@@ -352,27 +333,7 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
       safeChat(bot, `  Blocks: ${blueprint.palette.length} types`);
 
       // Calculate build position
-      let buildPos;
-      if (coordFlags?.position) {
-        buildPos = coordFlags.position;
-      } else {
-        let targetEntity = bot.entity;
-        if (username && bot.players[username] && bot.players[username].entity) {
-          targetEntity = bot.players[username].entity;
-        }
-
-        const viewDir = {
-          x: -Math.sin(targetEntity.yaw),
-          z: -Math.cos(targetEntity.yaw)
-        };
-
-        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
-        buildPos = {
-          x: Math.floor(startPos.x),
-          y: Math.floor(startPos.y),
-          z: Math.floor(startPos.z)
-        };
-      }
+      const buildPos = calculateBuildPosition(bot, username, coordFlags);
 
       safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
       await builder.executeBlueprint(blueprint, buildPos);
@@ -493,44 +454,7 @@ async function handleBuildCommand(prompt, bot, builder, apiKey, username) {
     // Execute live build
     safeChat(bot, 'Building...');
 
-    let buildPos;
-
-    // Use explicit coordinates if --at flag was provided
-    if (coordFlags.position) {
-      buildPos = coordFlags.position;
-      console.log(`Building at explicit position: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
-    } else {
-      // Try to build relative to the player who issued the command
-      let targetEntity = bot.entity;
-      let targetName = 'Bot';
-
-      if (username && bot.players[username] && bot.players[username].entity) {
-        targetEntity = bot.players[username].entity;
-        targetName = username;
-        console.log(`Building relative to player: ${username}`);
-      } else {
-        console.log('Player entity not found, building relative to bot');
-      }
-
-      // Calculate position 5 blocks in front of the target based on yaw
-      const viewDir = {
-        x: -Math.sin(targetEntity.yaw),
-        z: -Math.cos(targetEntity.yaw)
-      };
-
-      // Offset 5 blocks forward
-      const startPos = targetEntity.position.offset(
-        viewDir.x * 5,
-        0,
-        viewDir.z * 5
-      );
-
-      buildPos = {
-        x: Math.floor(startPos.x),
-        y: Math.floor(startPos.y),
-        z: Math.floor(startPos.z)
-      };
-    }
+    const buildPos = calculateBuildPosition(bot, username, coordFlags);
 
     safeChat(bot, `Starting build at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
 
@@ -604,27 +528,7 @@ async function handleBuildCommandV2(prompt, bot, builder, apiKey, username, opti
       const legacyBlueprint = convertToLegacyBlueprint(result.plan, result.placement);
 
       // Calculate build position
-      let buildPos;
-      if (coordFlags?.position) {
-        buildPos = coordFlags.position;
-      } else {
-        let targetEntity = bot.entity;
-        if (username && bot.players[username] && bot.players[username].entity) {
-          targetEntity = bot.players[username].entity;
-        }
-
-        const viewDir = {
-          x: -Math.sin(targetEntity.yaw),
-          z: -Math.cos(targetEntity.yaw)
-        };
-
-        const startPos = targetEntity.position.offset(viewDir.x * 5, 0, viewDir.z * 5);
-        buildPos = {
-          x: Math.floor(startPos.x),
-          y: Math.floor(startPos.y),
-          z: Math.floor(startPos.z)
-        };
-      }
+      const buildPos = calculateBuildPosition(bot, username, coordFlags);
 
       safeChat(bot, `Building at: ${buildPos.x}, ${buildPos.y}, ${buildPos.z}`);
       await builder.executeBlueprint(legacyBlueprint, buildPos);
